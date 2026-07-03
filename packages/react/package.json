@@ -1,6 +1,6 @@
 {
   "name": "@kanjou/react",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "private": false,
   "license": "Apache-2.0",
   "author": "rhyei",
@@ -32,9 +32,6 @@
   "scripts": {
     "build": "tsdown",
     "prepublishOnly": "pnpm build"
-  },
-  "dependencies": {
-    "@logtape/logtape": "^2.2.2"
   },
   "devDependencies": {
     "@types/node": "^26.1.0",
