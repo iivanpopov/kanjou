@@ -11,20 +11,40 @@
     "LICENSE"
   ],
   "type": "module",
+  "main": "./dist/index.mjs",
+  "types": "./dist/index.d.mts",
   "exports": {
-    ".": {
-      "types": "./dist/index.d.mts",
-      "import": "./dist/index.mjs"
-    }
+    ".": [
+      {
+        "types": "./dist/index.d.mts",
+        "import": "./dist/index.mjs"
+      },
+      "./dist/index.mjs"
+    ],
+    "./vite": [
+      {
+        "types": "./dist/vite.d.mts",
+        "import": "./dist/vite.mjs"
+      },
+      "./dist/vite.mjs"
+    ]
   },
   "scripts": {
     "build": "tsdown",
     "prepublishOnly": "pnpm build"
   },
+  "dependencies": {
+    "@logtape/logtape": "^2.2.2"
+  },
   "devDependencies": {
     "@types/node": "^26.1.0",
+    "@types/react": "^19.2.17",
     "tsdown": "^0.22.3",
     "typescript": "catalog:",
     "vitest": "^4.1.9"
+  },
+  "peerDependencies": {
+    "react": "19.2.7",
+    "vite": "^8.1.3"
   }
 }
