@@ -1,4 +1,9 @@
 {
-  "references": [{ "path": "./scripts" }, { "path": "./packages/react" }],
+  "references": [
+    { "path": "./scripts" },
+    { "path": "./packages/react" },
+    { "path": "./examples/react-vite" },
+    { "path": "./examples/react-vite-plugin" }
+  ],
   "files": []
 }

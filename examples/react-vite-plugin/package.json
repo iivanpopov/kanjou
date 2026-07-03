@@ -1,5 +1,6 @@
 {
-  "name": "example-react",
+  "name": "example-react-vite-plugin",
+  "private": true,
   "scripts": {
     "dev": "vite"
   },

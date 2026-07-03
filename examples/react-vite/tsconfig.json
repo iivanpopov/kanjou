@@ -15,5 +15,5 @@
     },
     "types": ["node"]
   },
-  "include": ["src/**/*", "generated/**/*"]
+  "include": ["src/**/*"]
 }
