@@ -1,0 +1,4 @@
+{
+  "references": [{ "path": "./scripts" }, { "path": "./packages/react" }],
+  "files": []
+}
