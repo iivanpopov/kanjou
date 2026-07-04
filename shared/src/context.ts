@@ -11,6 +11,7 @@ export interface KanjouPluginContext<Config extends UserConfig = UserConfig> {
 
 export function createContext<Config extends UserConfig = UserConfig>(
   defaults: UserConfig,
+  inlineConfig: Partial<UserConfig> = {},
 ): KanjouPluginContext<Config> {
   const root = process.cwd()
 
@@ -20,7 +21,7 @@ export function createContext<Config extends UserConfig = UserConfig>(
   let _config = {} as Config
 
   async function reloadConfig() {
-    const result = await loadConfig(root, defaults)
+    const result = await loadConfig(root, inlineConfig, defaults)
     _config = result.config
     return result as LoadConfigResult<Config>
   }

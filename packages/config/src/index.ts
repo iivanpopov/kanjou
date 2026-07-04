@@ -14,6 +14,7 @@ export function defineConfig(config: UserConfig): UserConfig {
 
 export async function loadConfig<Config = UserConfig>(
   cwd: string = process.cwd(),
+  inlineConfig: Partial<UserConfig>,
   defaults: UserConfig,
 ): Promise<LoadConfigResult<Config>> {
   const loader = createLoader<Config>({
@@ -23,25 +24,28 @@ export async function loadConfig<Config = UserConfig>(
 
   const result = await loader.load()
 
-  if (!result.config) consola.error('[@kanjou/config] Config file not found - loading defaults')
+  if (!result.config && !inlineConfig)
+    consola.error('[@kanjou/config] Config file not found - loading defaults')
 
-  result.config = Object.assign(defaults, result.config)
+  result.config = Object.assign({}, defaults, result.config, inlineConfig)
 
   return result
 }
 
 export function createRecoveryConfigLoader<Config extends UserConfig = UserConfig>(): (
   cwd: string | undefined,
+  inlineConfig: Partial<UserConfig>,
   defaults: UserConfig,
 ) => Promise<LoadConfigResult<Config>> {
   let lastResolved: LoadConfigResult<Config>
 
   return async function (
     cwd: string = process.cwd(),
+    inlineConfig: Partial<UserConfig>,
     defaults: UserConfig,
   ): Promise<LoadConfigResult<Config>> {
     try {
-      const config = await loadConfig<Config>(cwd, defaults)
+      const config = await loadConfig<Config>(cwd, inlineConfig, defaults)
       lastResolved = config
       return config
     } catch (error) {

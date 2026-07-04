@@ -1,3 +1,4 @@
+import type { UserConfig } from '@kanjou/config'
 import type { Plugin } from 'vite'
 
 import fs from 'node:fs/promises'
@@ -6,14 +7,18 @@ import { normalizePath } from 'vite'
 
 import { createContext } from '#shared/context'
 
-import { generateLocaleDts, generateLocalesDts, generateVirtualDts } from './dts'
+import { generateMessagesDts, generateLocalesDts, generateVirtualDts } from './dts'
 import { generateLocaleMessages, generateLocaleModules } from './virtual'
 
-export function kanjou(): Plugin {
-  const ctx = createContext({
-    sourceLocalePath: 'src/assets/locales/en.json',
-    outputDirectory: 'generated',
-  })
+export interface KanjouPluginConfig extends Partial<UserConfig> {}
+
+const DEFAULT_CONFIG: UserConfig = {
+  sourceLocalePath: 'src/assets/locales/en.json',
+  outputDirectory: 'generated',
+}
+
+export function kanjou(config: KanjouPluginConfig = {}): Plugin {
+  const ctx = createContext(DEFAULT_CONFIG, config)
 
   return {
     name: 'kanjou',
@@ -21,7 +26,7 @@ export function kanjou(): Plugin {
       const config = await ctx.getConfig()
 
       if (file === normalizePath(path.resolve(config.sourceLocalePath)))
-        await generateLocaleDts(config)
+        await generateMessagesDts(config)
     },
     async buildStart() {
       const config = await ctx.getConfig()
@@ -30,7 +35,7 @@ export function kanjou(): Plugin {
 
       await fs.mkdir(config.outputDirectory, { recursive: true })
 
-      await generateLocaleDts(config)
+      await generateMessagesDts(config)
       await generateLocalesDts(config)
       await generateVirtualDts(config)
     },

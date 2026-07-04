@@ -3,9 +3,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "next dev",
-    "prod": "next start",
-    "build": "next build"
+    "dev": "next dev"
   },
   "dependencies": {
     "@kanjou/react": "workspace:*",

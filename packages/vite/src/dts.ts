@@ -7,6 +7,8 @@ export interface DtsOptions {
   outputDirectory: string
 }
 
+const LOCALES_DTS_FILENAME = 'locales.d.ts'
+
 export async function generateLocalesDts({ outputDirectory, sourceLocalePath }: DtsOptions) {
   try {
     const localeFilesDir = path.dirname(sourceLocalePath)
@@ -22,11 +24,13 @@ ${localesBlock}
   }
 }`
 
-    await fs.writeFile(path.resolve(outputDirectory, 'locales.d.ts'), content)
+    await fs.writeFile(path.resolve(outputDirectory, LOCALES_DTS_FILENAME), content)
   } catch (error) {
     consola.error('[@kanjou/vite] Failed to generate locales.d.ts', error)
   }
 }
+
+const VIRTUAL_DTS_FILENAME = 'virtual.d.ts'
 
 export async function generateVirtualDts({ outputDirectory }: DtsOptions) {
   try {
@@ -44,19 +48,21 @@ declare module 'virtual:kanjou/modules' {
   export default localeModules
 }`
 
-    await fs.writeFile(path.resolve(outputDirectory, 'virtual.d.ts'), content)
+    await fs.writeFile(path.resolve(outputDirectory, VIRTUAL_DTS_FILENAME), content)
   } catch (error) {
     consola.error('[@kanjou/vite] Failed to generate virtual.d.ts', error)
   }
 }
 
-export async function generateLocaleDts({ outputDirectory, sourceLocalePath }: DtsOptions) {
+const MESSAGES_DTS_FILENAME = 'messages.d.ts'
+
+export async function generateMessagesDts({ outputDirectory, sourceLocalePath }: DtsOptions) {
   try {
     const jsonRaw = await fs.readFile(sourceLocalePath)!
     const messagesRaw = jsonRaw.toString()
 
     await fs.writeFile(
-      path.resolve(outputDirectory, 'messages.d.ts'),
+      path.resolve(outputDirectory, MESSAGES_DTS_FILENAME),
       `/* eslint-disable */\nexport {}\ndeclare module '@kanjou/react' {\n  export interface Messages  ${messagesRaw}}`,
     )
   } catch (error) {

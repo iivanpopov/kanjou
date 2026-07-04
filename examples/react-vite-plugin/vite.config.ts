@@ -4,5 +4,11 @@ import { defineConfig } from 'vite'
 
 export default defineConfig({
   resolve: { tsconfigPaths: true },
-  plugins: [kanjou(), react()],
+  plugins: [
+    kanjou({
+      sourceLocalePath: 'src/assets/locales/en.json',
+      outputDirectory: 'generated',
+    }),
+    react(),
+  ],
 })
