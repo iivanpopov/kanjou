@@ -1,15 +1,15 @@
 pre-commit:
   commands:
+    build:
+      run: pnpm --filter "./packages/*" build
+    test:
+      run: pnpm --filter "./packages/*" test
     lint:
       run: pnpm oxlint --fix --no-error-on-unmatched-pattern {staged_files}
       stage_fixed: true
     fmt:
       run: pnpm oxfmt --write --no-error-on-unmatched-pattern {staged_files}
       stage_fixed: true
-    build:
-      run: pnpm build
-    test:
-      run: pnpm test
 
 prepare-commit-msg:
   commands:
