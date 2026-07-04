@@ -1,6 +1,6 @@
-import { createContext } from 'react'
+import type { Locale } from '@kanjou/react'
 
-export type Locale = 'en' | 'es' | 'fr'
+import { createContext } from 'react'
 
 export interface IntlContextValue {
   locale: Locale

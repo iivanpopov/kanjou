@@ -1,4 +1,4 @@
-import type { Locale } from '#/providers/intl-provider'
+import type { Locale } from '@kanjou/react'
 
 import { useIntl } from '#/providers/intl-provider'
 

@@ -6,7 +6,7 @@ import { normalizePath } from 'vite'
 
 import { createContext } from '#shared/context'
 
-import { generateLocaleDts, generateVirtualModulesDts } from './dts'
+import { generateLocaleDts, generateLocalesDts, generateVirtualDts } from './dts'
 import { generateLocaleMessages, generateLocaleModules } from './virtual'
 
 export function kanjou(): Plugin {
@@ -31,7 +31,8 @@ export function kanjou(): Plugin {
       await fs.mkdir(config.outputDirectory, { recursive: true })
 
       await generateLocaleDts(config)
-      await generateVirtualModulesDts(config)
+      await generateLocalesDts(config)
+      await generateVirtualDts(config)
     },
     resolveId(id) {
       if (id.startsWith('virtual:kanjou/')) return '\0' + id

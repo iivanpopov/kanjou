@@ -1,6 +1,6 @@
 import { use } from 'react'
 
-import type { MessageKey, MessageValues } from './types'
+import type { MessageKey, MessageValues, Locale as KanjouLocale } from './types'
 
 import { I18nContext } from './context'
 import { translate } from './translate'
@@ -10,7 +10,7 @@ export interface UseI18nReturn<Locale> {
   t: <Key extends MessageKey>(key: Key, values?: MessageValues<Key>) => string
 }
 
-export function useI18n<Locale = string>(): UseI18nReturn<Locale> {
+export function useI18n<Locale = KanjouLocale>(): UseI18nReturn<Locale> {
   const context = use(I18nContext)
 
   const t = <Key extends MessageKey>(key: Key, values?: MessageValues<Key>) =>

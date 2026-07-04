@@ -1,6 +1,6 @@
-import localeModules from 'virtual:kanjou/modules'
+import type { Locale } from '@kanjou/react'
 
-import type { Locale } from '#/providers/intl-provider'
+import localeModules from 'virtual:kanjou/modules'
 
 export async function loadLocale(locale: Locale): Promise<Record<string, any>> {
   const messages = await localeModules[locale]()

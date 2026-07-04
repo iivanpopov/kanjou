@@ -12,3 +12,7 @@ export type MessageValues<Key extends MessageKey> = Record<
   ExtractValues<InternalMessages[Key]>,
   string | number
 >
+
+export interface Locales {}
+
+export type Locale = keyof Locales extends never ? string : keyof Locales
