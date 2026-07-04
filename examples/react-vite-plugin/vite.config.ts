@@ -1,4 +1,4 @@
-import { kanjou } from '@kanjou/react'
+import { kanjou } from '@kanjou/vite'
 import react from '@vitejs/plugin-react'
 import { defineConfig } from 'vite'
 

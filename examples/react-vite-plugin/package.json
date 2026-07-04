@@ -1,11 +1,14 @@
 {
   "name": "example-react-vite-plugin",
   "private": true,
+  "type": "module",
   "scripts": {
     "dev": "vite"
   },
   "dependencies": {
+    "@kanjou/config": "workspace:*",
     "@kanjou/react": "workspace:*",
+    "@kanjou/vite": "workspace:*",
     "react": "^19.2.7",
     "react-dom": "^19.2.7"
   },

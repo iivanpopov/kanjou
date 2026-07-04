@@ -1,6 +1,6 @@
 {
-  "name": "@kanjou/react",
-  "version": "0.0.2",
+  "name": "@kanjou/vite",
+  "version": "0.0.1",
   "private": false,
   "license": "Apache-2.0",
   "author": "rhyei",
@@ -11,8 +11,6 @@
     "LICENSE"
   ],
   "type": "module",
-  "main": "./dist/index.mjs",
-  "types": "./dist/index.d.mts",
   "exports": {
     ".": {
       "types": "./dist/index.d.mts",
@@ -24,16 +22,16 @@
     "prepublishOnly": "pnpm build"
   },
   "dependencies": {
-    "@kanjou/config": "workspace:*"
+    "@kanjou/config": "workspace:*",
+    "consola": "^3.4.2"
   },
   "devDependencies": {
     "@types/node": "catalog:",
-    "@types/react": "^19.2.17",
     "tsdown": "catalog:",
     "typescript": "catalog:",
-    "vitest": "catalog:"
+    "vite": "^8.1.3"
   },
   "peerDependencies": {
-    "react": "19.2.7"
+    "vite": "^8.1.3"
   }
 }

@@ -21,6 +21,10 @@
     "build": "tsdown",
     "prepublishOnly": "pnpm build"
   },
+  "dependencies": {
+    "consola": "^3.4.2",
+    "unconfig": "^7.5.0"
+  },
   "devDependencies": {
     "@types/node": "catalog:",
     "tsdown": "catalog:",

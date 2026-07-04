@@ -1,0 +1,11 @@
+{
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "@kanjou/config": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "catalog:",
+    "unconfig": "^7.5.0"
+  }
+}
