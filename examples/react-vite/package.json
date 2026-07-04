@@ -1,6 +1,7 @@
 {
   "name": "example-react",
   "private": true,
+  "type": "module",
   "scripts": {
     "dev": "vite"
   },
