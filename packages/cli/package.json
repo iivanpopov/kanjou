@@ -1,5 +1,5 @@
 {
-  "name": "@kanjou/config",
+  "name": "@kanjou/cli",
   "version": "0.0.4",
   "private": false,
   "license": "Apache-2.0",
