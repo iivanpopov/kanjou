@@ -2,7 +2,7 @@ export interface Messages {}
 
 export type InternalMessages = keyof Messages extends never ? Record<string, any> : Messages
 
-export type MessageKey = keyof InternalMessages
+export type MessageKey = keyof InternalMessages | (string & {})
 
 export type ExtractValues<T extends string> = T extends `${string}{${infer Param}}${infer Rest}`
   ? Param | ExtractValues<Rest>

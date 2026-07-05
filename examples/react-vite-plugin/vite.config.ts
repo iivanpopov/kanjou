@@ -7,7 +7,10 @@ export default defineConfig({
   plugins: [
     kanjou({
       sourceLocalePath: 'src/assets/locales/en.json',
-      outputDirectory: 'generated',
+      dts: {
+        generate: true,
+        outputDirectory: 'generated',
+      },
     }),
     react(),
   ],
