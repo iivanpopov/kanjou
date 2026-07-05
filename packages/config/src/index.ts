@@ -3,30 +3,22 @@ import type { LoadConfigResult } from 'unconfig'
 import consola from 'consola'
 import { createConfigLoader as createLoader } from 'unconfig'
 
-export type DtsOptions =
-  | {
-      generate: true
-      outputDirectory?: string
-      localesDtsPath?: never
-      virtualDtsPath?: never
-    }
-  | {
-      generate: true
-      outputDirectory?: never
-      localesDtsPath: string
-      virtualDtsPath: string
-    }
-  | {
-      generate?: false
-      outputDirectory?: never
-      localesDtsPath?: never
-      virtualDtsPath?: never
-    }
-
 export interface UserConfig {
   sourceLocalePath: string
-  dts?: DtsOptions
+  dts?:
+    | {
+        outputDirectory?: string
+        localesDtsOutputPath?: never
+        virtualDtsOutputPath?: never
+      }
+    | {
+        outputDirectory?: never
+        localesDtsOutputPath?: string
+        virtualDtsOutputPath?: string
+      }
 }
+
+export type LoadUserConfigResult<Config = UserConfig> = LoadConfigResult<Config>
 
 export function defineConfig(config: UserConfig): UserConfig {
   return config

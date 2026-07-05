@@ -1,6 +1,6 @@
 {
   "name": "@kanjou/react",
-  "version": "0.0.10",
+  "version": "0.0.11",
   "private": false,
   "license": "Apache-2.0",
   "author": "rhyei",
@@ -34,12 +34,12 @@
   },
   "devDependencies": {
     "@types/node": "catalog:",
-    "@types/react": "^19.2.17",
-    "tsdown": "catalog:",
-    "typescript": "catalog:",
-    "vitest": "catalog:"
+    "@types/react": "catalog:react",
+    "tsdown": "catalog:tooling",
+    "typescript": "catalog:tooling",
+    "vitest": "catalog:tooling"
   },
   "peerDependencies": {
-    "react": "19.2.7"
+    "react": "catalog:react"
   }
 }

@@ -1,6 +1,6 @@
 {
   "name": "@kanjou/cli",
-  "version": "0.0.9",
+  "version": "0.0.10",
   "private": false,
   "license": "Apache-2.0",
   "author": "rhyei",
@@ -22,7 +22,7 @@
     "prepublishOnly": "pnpm build"
   },
   "devDependencies": {
-    "tsdown": "catalog:",
-    "typescript": "catalog:"
+    "tsdown": "catalog:tooling",
+    "typescript": "catalog:tooling"
   }
 }

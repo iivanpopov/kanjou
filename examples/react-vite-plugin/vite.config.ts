@@ -8,7 +8,6 @@ export default defineConfig({
     kanjou({
       sourceLocalePath: 'src/assets/locales/en.json',
       dts: {
-        generate: true,
         outputDirectory: 'generated',
       },
     }),

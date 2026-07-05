@@ -5,11 +5,11 @@ import fs from 'node:fs/promises'
 import path from 'node:path'
 
 export async function generateLocalesDts(config: UserConfig) {
-  if (!config.dts?.generate) return
+  if (!config.dts?.outputDirectory && !config.dts?.localesDtsOutputPath) return
 
-  const localesDtsPath = config.dts.outputDirectory
+  const localesDtsOutputPath = config.dts.outputDirectory
     ? path.resolve(config.dts.outputDirectory, 'locales.d.ts')
-    : path.resolve(config.dts.localesDtsPath!) // we must have it here
+    : path.resolve(config.dts.localesDtsOutputPath!) // we must have it here
 
   try {
     const localeFilesDir = path.dirname(config.sourceLocalePath)
@@ -30,8 +30,8 @@ ${locales}
   export interface Messages ${messages}
 }`
 
-    await fs.mkdir(path.dirname(localesDtsPath), { recursive: true })
-    await fs.writeFile(localesDtsPath, content)
+    await fs.mkdir(path.dirname(localesDtsOutputPath), { recursive: true })
+    await fs.writeFile(localesDtsOutputPath, content)
   } catch (error) {
     consola.error('[@kanjou/vite] Failed to generate locales.d.ts', error)
   }
@@ -49,15 +49,15 @@ declare module 'virtual:kanjou/modules' {
 }`
 
 export async function generateVirtualDts(config: UserConfig) {
-  if (!config.dts?.generate) return
+  if (!config.dts?.outputDirectory && !config.dts?.virtualDtsOutputPath) return
 
-  const virtualDtsPath = config.dts.outputDirectory
+  const virtualDtsOutputPath = config.dts.outputDirectory
     ? path.resolve(config.dts.outputDirectory, 'virtual.d.ts')
-    : path.resolve(config.dts.virtualDtsPath!) // we must have it here
+    : path.resolve(config.dts.virtualDtsOutputPath!) // we must have it here
 
   try {
-    await fs.mkdir(path.dirname(virtualDtsPath), { recursive: true })
-    await fs.writeFile(virtualDtsPath, virtualDtsContent)
+    await fs.mkdir(path.dirname(virtualDtsOutputPath), { recursive: true })
+    await fs.writeFile(virtualDtsOutputPath, virtualDtsContent)
   } catch (error) {
     consola.error('[@kanjou/vite] Failed to generate virtual.d.ts', error)
   }

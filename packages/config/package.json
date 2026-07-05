@@ -1,6 +1,6 @@
 {
   "name": "@kanjou/config",
-  "version": "0.0.9",
+  "version": "0.0.10",
   "private": false,
   "license": "Apache-2.0",
   "author": "rhyei",
@@ -22,12 +22,12 @@
     "prepublishOnly": "pnpm build"
   },
   "dependencies": {
-    "consola": "^3.4.2",
+    "consola": "catalog:",
     "unconfig": "^7.5.0"
   },
   "devDependencies": {
     "@types/node": "catalog:",
-    "tsdown": "catalog:",
-    "typescript": "catalog:"
+    "tsdown": "catalog:tooling",
+    "typescript": "catalog:tooling"
   }
 }

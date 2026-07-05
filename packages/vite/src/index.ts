@@ -23,13 +23,13 @@ export function kanjou(config: KanjouPluginConfig = {}): Plugin {
     async handleHotUpdate({ file }) {
       const config = await ctx.getConfig()
 
-      if (config.dts?.generate && file === normalizePath(path.resolve(config.sourceLocalePath)))
+      if (config.dts && file === normalizePath(path.resolve(config.sourceLocalePath)))
         await generateLocalesDts(config)
     },
     async buildStart() {
       const config = await ctx.getConfig()
 
-      if (!config.dts?.generate) return
+      if (!config.dts) return
 
       this.addWatchFile(config.sourceLocalePath)
 
