@@ -18,7 +18,7 @@ export function useIntl() {
   }
 
   return {
-    t,
+    t: t as any,
     locale: context.locale,
     setLocale,
   }

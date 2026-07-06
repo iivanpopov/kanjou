@@ -1,3 +1,7 @@
 {
-  "greet": "Hello, {name}!"
+  "greet": "Hello, {name}!",
+  "apples": {
+    "one": "You have {count} apple.",
+    "other": "You have {count} apples."
+  }
 }

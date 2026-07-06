@@ -13,15 +13,15 @@ export function IntlProvider({
 }: {
   children: ReactNode
   initialLocale: Locale
-  initialMessages: Record<string, string>
+  initialMessages: Record<string, any>
 }) {
   const [locale, setLocale] = useState<Locale>(initialLocale)
-  const [messages, setMessages] = useState<Record<string, string>>(initialMessages)
+  const [messages, setMessages] = useState<Record<string, any>>(initialMessages)
 
   return (
     <IntlContext value={{ locale, setLocale, messages, setMessages }}>
       {/* kanjou provider only needs the current locale and raw messages object */}
-      <I18nProvider locale={locale} messages={messages}>
+      <I18nProvider locale={locale} messages={messages as any}>
         {children}
       </I18nProvider>
     </IntlContext>
