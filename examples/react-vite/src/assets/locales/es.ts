@@ -1,1 +1,7 @@
-export default { greet: '¡Hola, {name}!' } as const // "as const" here so typescript parses as literal, not as string type
+export default {
+  greet: '¡Hola, {name}!',
+  apples: {
+    one: 'Tienes {count} manzana.',
+    other: 'Tienes {count} manzanas.',
+  },
+} as const

@@ -1,1 +1,7 @@
-export default { greet: '¡Hola, {name}!' } as const
+export default {
+  greet: '¡Hola, {name}!',
+  apples: {
+    one: 'Tienes {count} manzana.',
+    other: 'Tienes {count} manzanas.',
+  },
+} as const

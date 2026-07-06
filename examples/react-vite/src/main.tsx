@@ -8,7 +8,10 @@ import { loadLocale } from '#/utils'
 
 // declare messages for typesafe experience. use your source of truth locale here
 declare module '@kanjou/react' {
-  export interface Messages extends Record<keyof typeof messages, string> {}
+  export interface Messages {
+    greet: 'name'
+    apples: 'count'
+  }
 }
 
 const initialLocale = 'en' // load from localStorage or whatever you want
