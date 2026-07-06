@@ -1,20 +1,41 @@
 'use server'
 
-import type { MessageKey, MessageValues } from './types'
+import type { Translate } from './translate'
+import type { Locale } from './types'
 
-import { translate } from './translate'
+import { createTranslate } from './translate'
 
-export interface CreateI18nReturn {
-  t: <Key extends MessageKey>(key: Key, values?: MessageValues<Key>) => string
+export type CreateI18n = (options: {
+  locale: Locale
+  messages: Record<string, any>
+}) => Promise<{ t: Translate }>
+
+class LRUCache<Key, Value> extends Map<Key, Value> {
+  get(key: Key): Value | undefined {
+    if (!this.has(key)) return undefined
+    const value = super.get(key)!
+    this.delete(key)
+    super.set(key, value)
+    return value
+  }
+
+  set(key: Key, value: Value): this {
+    super.set(key, value)
+    if (this.size > 500) {
+      const firstKey = this.keys().next().value
+      if (firstKey !== undefined) this.delete(firstKey)
+    }
+    return this
+  }
 }
 
-export async function createI18n({
-  messages,
-}: {
-  messages: Record<string, any>
-}): Promise<CreateI18nReturn> {
-  const t = <Key extends MessageKey>(key: Key, values?: MessageValues<Key>) =>
-    translate(messages, key, values)
+const intlCache = new Map<string, Intl.PluralRules>()
+const translateFnCache = new LRUCache<string, (p: Record<string, any>) => string>()
 
-  return { t }
+const translate = createTranslate(intlCache, translateFnCache)
+
+export const createI18n: CreateI18n = async ({ messages, locale }) => {
+  const t: Translate = (key, values) => translate(messages, locale, key, values)
+
+  return { locale, t }
 }

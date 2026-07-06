@@ -1,18 +1,13 @@
+export type Message = undefined | string | Record<Intl.LDMLPluralRule, string>
+
 export interface Messages {}
-
-export type InternalMessages = keyof Messages extends never ? Record<string, any> : Messages
-
-export type MessageKey = keyof InternalMessages | (string & {})
-
-export type ExtractValues<T extends string> = T extends `${string}{${infer Param}}${infer Rest}`
-  ? Param | ExtractValues<Rest>
-  : never
-
-export type MessageValues<Key extends MessageKey> = Record<
-  ExtractValues<InternalMessages[Key]>,
-  string | number
->
-
 export interface Locales {}
 
 export type Locale = keyof Locales extends never ? string : keyof Locales
+
+export type InternalMessages = keyof Messages extends never ? Record<string, undefined> : Messages
+
+export type MessageValues<Key extends keyof InternalMessages> = Record<
+  InternalMessages[Key] extends undefined ? never : InternalMessages[Key],
+  string | number
+>

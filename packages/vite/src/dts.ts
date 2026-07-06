@@ -4,6 +4,9 @@ import consola from 'consola'
 import fs from 'node:fs/promises'
 import path from 'node:path'
 
+const extractParamsRegex = /\{(?<key>[^}]+)\}/g
+const isParameterizedRegex = /\{[^}]+\}/
+
 export async function generateLocalesDts(config: UserConfig) {
   if (!config.dts?.outputDirectory && !config.dts?.localesDtsOutputPath) return
 
@@ -18,16 +21,38 @@ export async function generateLocalesDts(config: UserConfig) {
       .map((file) => `    ${path.basename(file, '.json')}: true`)
       .join('\n')
 
-    const jsonRaw = await fs.readFile(config.sourceLocalePath)
-    const messages = jsonRaw.toString().trim()
+    const raw = await fs.readFile(config.sourceLocalePath)
+    const messagesRaw: Record<string, string | Record<Intl.LDMLPluralRule, string>> = JSON.parse(
+      raw.toString(),
+    )
 
+    const messages = Object.entries(messagesRaw)
+      .map(([key, value]) => {
+        if (typeof value === 'string' && isParameterizedRegex.test(value)) {
+          const matches = Array.from(value.matchAll(extractParamsRegex))
+          return `    ${key}: ${matches.map((match) => `"${match.groups?.key}"`).join(' | ')}`
+        }
+
+        if (typeof value === 'object') {
+          const matches = Array.from(Object.values(value)[0].matchAll(extractParamsRegex))
+          return `    ${key}: ${matches.map((match) => `"${match.groups?.key}"`).join(' | ')}`
+        }
+
+        return ''
+      })
+
+      .join('\n')
     const content = `/* eslint-disable */
 export {}
+
 declare module '@kanjou/react' {
   export interface Locales {
 ${locales}
   }
-  export interface Messages ${messages}
+
+  export interface Messages {
+${messages}
+  }
 }`
 
     await fs.mkdir(path.dirname(localesDtsOutputPath), { recursive: true })

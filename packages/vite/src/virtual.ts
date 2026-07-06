@@ -9,24 +9,38 @@ export async function generateLocaleMessages(
   sourceLocalePath: string,
   locale: string,
 ): Promise<string | undefined> {
-  const localeFilesDir = path.dirname(sourceLocalePath)
-  const localeFilePath = path.join(localeFilesDir, locale + '.json')
-
   try {
-    const jsonRaw = await fs.readFile(localeFilePath)
-    const messages: Record<string, string> = JSON.parse(jsonRaw.toString())
+    const localeFilePath = path.join(path.dirname(sourceLocalePath), `${locale}.json`)
+    const raw = await fs.readFile(localeFilePath, 'utf-8')
+    const messages: Record<string, string | Record<Intl.LDMLPluralRule, string>> = JSON.parse(raw)
 
-    const messagesDeclaration = Object.entries(messages).map(([key, value]) => {
-      key = JSON.stringify(key)
+    let hasPlural = false
+
+    const entries = Object.entries(messages).map(([rawKey, value]) => {
+      const key = JSON.stringify(rawKey)
+
+      if (value && typeof value === 'object') {
+        hasPlural = true
+
+        const cases = Object.entries(value)
+          .map(([pluralCase, text]) => {
+            const body = text.replace(extractParamsRegex, (_, param) => `\${p.${param}}`)
+            return `      case ${JSON.stringify(pluralCase)}: return \`${body}\``
+          })
+          .join('\n')
+
+        return `  ${key}: (p = {}) => {\n    switch (${locale}Plural.select(p.count ?? 0)) {\n${cases}\n      default: return ''\n    }\n  }`
+      }
 
       if (!isParameterizedRegex.test(value)) return `  ${key}: ${JSON.stringify(value)}`
 
-      const template = value.replace(extractParamsRegex, (_, key) => `\${p.${key}}`)
-
+      const template = value.replace(extractParamsRegex, (_, param) => `\${p.${param}}`)
       return `  ${key}: (p = {}) => \`${template}\``
     })
 
-    return `export default {\n${messagesDeclaration.join(',\n')}\n}\n`
+    const header = hasPlural ? `const ${locale}Plural = new Intl.PluralRules('${locale}')\n\n` : ''
+
+    return `${header}export default {\n${entries.join(',\n')}\n}\n`
   } catch (error) {
     consola.error('[@kanjou/vite] Failed to load locale', error)
   }

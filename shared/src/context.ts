@@ -9,7 +9,7 @@ export interface KanjouPluginContext<Config extends UserConfig = UserConfig> {
 }
 
 export function createContext<Config extends UserConfig = UserConfig>(
-  defaults: UserConfig,
+  defaults: Partial<UserConfig>,
   inlineConfig: Partial<UserConfig> = {},
 ): KanjouPluginContext<Config> {
   const root = process.cwd()

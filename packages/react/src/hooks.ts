@@ -1,23 +1,25 @@
 import { use } from 'react'
 
-import type { MessageKey, MessageValues, Locale as KanjouLocale } from './types'
+import type { Translate } from './translate'
+import type { Locale } from './types'
 
 import { I18nContext } from './context'
-import { translate } from './translate'
+import { createTranslate } from './translate'
 
-export interface UseI18nReturn<Locale> {
+export interface UseI18nReturn {
   locale: Locale
-  t: <Key extends MessageKey>(key: Key, values?: MessageValues<Key>) => string
+  t: Translate
 }
 
-export function useI18n<Locale = KanjouLocale>(): UseI18nReturn<Locale> {
-  const context = use(I18nContext)
+const intlCache = new Map<string, Intl.PluralRules>()
+const translateFnCache = new Map<string, (p: Record<string, any>) => string>()
 
-  const t = <Key extends MessageKey>(key: Key, values?: MessageValues<Key>) =>
-    translate(context.messages, key, values)
+const translate = createTranslate(intlCache, translateFnCache)
 
-  return {
-    locale: context.locale as Locale,
-    t,
-  }
+export function useI18n(): UseI18nReturn {
+  const { locale, messages } = use(I18nContext)
+
+  const t: Translate = (key, values) => translate(messages, locale, key, values)
+
+  return { locale, t }
 }

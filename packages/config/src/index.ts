@@ -27,7 +27,7 @@ export function defineConfig(config: UserConfig): UserConfig {
 export async function loadConfig<Config = UserConfig>(
   cwd: string = process.cwd(),
   inlineConfig: Partial<UserConfig>,
-  defaults: UserConfig,
+  defaults: Partial<UserConfig>,
 ): Promise<LoadConfigResult<Config>> {
   const loader = createLoader<Config>({
     sources: [{ files: ['kanjou.config'] }],
@@ -47,14 +47,14 @@ export async function loadConfig<Config = UserConfig>(
 export function createRecoveryConfigLoader<Config extends UserConfig = UserConfig>(): (
   cwd: string | undefined,
   inlineConfig: Partial<UserConfig>,
-  defaults: UserConfig,
+  defaults: Partial<UserConfig>,
 ) => Promise<LoadConfigResult<Config>> {
   let lastResolved: LoadConfigResult<Config>
 
   return async function (
     cwd: string = process.cwd(),
     inlineConfig: Partial<UserConfig>,
-    defaults: UserConfig,
+    defaults: Partial<UserConfig>,
   ): Promise<LoadConfigResult<Config>> {
     try {
       const config = await loadConfig<Config>(cwd, inlineConfig, defaults)

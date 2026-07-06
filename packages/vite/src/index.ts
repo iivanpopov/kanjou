@@ -11,8 +11,10 @@ import { generateLocaleMessages, generateLocaleModules } from './virtual'
 
 export interface KanjouPluginConfig extends Partial<UserConfig> {}
 
-const DEFAULT_CONFIG: UserConfig = {
-  sourceLocalePath: 'src/assets/locales/en.json',
+const DEFAULT_CONFIG: Partial<UserConfig> = {
+  dts: {
+    outputDirectory: 'generated',
+  },
 }
 
 export function kanjou(config: KanjouPluginConfig = {}): Plugin {
