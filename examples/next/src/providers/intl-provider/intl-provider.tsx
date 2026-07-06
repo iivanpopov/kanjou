@@ -31,6 +31,7 @@ export function IntlProvider({
   )
 }
 
+// im gonna create cli tool soon for those who cant use vite plugin
 declare module '@kanjou/react' {
   export interface Messages {
     greet: 'name'
