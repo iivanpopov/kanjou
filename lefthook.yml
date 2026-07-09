@@ -1,17 +1,19 @@
 pre-commit:
-  commands:
-    build:
-      run: pnpm --filter "./packages/*" build
-    test:
-      run: pnpm --filter "./packages/*" test
-    lint:
-      run: pnpm oxlint --fix --no-error-on-unmatched-pattern {staged_files}
-      stage_fixed: true
-    fmt:
+  piped: true
+  jobs:
+    - name: fmt
       run: pnpm oxfmt --write --no-error-on-unmatched-pattern {staged_files}
       stage_fixed: true
 
-prepare-commit-msg:
-  commands:
-    prepare:
-      run: bun ./scripts/prepare-commit-msg {1}
+    - name: lint
+      run: pnpm oxlint --fix --no-error-on-unmatched-pattern {staged_files}
+      stage_fixed: true
+
+    - name: verify
+      group:
+        parallel: true
+        jobs:
+          - name: build
+            run: pnpm --filter "./packages/*" build
+          - name: test
+            run: pnpm --filter "./packages/*" test
