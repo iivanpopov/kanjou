@@ -1,10 +1,11 @@
 'use client'
 
-import type { Locale } from './intl-context'
 import type { ReactNode } from 'react'
 
 import { I18nProvider } from '@kanjou/react'
 import { useState } from 'react'
+
+import type { Locale } from './intl-context'
 
 import { IntlContext } from './intl-context'
 

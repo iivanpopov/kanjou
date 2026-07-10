@@ -1,7 +1,8 @@
-import type { Messages, Locale } from './types'
 import type { Context } from 'react'
 
 import { createContext } from 'react'
+
+import type { Messages, Locale } from './types'
 
 export interface I18nContextValue {
   locale: Locale

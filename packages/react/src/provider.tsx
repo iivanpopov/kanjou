@@ -1,5 +1,6 @@
-import type { Messages } from './types'
 import type { ReactNode } from 'react'
+
+import type { Messages } from './types'
 
 import { I18nContext } from './context'
 
