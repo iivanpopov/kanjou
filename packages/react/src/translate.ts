@@ -26,11 +26,10 @@ export function translate<Key extends keyof Messages>(
     let translateFn = translateFnCache.get(translateFnCacheKey)
     if (translateFn) return translateFn(values)
 
-    translateFn = (params) => {
-      return message.replace(/{(\w+)}/g, (_, key) => {
-        return params[key] !== undefined ? params[key] : `{${key}}`
-      })
-    }
+    translateFn = (params) =>
+      message.replace(/{(\w+)}/g, (_, key) =>
+        params[key] !== undefined ? params[key] : `{${key}}`,
+      )
 
     translateFnCache.set(translateFnCacheKey, translateFn)
 
@@ -48,14 +47,14 @@ export function translate<Key extends keyof Messages>(
     let translateFn = translateFnCache.get(translateFnCacheKey)
     if (translateFn) return translateFn(values)
 
-    let pluralRules = intlCache.get(locale) ?? new Intl.PluralRules(locale)
+    const pluralRules = intlCache.get(locale) ?? new Intl.PluralRules(locale)
     intlCache.set(locale, pluralRules)
 
     translateFn = (params) => {
       const plural = pluralRules.select(params.count)
-      return message[plural].replace(/{(\w+)}/g, (_: any, key: any) => {
-        return params[key] !== undefined ? params[key] : `{${key}}`
-      })
+      return message[plural].replace(/{(\w+)}/g, (_: any, key: any) =>
+        params[key] !== undefined ? params[key] : `{${key}}`,
+      )
     }
 
     translateFnCache.set(translateFnCacheKey, translateFn)

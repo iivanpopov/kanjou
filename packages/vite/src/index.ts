@@ -1,5 +1,5 @@
 import type { UserConfig } from '@kanjou/config'
-import type { Plugin } from 'vite'
+import type { ModuleNode, Plugin } from 'vite'
 
 import path from 'node:path'
 import { normalizePath } from 'vite'
@@ -22,11 +22,23 @@ export function kanjou(config: KanjouPluginConfig = {}): Plugin {
 
   return {
     name: 'kanjou',
-    async handleHotUpdate({ file }) {
+    async handleHotUpdate({ file, server }) {
       const config = await ctx.getConfig()
 
-      if (config.dts && file === normalizePath(path.resolve(config.sourceLocalePath)))
-        await generateLocalesDts(config)
+      if (file !== normalizePath(path.resolve(config.sourceLocalePath))) return
+
+      if (config.dts) await generateLocalesDts(config)
+
+      const fileName = path.basename(file, path.extname(file))
+
+      const mods = [
+        server.moduleGraph.getModuleById(`\0virtual:kanjou/${fileName}`),
+        server.moduleGraph.getModuleById('\0virtual:kanjou/modules'),
+      ].filter(Boolean) as ModuleNode[]
+
+      for (const mod of mods) server.moduleGraph.invalidateModule(mod)
+
+      return mods
     },
     async buildStart() {
       const config = await ctx.getConfig()
@@ -48,7 +60,7 @@ export function kanjou(config: KanjouPluginConfig = {}): Plugin {
 
       if (id === '\0virtual:kanjou/modules') return generateLocaleModules(config.sourceLocalePath)
 
-      const locale = id.split('/')[1]!
+      const locale = id.split('/')[1]
       return generateLocaleMessages(config.sourceLocalePath, locale)
     },
   }

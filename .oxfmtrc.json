@@ -2,8 +2,16 @@
   "$schema": "./node_modules/oxfmt/configuration_schema.json",
   "semi": false,
   "singleQuote": true,
+  "printWidth": 100,
+  "arrowParens": "always",
+  "trailingComma": "all",
+  "useTabs": false,
+  "tabWidth": 2,
   "quoteProps": "consistent",
   "sortImports": {
+    "customGroups": [
+      { "elementNamePattern": ["virtual:*", "virtual:*/*"], "groupName": "virtual" }
+    ],
     "groups": [
       ["type-builtin", "type-external"],
       ["value-builtin", "value-external"],
@@ -11,7 +19,8 @@
       "value-internal",
       ["type-parent", "type-sibling", "type-index"],
       ["value-parent", "value-sibling", "value-index"],
-      "unknown"
+      "unknown",
+      "virtual"
     ]
   },
   "ignorePatterns": ["next-env.d.ts"]

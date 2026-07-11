@@ -22,7 +22,7 @@ export function createContext<Config extends UserConfig = UserConfig>(
   async function reloadConfig() {
     const result = await loadConfig(root, inlineConfig, defaults)
     _config = result.config
-    return result as LoadUserConfigResult<Config>
+    return result
   }
 
   async function getConfig() {
