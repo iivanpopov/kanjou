@@ -25,7 +25,7 @@ export function kanjou(config: KanjouPluginConfig = {}): Plugin {
     name: 'kanjou',
     async handleHotUpdate({ file, server }) {
       const config = await ctx.getConfig()
-      const localesDir = normalizePath(path.dirname(config.sourceLocalePath))
+      const localesDir = normalizePath(path.resolve(path.dirname(config.sourceLocalePath)))
       const fileDir = normalizePath(path.dirname(file))
 
       if (fileDir !== localesDir) return
