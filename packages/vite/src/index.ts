@@ -1,6 +1,7 @@
 import type { UserConfig } from '@kanjou/config'
-import type { ModuleNode, Plugin } from 'vite'
+import type { Plugin } from 'vite'
 
+import fs from 'node:fs/promises'
 import path from 'node:path'
 import { normalizePath } from 'vite'
 
@@ -24,19 +25,23 @@ export function kanjou(config: KanjouPluginConfig = {}): Plugin {
     name: 'kanjou',
     async handleHotUpdate({ file, server }) {
       const config = await ctx.getConfig()
+      const localesDir = normalizePath(path.dirname(config.sourceLocalePath))
+      const fileDir = normalizePath(path.dirname(file))
 
-      if (file !== normalizePath(path.resolve(config.sourceLocalePath))) return
+      if (fileDir !== localesDir) return
 
-      if (config.dts) await generateLocalesDts(config)
+      const isSourceLocale = file === normalizePath(path.resolve(config.sourceLocalePath))
 
-      const fileName = path.basename(file, path.extname(file))
+      if (isSourceLocale && config.dts) await generateLocalesDts(config)
 
-      const mods = [
-        server.moduleGraph.getModuleById(`\0virtual:kanjou/${fileName}`),
-        server.moduleGraph.getModuleById('\0virtual:kanjou/modules'),
-      ].filter(Boolean) as ModuleNode[]
+      const mods = []
 
-      for (const mod of mods) server.moduleGraph.invalidateModule(mod)
+      const localeName = path.basename(file, path.extname(file))
+      const localeModule = server.moduleGraph.getModuleById(`\0virtual:kanjou/${localeName}`)
+      if (localeModule) mods.push(localeModule)
+
+      const modulesModule = server.moduleGraph.getModuleById('\0virtual:kanjou/modules')
+      if (modulesModule) mods.push(modulesModule)
 
       return mods
     },
@@ -45,7 +50,10 @@ export function kanjou(config: KanjouPluginConfig = {}): Plugin {
 
       if (!config.dts) return
 
-      this.addWatchFile(config.sourceLocalePath)
+      const localeFiles = await fs.readdir(path.dirname(config.sourceLocalePath))
+
+      for (const file of localeFiles)
+        this.addWatchFile(path.join(path.dirname(config.sourceLocalePath), file))
 
       await generateLocalesDts(config)
       await generateVirtualDts(config)
