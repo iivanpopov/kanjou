@@ -6,7 +6,7 @@ export default defineConfig({
   resolve: { tsconfigPaths: true },
   plugins: [
     kanjou({
-      sourceLocalePath: 'src/assets/locales/en.json',
+      sourceLocalePath: './src/assets/locales/en.json',
       dts: {
         outputDirectory: 'generated',
       },

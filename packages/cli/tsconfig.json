@@ -7,7 +7,10 @@
     "verbatimModuleSyntax": true,
     "skipLibCheck": true,
     "noEmit": true,
+    "paths": {
+      "#shared/*": ["../../shared/src/*"]
+    },
     "types": ["bun"]
   },
-  "include": ["src/**/*"]
+  "include": ["./src/**/*", "./scripts/**/*", "../../shared/src/**/*"]
 }

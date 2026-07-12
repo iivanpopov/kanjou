@@ -162,10 +162,14 @@ importers:
         version: 8.1.3(@types/node@26.1.1)(jiti@2.7.0)(yaml@2.9.0)
 
   packages/cli:
+    dependencies:
+      '@kanjou/config':
+        specifier: workspace:*
+        version: link:../config
     devDependencies:
-      tsdown:
-        specifier: catalog:tooling
-        version: 0.22.4(typescript@6.0.3)
+      '@types/bun':
+        specifier: 'catalog:'
+        version: 1.3.14
       typescript:
         specifier: catalog:tooling
         version: 6.0.3

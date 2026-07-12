@@ -1,7 +1,7 @@
 packages:
-  - 'packages/*'
-  - 'examples/*'
-  - 'shared'
+  - './packages/*'
+  - './examples/*'
+  - './shared'
 
 allowBuilds:
   lefthook: true

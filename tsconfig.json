@@ -6,9 +6,9 @@
     { "path": "./packages/react" },
     { "path": "./packages/vite" },
     { "path": "./packages/cli" },
+    { "path": "./examples/next" },
     { "path": "./examples/react-vite" },
     { "path": "./examples/react-vite-plugin" }
   ],
-  "compilerOptions": {},
   "files": []
 }
