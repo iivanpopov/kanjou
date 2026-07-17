@@ -5,8 +5,8 @@ import type { ReactNode } from 'react'
 import { I18nProvider } from '@kanjou/react'
 import { cookies } from 'next/headers'
 
-import en from '@/src/assets/locales/en'
-import { loadLocale } from '@/src/utils'
+import en from '@/assets/locales/en'
+import { loadLocale } from '@/utils'
 
 declare module '@kanjou/react' {
   export interface Register {

@@ -3,7 +3,7 @@ import type { Locale } from '@kanjou/react'
 import { createI18n } from '@kanjou/react/server'
 import { cookies } from 'next/headers'
 
-import { loadLocale } from '@/src/utils'
+import { loadLocale } from '@/utils'
 
 import { ClientComponent } from './client-component'
 
