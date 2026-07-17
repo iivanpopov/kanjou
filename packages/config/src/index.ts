@@ -36,8 +36,9 @@ export async function loadConfig<Config = UserConfig>(
 
   const result = await loader.load()
 
-  if (!result.config && !inlineConfig)
+  if (!result.config && !inlineConfig) {
     consola.error('[@kanjou/config] Config file not found - loading defaults')
+  }
 
   result.config = Object.assign({}, defaults, result.config, inlineConfig)
 

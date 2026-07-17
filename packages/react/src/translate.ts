@@ -5,62 +5,47 @@ export type Translate = <Key extends keyof Messages>(
   values?: MessageValues<Key>,
 ) => string
 
-const intlCache = new Map<string, Intl.PluralRules>()
-const translateFnCache = new Map<string, (p: Record<string, any>) => string>()
+type TranslateKey = string
+type Params = Record<string, any>
+type TranslateFunction = (params: Params) => string
+
+const pluralRulesCache = new Map<Locale, Intl.PluralRules>()
+
+function interpolate(message: string, params: Params) {
+  return message.replace(/{(\w+)}/g, (_, key) =>
+    params[key] !== undefined ? params[key] : `{${key}}`,
+  )
+}
+
+function hasValues(values: unknown): values is Params {
+  return !!values && !!Object.keys(values).length
+}
 
 export function translate<Key extends keyof Messages>(
-  messages: Record<string, any>,
+  messages: Record<TranslateKey, TranslateFunction | string | Record<Intl.LDMLPluralRule, string>>,
   locale: Locale,
   key: Key,
   values?: MessageValues<Key>,
 ): string {
   const message = messages[key]
+  if (!message) return key
 
-  if (message === undefined) return key
+  if (typeof message === 'function' && hasValues(values)) return message(values)
 
-  if (typeof message === 'function') return message(values)
-
-  if (typeof message === 'string' && values && !!Object.values(values).length) {
-    const translateFnCacheKey = `${key}\0${message}`
-
-    let translateFn = translateFnCache.get(translateFnCacheKey)
-    if (translateFn) return translateFn(values)
-
-    translateFn = (params) =>
-      message.replace(/{(\w+)}/g, (_, key) =>
-        params[key] !== undefined ? params[key] : `{${key}}`,
-      )
-
-    translateFnCache.set(translateFnCacheKey, translateFn)
-
-    return translateFn(values)
+  if (typeof message === 'string') {
+    return hasValues(values) ? interpolate(message, values) : message
   }
 
-  if (
-    typeof message === 'object' &&
-    !!Object.values(message).length &&
-    values &&
-    !!Object.values(values).length
-  ) {
-    const translateFnCacheKey = `${key}\0${JSON.stringify(message)}`
-
-    let translateFn = translateFnCache.get(translateFnCacheKey)
-    if (translateFn) return translateFn(values)
-
-    const pluralRules = intlCache.get(locale) ?? new Intl.PluralRules(locale)
-    intlCache.set(locale, pluralRules)
-
-    translateFn = (params) => {
-      const plural = pluralRules.select(params.count)
-      return message[plural].replace(/{(\w+)}/g, (_: any, key: any) =>
-        params[key] !== undefined ? params[key] : `{${key}}`,
-      )
+  if (typeof message === 'object' && hasValues(values)) {
+    let rules = pluralRulesCache.get(locale)
+    if (!rules) {
+      rules = new Intl.PluralRules(locale)
+      pluralRulesCache.set(locale, rules)
     }
 
-    translateFnCache.set(translateFnCacheKey, translateFn)
-
-    return translateFn(values)
+    const form = rules.select(values.count)
+    return interpolate(message[form], values)
   }
 
-  return message
+  return message as any
 }

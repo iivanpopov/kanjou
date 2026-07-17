@@ -1,9 +1,9 @@
 import type { InferMessages, Locale } from '@kanjou/react'
 import type { Metadata } from 'next'
+import type { ReactNode } from 'react'
 
 import { I18nProvider } from '@kanjou/react'
 import { cookies } from 'next/headers'
-import { ReactNode } from 'react'
 
 import en from '@/src/assets/locales/en'
 import { loadLocale } from '@/src/utils'

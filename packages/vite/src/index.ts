@@ -5,7 +5,7 @@ import fs from 'node:fs/promises'
 import path from 'node:path'
 import { normalizePath } from 'vite'
 
-import { createContext } from '#shared/context'
+import { createContext } from '#/shared/context'
 
 import { generateLocalesDts, generateVirtualDts } from './dts'
 import { generateLocaleMessages, generateLocaleModules } from './virtual'
@@ -30,20 +30,20 @@ export function kanjou(config: KanjouPluginConfig = {}): Plugin {
 
       if (fileDir !== localesDir) return
 
-      const isSourceLocale = file === normalizePath(path.resolve(config.sourceLocalePath))
+      if (file === normalizePath(path.resolve(config.sourceLocalePath)) && config.dts) {
+        await generateLocalesDts(config)
+      }
 
-      if (isSourceLocale && config.dts) await generateLocalesDts(config)
-
-      const mods = []
+      const modules = []
 
       const localeName = path.basename(file, path.extname(file))
       const localeModule = server.moduleGraph.getModuleById(`\0virtual:kanjou/${localeName}`)
-      if (localeModule) mods.push(localeModule)
+      if (localeModule) modules.push(localeModule)
 
       const modulesModule = server.moduleGraph.getModuleById('\0virtual:kanjou/modules')
-      if (modulesModule) mods.push(modulesModule)
+      if (modulesModule) modules.push(modulesModule)
 
-      return mods
+      return modules
     },
     async buildStart() {
       const config = await ctx.getConfig()
@@ -52,8 +52,9 @@ export function kanjou(config: KanjouPluginConfig = {}): Plugin {
 
       const localeFiles = await fs.readdir(path.dirname(config.sourceLocalePath))
 
-      for (const file of localeFiles)
+      for (const file of localeFiles) {
         this.addWatchFile(path.join(path.dirname(config.sourceLocalePath), file))
+      }
 
       await generateLocalesDts(config)
       await generateVirtualDts(config)

@@ -1,5 +1,7 @@
 'use client'
 
+import type { ChangeEvent } from 'react'
+
 import { useI18n } from '@kanjou/react'
 import { useRouter } from 'next/navigation'
 import { useState } from 'react'
@@ -11,7 +13,16 @@ export function ClientComponent() {
 
   const [count, setCount] = useState(1)
 
-  const handleLocaleChange = (newLocale: string) => {
+  const handleDecrement = () => {
+    setCount(Math.max(0, count - 1))
+  }
+
+  const handleIncrement = () => {
+    setCount(count + 1)
+  }
+
+  const handleLocaleChange = (event: ChangeEvent<HTMLSelectElement>) => {
+    const newLocale = event.target.value
     document.cookie = `kanjou_locale=${newLocale}; path=/; max-age=31536000`
     router.refresh()
   }
@@ -23,12 +34,12 @@ export function ClientComponent() {
       <div>
         <p>{t('apples', { count })}</p>
         <div>
-          <button onClick={() => setCount(Math.max(0, count - 1))}>-</button>
-          <button onClick={() => setCount(count + 1)}>+</button>
+          <button onClick={handleDecrement}>-</button>
+          <button onClick={handleIncrement}>+</button>
         </div>
       </div>
 
-      <select value={locale} onChange={(event) => handleLocaleChange(event.target.value)}>
+      <select value={locale} onChange={handleLocaleChange}>
         <option value="en">English</option>
         <option value="es">Español</option>
         <option value="fr">Français</option>

@@ -1,4 +1,5 @@
-import { Locale } from '@kanjou/react'
+import type { Locale } from '@kanjou/react'
+
 import { createI18n } from '@kanjou/react/server'
 import { cookies } from 'next/headers'
 

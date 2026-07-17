@@ -1,14 +1,23 @@
 {
-  "references": [
-    { "path": "./scripts" },
-    { "path": "./shared" },
-    { "path": "./packages/config" },
-    { "path": "./packages/react" },
-    { "path": "./packages/vite" },
-    { "path": "./packages/cli" },
-    { "path": "./examples/next" },
-    { "path": "./examples/react-vite" },
-    { "path": "./examples/react-vite-plugin" }
-  ],
-  "files": []
+  "compilerOptions": {
+    "target": "esnext",
+    "module": "esnext",
+    "moduleDetection": "force",
+    "moduleResolution": "bundler",
+    "strict": true,
+    "noEmit": true,
+    "skipLibCheck": true,
+    "verbatimModuleSyntax": true,
+    "allowImportingTsExtensions": true,
+    "types": ["node"],
+    "paths": {
+      "@kanjou/config": ["./packages/config/src/index.ts"],
+      "@kanjou/react": ["./packages/react/src/index.ts"],
+      "@kanjou/react/server": ["./packages/react/src/server.ts"],
+      "@kanjou/vite": ["./packages/vite/src/index.ts"],
+      "@kanjou/cli": ["./packages/cli/src/cli.ts"],
+      "#/shared/*": ["./shared/src/*"]
+    }
+  },
+  "exclude": ["**/dist/**", "**/node_modules/**"]
 }

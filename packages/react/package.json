@@ -32,8 +32,7 @@
     "@types/node": "catalog:",
     "@types/react": "catalog:react",
     "tsdown": "catalog:tooling",
-    "typescript": "catalog:tooling",
-    "vitest": "catalog:tooling"
+    "typescript": "catalog:tooling"
   },
   "peerDependencies": {
     "react": "catalog:react"

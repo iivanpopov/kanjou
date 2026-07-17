@@ -14,15 +14,21 @@
     "LICENSE"
   ],
   "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.mts",
+      "import": "./dist/index.mjs"
+    }
+  },
   "scripts": {
-    "build": "bun ./scripts/build.ts",
+    "build": "tsdown",
     "prepublishOnly": "pnpm build"
   },
   "dependencies": {
     "@kanjou/config": "workspace:*"
   },
   "devDependencies": {
-    "@types/bun": "catalog:",
+    "tsdown": "catalog:tooling",
     "typescript": "catalog:tooling"
   }
 }
