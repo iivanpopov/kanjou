@@ -16,11 +16,13 @@ function readLocaleKeys(dir: string, locale: string) {
 export function compare(ctx: KanjouPluginContext) {
   return async () => {
     const config = await ctx.getConfig()
-    const dir = path.dirname(config.sourceLocale)
 
-    const locales = basenames(fs.readdirSync(dir), '.json')
+    const localesDir = path.dirname(config.sourceLocale)
+    const locales = basenames(fs.readdirSync(localesDir), '.json')
 
-    const keysByLocale = new Map(locales.map((locale) => [locale, readLocaleKeys(dir, locale)]))
+    const keysByLocale = new Map(
+      locales.map((locale) => [locale, readLocaleKeys(localesDir, locale)]),
+    )
 
     for (const locale of locales) {
       const ownKeys = keysByLocale.get(locale)!

@@ -1,51 +1,84 @@
-import type { Messages, Locale, MessageValues } from './types'
+import type { MessageFormatOptions, MessagePart } from 'messageformat'
 
-export type Translate = <Key extends keyof Messages>(
-  key: Key | (string & {}),
-  values?: MessageValues<Key>,
-) => string
+import { MessageFormat } from 'messageformat'
 
-type TranslateKey = string
-type Params = Record<string, any>
-type TranslateFunction = (params: Params) => string
+import type {
+  Locale,
+  Message,
+  MessageKey,
+  DefaultMessageType,
+  MessageValue,
+  MessageValues,
+  DefaultPartType,
+} from './types'
 
-const pluralRulesCache = new Map<Locale, Intl.PluralRules>()
-
-function interpolate(message: string, params: Params) {
-  return message.replace(/{(\w+)}/g, (_, key) =>
-    params[key] !== undefined ? params[key] : `{${key}}`,
-  )
+export interface TranslateParts<PartType extends string = DefaultPartType> {
+  <Key extends MessageKey>(key: Key, values?: MessageValues<Key>): MessagePart<PartType>[]
+  unsafe: (key: string, values?: Record<string, MessageValue>) => MessagePart<PartType>[]
 }
 
-function hasValues(values: unknown): values is Params {
-  return !!values && !!Object.keys(values).length
+export interface Translate<
+  _MessageType extends string = DefaultMessageType,
+  PartType extends string = DefaultPartType,
+> {
+  <Key extends MessageKey>(key: Key, values?: MessageValues<Key>): string
+  unsafe: (key: string, values?: Record<string, MessageValue>) => string
+  parts: TranslateParts<PartType>
 }
 
-export function translate<Key extends keyof Messages>(
-  messages: Record<TranslateKey, TranslateFunction | string | Record<Intl.LDMLPluralRule, string>>,
+const cache: Map<string, MessageFormat<string, string>> = new Map()
+
+function translate<Key extends MessageKey>(
+  messages: Record<string, Message>,
   locale: Locale,
   key: Key,
   values?: MessageValues<Key>,
+  options?: MessageFormatOptions<string, string>,
 ): string {
   const message = messages[key]
   if (!message) return key
 
-  if (typeof message === 'function' && hasValues(values)) return message(values)
+  const cacheKey = `${locale}:${key}`
 
-  if (typeof message === 'string') {
-    return hasValues(values) ? interpolate(message, values) : message
-  }
+  const formatter = cache.getOrInsert(cacheKey, new MessageFormat(locale, message, options))
 
-  if (typeof message === 'object' && hasValues(values)) {
-    let rules = pluralRulesCache.get(locale)
-    if (!rules) {
-      rules = new Intl.PluralRules(locale)
-      pluralRulesCache.set(locale, rules)
-    }
+  return formatter.format(values)
+}
 
-    const form = rules.select(values.count)
-    return interpolate(message[form], values)
-  }
+function translateToParts<Key extends MessageKey, PartType extends string = DefaultPartType>(
+  messages: Record<string, Message>,
+  locale: Locale,
+  key: Key,
+  values?: MessageValues<Key>,
+  options?: MessageFormatOptions<string, string>,
+): MessagePart<PartType>[] {
+  const message = messages[key]
+  if (!message) return [{ type: 'text', value: key }]
 
-  return message as any
+  const cacheKey = `${locale}:${key}`
+
+  const formatter = cache.getOrInsert(cacheKey, new MessageFormat(locale, message, options))
+
+  return formatter.formatToParts(values) as MessagePart<PartType>[]
+}
+
+export function createTranslate<
+  MessageType extends string = DefaultMessageType,
+  PartType extends string = DefaultPartType,
+>(
+  messages: Record<string, Message>,
+  locale: Locale,
+  options?: MessageFormatOptions<string, string>,
+): Translate<MessageType, PartType> {
+  const t: Translate<MessageType, PartType> = (key, values) =>
+    translate(messages, locale, key, values, options)
+  t.unsafe = (key, values) => translate(messages, locale, key, values, options)
+
+  const parts: TranslateParts<PartType> = (key, values) =>
+    translateToParts(messages, locale, key, values, options)
+  parts.unsafe = (key, values) => translateToParts(messages, locale, key, values, options)
+
+  t.parts = parts
+
+  return t
 }

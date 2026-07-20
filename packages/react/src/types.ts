@@ -1,25 +1,54 @@
+import type { MessageFormatOptions, Model } from 'messageformat'
+
+export type MessageFormatFunctions<
+  MessageType extends string = string,
+  PartType extends string = string,
+> = MessageFormatOptions<MessageType, PartType>['functions']
+
 export interface Register {}
 
-export type Locale = Register extends { locale: infer L } ? L : string
-export type Messages = Register extends { messages: infer M } ? M : Record<string, never>
+export type Message = string | Model.Message
+export type MessageValue = string | number | Date
 
-export type MessageValues<Key extends keyof Messages> = Record<
-  Messages[Key] extends undefined ? never : Messages[Key],
-  string | number
->
+export type InferMessageType<Functions> =
+  Functions extends NonNullable<MessageFormatFunctions<infer MessageType, any>>
+    ? MessageType
+    : never
 
-type ExtractParams<String extends string> = String extends `${string}{${infer Param}}${infer Rest}`
+export type InferPartType<Functions> =
+  Functions extends NonNullable<MessageFormatFunctions<any, infer PartType>> ? PartType : never
+
+export type DefaultMessageType = Register extends { functions: infer RegisteredFunctions }
+  ? InferMessageType<RegisteredFunctions>
+  : string
+
+export type DefaultPartType = Register extends { functions: infer RegisteredFunctions }
+  ? InferPartType<RegisteredFunctions>
+  : DefaultMessageType
+
+export type Functions = Register extends { functions: infer RegisteredFunctions }
+  ? RegisteredFunctions
+  : undefined
+export type Locale = Register extends { locale: infer RegisteredLocale } ? RegisteredLocale : string
+export type Messages = Register extends { messages: infer RegisteredMessages }
+  ? RegisteredMessages
+  : Record<string, Record<string, MessageValue>>
+
+export type MessageKey = keyof Messages
+export type MessageValues<Key extends MessageKey> = Messages[Key]
+
+type ExtractParams<S extends string> = S extends `${string}{${infer Param}}${infer Rest}`
   ? Param | ExtractParams<Rest>
   : never
 
-type ResolveMessage<Value> = Value extends string
-  ? [ExtractParams<Value>] extends [never]
-    ? undefined
-    : ExtractParams<Value>
-  : Value extends Record<Intl.LDMLPluralRule, string>
-    ? ResolveMessage<Value[keyof Value]>
-    : undefined
+type ResolveMessage<V> = V extends string
+  ? [ExtractParams<V>] extends [never]
+    ? Record<string, MessageValue>
+    : Record<ExtractParams<V>, MessageValue>
+  : V extends Record<string, unknown>
+    ? ResolveMessage<V[keyof V]>
+    : Record<string, MessageValue>
 
-export type InferMessages<Messages extends Record<string, unknown>> = {
-  [Key in keyof Messages]: ResolveMessage<Messages[Key]>
+export type InferMessages<T extends Record<string, unknown>> = {
+  [K in keyof T]: ResolveMessage<T[K]>
 }

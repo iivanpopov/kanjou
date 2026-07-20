@@ -6,10 +6,9 @@ import path from 'node:path'
 import { normalizePath } from 'vite'
 
 import { createContext } from '#/shared/context'
-import { onlyExt } from '#/shared/path'
 
 import { generateLocalesDts, generateVirtualDts } from './dts'
-import { generateLocaleMessages, generateLocaleModules } from './virtual'
+import { compileAst, generateLocaleModules } from './virtual'
 
 export function kanjou(config?: UserConfig): Plugin {
   const ctx = createContext(config)
@@ -29,7 +28,7 @@ export function kanjou(config?: UserConfig): Plugin {
         file === normalizePath(path.resolve(config.sourceLocale)) &&
         (config.dts?.outDir || config.dts?.localesPath)
       ) {
-        await generateLocalesDts(config)
+        generateLocalesDts(config)
       }
 
       const modules = []
@@ -48,12 +47,14 @@ export function kanjou(config?: UserConfig): Plugin {
 
       if (!config.dts) return
 
-      const dir = path.dirname(config.sourceLocale)
-      const localeFiles = await fs.readdir(dir)
+      const localesDir = path.dirname(config.sourceLocale)
+      const localeFiles = await fs.readdir(localesDir)
 
-      for (const file of onlyExt(localeFiles, '.json')) this.addWatchFile(path.join(dir, file))
+      localeFiles.forEach((file) => {
+        if (file.endsWith('.json')) this.addWatchFile(path.join(localesDir, file))
+      })
 
-      if (config.dts.outDir || config.dts.localesPath) await generateLocalesDts(config)
+      if (config.dts.outDir || config.dts.localesPath) generateLocalesDts(config)
       if (config.dts.outDir || config.dts.virtualPath) await generateVirtualDts(config)
     },
     resolveId(id) {
@@ -64,10 +65,14 @@ export function kanjou(config?: UserConfig): Plugin {
 
       const config = await ctx.getConfig()
 
-      if (id === '\0virtual:kanjou/locales') return generateLocaleModules(config.sourceLocale)
+      const localesDir = path.dirname(config.sourceLocale)
+
+      if (id === '\0virtual:kanjou/locales') return generateLocaleModules(localesDir)
 
       const locale = id.split('/')[1]
-      return generateLocaleMessages(config.sourceLocale, locale)
+      const localePath = path.join(localesDir, `${locale}.json`)
+
+      return compileAst(localePath)
     },
   }
 }

@@ -201,6 +201,9 @@ importers:
       '@kanjou/config':
         specifier: workspace:*
         version: link:../config
+      messageformat:
+        specifier: ^4.0.0
+        version: 4.0.0
       react:
         specifier: catalog:react
         version: 19.2.7
@@ -226,6 +229,9 @@ importers:
       consola:
         specifier: 'catalog:'
         version: 3.4.2
+      messageformat:
+        specifier: ^4.0.0
+        version: 4.0.0
       ts-morph:
         specifier: ^28.0.0
         version: 28.0.0
@@ -1332,6 +1338,10 @@ packages:
     resolution: {integrity: sha512-NXYBzinNrblfraPGyrbPoD19C1h9lfI/1mzgWYvXUTe414Gz/X1FD2XBZSZM7rRTrMA8JL3OtAaGifrIKhQ5yQ==}
     engines: {node: '>= 12.0.0'}
 
+  messageformat@4.0.0:
+    resolution: {integrity: sha512-XKmJ/ffTWToWOlHJzt85ZChQgVGC0LHzNWuNK8zuYpNySsB0nIEmytOdSAOW9ETKtkajAUJf520m5gFHHnrTYg==}
+    engines: {node: ^20.19 || ^22.12 || >=24}
+
   minimatch@10.2.5:
     resolution: {integrity: sha512-MULkVLfKGYDFYejP07QOurDLLQpcjk7Fw+7jXS2R2czRQzR56yHRveU5NDJEOviH+hETZKSkIk5c+T23GjFUMg==}
     engines: {node: 18 || 20 || >=22}
@@ -2253,6 +2263,8 @@ snapshots:
       lightningcss-linux-x64-musl: 1.32.0
       lightningcss-win32-arm64-msvc: 1.32.0
       lightningcss-win32-x64-msvc: 1.32.0
+
+  messageformat@4.0.0: {}
 
   minimatch@10.2.5:
     dependencies:

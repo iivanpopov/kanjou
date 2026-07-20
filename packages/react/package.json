@@ -26,7 +26,8 @@
     "prepublishOnly": "pnpm build"
   },
   "dependencies": {
-    "@kanjou/config": "workspace:*"
+    "@kanjou/config": "workspace:*",
+    "messageformat": "^4.0.0"
   },
   "devDependencies": {
     "@types/node": "catalog:",

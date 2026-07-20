@@ -1,21 +1,41 @@
-import type { Translate } from './translate'
-import type { Locale } from './types'
+import type { MessageFormatOptions } from 'messageformat'
 
-import { translate } from './translate'
+import type { Translate } from './translate'
+import type {
+  Locale,
+  Message,
+  DefaultMessageType,
+  DefaultPartType,
+  MessageFormatFunctions,
+} from './types'
+
+import { createTranslate } from './translate'
 
 export interface CreateI18nOptions {
   locale: Locale
-  messages: Record<string, any>
+  messages: Record<string, Message>
+  functions?: MessageFormatFunctions
+  options?: Omit<MessageFormatOptions<string, string>, 'functions'>
 }
 
-export interface CreateI18nReturn {
-  t: Translate
+export interface CreateI18nReturn<
+  MessageType extends string = DefaultMessageType,
+  PartType extends string = DefaultPartType,
+> {
+  t: Translate<MessageType, PartType>
 }
 
-export type CreateI18n = (options: CreateI18nOptions) => CreateI18nReturn
-
-export const createI18n: CreateI18n = ({ messages, locale }) => {
-  const t: Translate = (key, values) => translate(messages, locale, key, values)
+export function createI18n<
+  MessageType extends string = DefaultMessageType,
+  PartType extends string = DefaultPartType,
+>({
+  messages,
+  locale,
+  functions,
+  options,
+}: CreateI18nOptions): CreateI18nReturn<MessageType, PartType> {
+  const opts = Object.assign({}, options, { functions })
+  const t = createTranslate<MessageType, PartType>(messages, locale, opts)
 
   return { t }
 }
