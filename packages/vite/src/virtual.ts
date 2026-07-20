@@ -5,6 +5,7 @@ import path from 'node:path'
 import type { Message } from '#/shared/types'
 
 import { HAS_PARAM_REGEX, PARAM_REGEX } from '#/shared/constants'
+import { basenames } from '#/shared/path'
 
 export async function generateLocaleMessages(
   sourceLocale: string,
@@ -51,7 +52,7 @@ export async function generateLocaleModules(sourceLocale: string): Promise<strin
   try {
     const dir = path.dirname(sourceLocale)
     const localeFiles = await fs.readdir(dir)
-    const locales = localeFiles.map((file) => path.basename(file, '.json'))
+    const locales = basenames(localeFiles, '.json')
 
     const entries = locales.map(
       (locale) => `  "${locale}": () => import('virtual:kanjou/${locale}')`,

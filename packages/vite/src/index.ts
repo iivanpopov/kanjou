@@ -6,6 +6,7 @@ import path from 'node:path'
 import { normalizePath } from 'vite'
 
 import { createContext } from '#/shared/context'
+import { onlyExt } from '#/shared/path'
 
 import { generateLocalesDts, generateVirtualDts } from './dts'
 import { generateLocaleMessages, generateLocaleModules } from './virtual'
@@ -50,9 +51,7 @@ export function kanjou(config?: UserConfig): Plugin {
       const dir = path.dirname(config.sourceLocale)
       const localeFiles = await fs.readdir(dir)
 
-      for (const file of localeFiles) {
-        this.addWatchFile(path.join(dir, file))
-      }
+      for (const file of onlyExt(localeFiles, '.json')) this.addWatchFile(path.join(dir, file))
 
       if (config.dts.outDir || config.dts.localesPath) await generateLocalesDts(config)
       if (config.dts.outDir || config.dts.virtualPath) await generateVirtualDts(config)

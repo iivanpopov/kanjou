@@ -33,6 +33,10 @@ export async function loadConfig<Config = UserConfig>(
 
   result.config = Object.assign({}, result.config, inlineConfig)
 
+  if (!(result.config as UserConfig)?.sourceLocale) {
+    throw new Error('[@kanjou/config] "sourceLocale" is strictly required in the configuration')
+  }
+
   return result
 }
 

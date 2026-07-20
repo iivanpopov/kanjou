@@ -4,6 +4,8 @@ import path from 'node:path'
 
 import type { KanjouPluginContext } from '#/shared/context'
 
+import { basenames } from '#/shared/path'
+
 function readLocaleKeys(dir: string, locale: string) {
   const filePath = path.join(dir, `${locale}.json`)
   const content = fs.readFileSync(filePath, 'utf-8')
@@ -16,7 +18,7 @@ export function compare(ctx: KanjouPluginContext) {
     const config = await ctx.getConfig()
     const dir = path.dirname(config.sourceLocale)
 
-    const locales = fs.readdirSync(dir).map((file) => path.basename(file, path.extname(file)))
+    const locales = basenames(fs.readdirSync(dir), '.json')
 
     const keysByLocale = new Map(locales.map((locale) => [locale, readLocaleKeys(dir, locale)]))
 

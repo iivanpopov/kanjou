@@ -7,6 +7,7 @@ import { Writers } from 'ts-morph'
 import type { Message } from '#/shared/types'
 
 import { PARAM_REGEX } from '#/shared/constants'
+import { basenames } from '#/shared/path'
 
 export function unionOf(keys: string[]): string | WriterFunction {
   if (!keys.length) return 'undefined'
@@ -17,7 +18,7 @@ export function unionOf(keys: string[]): string | WriterFunction {
 export async function getLocaleUnion(sourceLocale: string): Promise<string | WriterFunction> {
   const dir = path.dirname(sourceLocale)
   const localeFiles = await fs.readdir(dir)
-  const locales = localeFiles.map((file) => `"${path.basename(file, '.json')}"`)
+  const locales = basenames(localeFiles, '.json').map((locale) => `"${locale}"`)
   return unionOf(locales)
 }
 
