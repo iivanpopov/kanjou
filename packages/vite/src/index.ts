@@ -18,8 +18,7 @@ export function kanjou(config?: UserConfig): Plugin {
     async handleHotUpdate({ file, server }) {
       const config = await ctx.getConfig()
 
-      const dir = path.dirname(config.sourceLocale)
-      const localesDir = normalizePath(path.resolve(dir))
+      const localesDir = normalizePath(path.resolve(path.dirname(config.sourceLocale)))
       const fileDir = normalizePath(path.dirname(file))
 
       if (fileDir !== localesDir) return

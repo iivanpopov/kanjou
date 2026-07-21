@@ -9,26 +9,26 @@ import type {
   InferPartType,
   Locale,
   Message,
-  DefaultMessageType,
-  DefaultPartType,
+  RegisteredMessageType,
+  RegisteredPartType,
   MessageFormatFunctions,
 } from './types'
 
 import { createTranslate } from './translate'
 
-export interface I18nContextValue {
+export interface KanjouContextValue {
   locale: Locale
   functions?: MessageFormatFunctions
   options?: Omit<MessageFormatOptions, 'functions'>
   messages: Record<string, Message>
 }
 
-const I18nContext: Context<I18nContextValue> = createContext<I18nContextValue>({
+export const KanjouContext: Context<KanjouContextValue> = createContext({
   locale: '',
   messages: {},
 })
 
-export interface I18nProviderProps {
+export interface KanjouProviderProps {
   children: ReactNode
   locale: string
   messages: Record<string, Message>
@@ -36,14 +36,14 @@ export interface I18nProviderProps {
   options?: Omit<MessageFormatOptions, 'functions'>
 }
 
-export function I18nProvider({
+export function KanjouProvider({
   children,
   messages,
   locale,
   functions,
   options,
-}: I18nProviderProps): ReactNode {
-  return <I18nContext value={{ locale, messages, functions, options }}>{children}</I18nContext>
+}: KanjouProviderProps): ReactNode {
+  return <KanjouContext value={{ locale, messages, functions, options }}>{children}</KanjouContext>
 }
 
 export interface UseI18nOptions<Functions extends MessageFormatFunctions = MessageFormatFunctions> {
@@ -52,8 +52,8 @@ export interface UseI18nOptions<Functions extends MessageFormatFunctions = Messa
 }
 
 export interface UseI18nReturn<
-  MessageType extends string = DefaultMessageType,
-  PartType extends string = DefaultPartType,
+  MessageType extends string = RegisteredMessageType,
+  PartType extends string = RegisteredPartType,
 > {
   locale: Locale
   t: Translate<MessageType, PartType>
@@ -61,18 +61,19 @@ export interface UseI18nReturn<
 
 export function useI18n<
   Functions extends MessageFormatFunctions = undefined,
-  MessageType extends string = InferMessageType<Functions> | DefaultMessageType,
-  PartType extends string = InferPartType<Functions> | DefaultPartType,
->(options?: UseI18nOptions<Functions>): UseI18nReturn<MessageType, PartType> {
-  const context = use(I18nContext)
-  const locale = context.locale
-  const messages = context.messages
+  MessageType extends string = InferMessageType<Functions> | RegisteredMessageType,
+  PartType extends string = InferPartType<Functions> | RegisteredPartType,
+>({ functions, options }: UseI18nOptions<Functions> = {}): UseI18nReturn<MessageType, PartType> {
+  const { locale, messages, ...context } = use(KanjouContext)
 
-  const mergedFunctions = Object.assign({}, context.functions, options?.functions)
-  const mergedOptions = Object.assign({}, context.options, options?.options)
-  const translateOptions = Object.assign({}, mergedOptions, { functions: mergedFunctions })
+  const hasOptions = !!(functions ?? options)
 
-  const t = createTranslate<MessageType, PartType>(messages, locale, translateOptions)
+  const opts =
+    hasOptions || !!(context.functions ?? context.options)
+      ? { ...context.options, ...options, functions: { ...context.functions, ...functions } }
+      : undefined
+
+  const t = createTranslate<MessageType, PartType>(messages, locale, opts, hasOptions)
 
   return { locale, t }
 }

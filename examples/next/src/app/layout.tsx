@@ -1,17 +1,16 @@
-import type { InferMessages, Locale } from '@kanjou/react'
+import type { Locale } from '@kanjou/react'
 import type { Metadata } from 'next'
 import type { ReactNode } from 'react'
 
-import { I18nProvider } from '@kanjou/react'
+import { KanjouProvider } from '@kanjou/react'
 import { cookies } from 'next/headers'
 
-import en from '@/assets/locales/en'
 import { loadLocale } from '@/utils'
 
 declare module '@kanjou/react' {
   export interface Register {
     locale: 'en' | 'es' | 'fr'
-    messages: InferMessages<typeof en>
+    messages: Record<string, Record<string, string | number | Date>>
   }
 }
 
@@ -27,9 +26,9 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
   return (
     <html lang={initialLocale}>
       <body>
-        <I18nProvider locale={initialLocale} messages={initialMessages}>
+        <KanjouProvider locale={initialLocale} messages={initialMessages}>
           {children}
-        </I18nProvider>
+        </KanjouProvider>
       </body>
     </html>
   )

@@ -1,7 +1,7 @@
 import type { Locale } from '@kanjou/react'
 import type { ReactNode } from 'react'
 
-import { I18nProvider } from '@kanjou/react'
+import { KanjouProvider } from '@kanjou/react'
 import { useState } from 'react'
 
 import { IntlContext } from './intl-context'
@@ -21,9 +21,9 @@ export function IntlProvider({
   return (
     <IntlContext value={{ locale, setLocale, messages, setMessages }}>
       {/* kanjou provider only needs the current locale and raw messages object */}
-      <I18nProvider locale={locale} messages={messages as any}>
+      <KanjouProvider locale={locale} messages={messages}>
         {children}
-      </I18nProvider>
+      </KanjouProvider>
     </IntlContext>
   )
 }

@@ -4,6 +4,8 @@ import fs from 'node:fs/promises'
 
 import { basenames } from '#/shared/path'
 
+// TODO REFACTOR
+// TODO SUPPORT TS FILES
 export async function compileAst(localePath: string): Promise<string | undefined> {
   try {
     const messagesRaw = await fs.readFile(localePath, 'utf-8')

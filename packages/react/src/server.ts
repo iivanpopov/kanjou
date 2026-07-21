@@ -4,8 +4,8 @@ import type { Translate } from './translate'
 import type {
   Locale,
   Message,
-  DefaultMessageType,
-  DefaultPartType,
+  RegisteredMessageType,
+  RegisteredPartType,
   MessageFormatFunctions,
 } from './types'
 
@@ -19,22 +19,22 @@ export interface CreateI18nOptions {
 }
 
 export interface CreateI18nReturn<
-  MessageType extends string = DefaultMessageType,
-  PartType extends string = DefaultPartType,
+  MessageType extends string = RegisteredMessageType,
+  PartType extends string = RegisteredPartType,
 > {
   t: Translate<MessageType, PartType>
 }
 
 export function createI18n<
-  MessageType extends string = DefaultMessageType,
-  PartType extends string = DefaultPartType,
+  MessageType extends string = RegisteredMessageType,
+  PartType extends string = RegisteredPartType,
 >({
   messages,
   locale,
   functions,
   options,
 }: CreateI18nOptions): CreateI18nReturn<MessageType, PartType> {
-  const opts = Object.assign({}, options, { functions })
+  const opts = functions || options ? { ...options, functions } : undefined
   const t = createTranslate<MessageType, PartType>(messages, locale, opts)
 
   return { t }

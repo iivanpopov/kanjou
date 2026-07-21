@@ -1,10 +1,7 @@
-import type { Message } from '@kanjou/react'
-
 export default {
   greet: `¡Hola, {$name}!`,
-  apples: `
-.input {$count :number}
+  apples: `.input {$count :number}
 .match $count
 one {{Tienes {$count} manzana.}}
 * {{Tienes {$count} manzanas.}}`,
-} as const satisfies Record<string, Message>
+} as const

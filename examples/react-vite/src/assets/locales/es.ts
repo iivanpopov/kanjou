@@ -1,7 +1,8 @@
 export default {
-  greet: '¡Hola, {name}!',
-  apples: {
-    one: 'Tienes {count} manzana.',
-    other: 'Tienes {count} manzanas.',
-  },
+  greet: `¡Hola, {$name}!`,
+  apples: `
+.input {$count :number}
+.match $count
+one {{Tienes {$count} manzana.}}
+* {{Tienes {$count} manzanas.}}`,
 } as const
