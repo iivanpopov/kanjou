@@ -1,14 +1,16 @@
 import type { UserConfig } from '@kanjou/config'
 import type { Plugin } from 'vite'
 
-import fs from 'node:fs/promises'
 import path from 'node:path'
 import { normalizePath } from 'vite'
 
 import { createContext } from '#/shared/context'
+import { readdir } from '#/shared/fs'
+import { basename, basenames } from '#/shared/path'
 
-import { generateLocalesDts, generateVirtualDts } from './dts'
-import { compileAst, generateLocaleModules } from './virtual'
+import { writeLocalesDts, writeVirtualDts } from './dts'
+import { filterLocaleFiles, readLocaleFile } from './utils'
+import { compileAst, compileLocales } from './virtual'
 
 export function kanjou(config?: UserConfig): Plugin {
   const ctx = createContext(config)
@@ -18,22 +20,18 @@ export function kanjou(config?: UserConfig): Plugin {
     async handleHotUpdate({ file, server }) {
       const config = await ctx.getConfig()
 
-      const localesDir = normalizePath(path.resolve(path.dirname(config.sourceLocale)))
       const fileDir = normalizePath(path.dirname(file))
+      const sourceLocale = normalizePath(path.resolve(config.sourceLocale))
+      const localesDir = normalizePath(path.dirname(sourceLocale))
 
       if (fileDir !== localesDir) return
 
-      if (
-        file === normalizePath(path.resolve(config.sourceLocale)) &&
-        (config.dts?.outDir || config.dts?.localesPath)
-      ) {
-        generateLocalesDts(config)
-      }
+      if (file === sourceLocale) await writeLocalesDts(config)
 
       const modules = []
 
-      const localeName = path.basename(file, path.extname(file))
-      const localeModule = server.moduleGraph.getModuleById(`\0virtual:kanjou/${localeName}`)
+      const locale = basename(file)
+      const localeModule = server.moduleGraph.getModuleById(`\0virtual:kanjou/${locale}`)
       if (localeModule) modules.push(localeModule)
 
       const modulesModule = server.moduleGraph.getModuleById('\0virtual:kanjou/locales')
@@ -46,15 +44,11 @@ export function kanjou(config?: UserConfig): Plugin {
 
       if (!config.dts) return
 
-      const localesDir = path.dirname(config.sourceLocale)
-      const localeFiles = await fs.readdir(localesDir)
+      const localeFiles = await readdir(path.dirname(config.sourceLocale))
 
-      localeFiles.forEach((file) => {
-        if (file.endsWith('.json')) this.addWatchFile(path.join(localesDir, file))
-      })
+      filterLocaleFiles(localeFiles).forEach((file) => this.addWatchFile(file.absolute))
 
-      if (config.dts.outDir || config.dts.localesPath) generateLocalesDts(config)
-      if (config.dts.outDir || config.dts.virtualPath) await generateVirtualDts(config)
+      await Promise.all([writeLocalesDts(config), writeVirtualDts(config)])
     },
     resolveId(id) {
       if (id.startsWith('virtual:kanjou/')) return '\0' + id
@@ -64,14 +58,16 @@ export function kanjou(config?: UserConfig): Plugin {
 
       const config = await ctx.getConfig()
 
-      const localesDir = path.dirname(config.sourceLocale)
+      const localeFiles = await readdir(path.dirname(config.sourceLocale))
 
-      if (id === '\0virtual:kanjou/locales') return generateLocaleModules(localesDir)
+      if (id === '\0virtual:kanjou/locales') return compileLocales(basenames(localeFiles))
 
       const locale = id.split('/')[1]
-      const localePath = path.join(localesDir, `${locale}.json`)
+      const localeFile = localeFiles.find((localeFile) => localeFile.name === locale)!
 
-      return compileAst(localePath)
+      const messages = await readLocaleFile(localeFile)
+
+      if (messages) return compileAst(messages)
     },
   }
 }

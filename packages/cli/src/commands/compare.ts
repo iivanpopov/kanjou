@@ -18,7 +18,7 @@ export function compare(ctx: KanjouPluginContext) {
     const config = await ctx.getConfig()
 
     const localesDir = path.dirname(config.sourceLocale)
-    const locales = basenames(fs.readdirSync(localesDir), '.json')
+    const locales = basenames(fs.readdirSync(localesDir))
 
     const keysByLocale = new Map(
       locales.map((locale) => [locale, readLocaleKeys(localesDir, locale)]),

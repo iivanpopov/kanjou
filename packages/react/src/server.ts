@@ -25,6 +25,7 @@ export interface CreateI18nReturn<
   t: Translate<MessageType, PartType>
 }
 
+// fix: potential cache issues (more than just fix: figure out new API)
 export function createI18n<
   MessageType extends string = RegisteredMessageType,
   PartType extends string = RegisteredPartType,

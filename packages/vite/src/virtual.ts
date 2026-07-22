@@ -1,41 +1,21 @@
-import consola from 'consola'
+import type { Model } from 'messageformat'
+
 import { parseMessage } from 'messageformat'
-import fs from 'node:fs/promises'
 
-import { basenames } from '#/shared/path'
+export function compileAst(messages: Record<string, string>): string | undefined {
+  const ast = Object.entries(messages).reduce(
+    (acc, [key, value]) => {
+      acc[key] = parseMessage(value)
+      return acc
+    },
+    {} as Record<string, Model.Message>,
+  )
 
-// TODO REFACTOR
-// TODO SUPPORT TS FILES
-export async function compileAst(localePath: string): Promise<string | undefined> {
-  try {
-    const messagesRaw = await fs.readFile(localePath, 'utf-8')
-    const messages: Record<string, string> = JSON.parse(messagesRaw)
-
-    const astByKey = Object.entries(messages).reduce(
-      (acc, [key, value]) => {
-        acc[key] = parseMessage(value)
-        return acc
-      },
-      {} as Record<string, any>,
-    )
-
-    return JSON.stringify(astByKey)
-  } catch (error) {
-    consola.error('[@kanjou/vite] Failed to load locale', error)
-  }
+  return `export default ${JSON.stringify(ast, null, 2)}`
 }
 
-export async function generateLocaleModules(localesDir: string): Promise<string | undefined> {
-  try {
-    const localeFiles = await fs.readdir(localesDir)
-    const locales = basenames(localeFiles, '.json')
+export function compileLocales(locales: string[]): string {
+  const entries = locales.map((locale) => `  "${locale}": () => import('virtual:kanjou/${locale}')`)
 
-    const entries = locales.map(
-      (locale) => `  "${locale}": () => import('virtual:kanjou/${locale}')`,
-    )
-
-    return `export default {\n${entries.join(',\n')}\n}`
-  } catch (error) {
-    consola.error('[@kanjou/vite] Failed to generate locale modules', error)
-  }
+  return `export default {\n${entries.join(',\n')}\n}`
 }
