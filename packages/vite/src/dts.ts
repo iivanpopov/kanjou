@@ -141,7 +141,7 @@ declare module 'virtual:kanjou/*' {
 }
 
 declare module 'virtual:kanjou/locales' {
-  const locales: Record<import('@kanjou/react').Locale, () => Promise<{ default: import('@kanjou/react').Messages }>>
+  const locales: Record<import('@kanjou/react').Locale, () => Promise<import('@kanjou/react').Messages>>
   export default locales
 }`
 

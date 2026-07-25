@@ -15,7 +15,10 @@ export function compileAst(messages: Record<string, string>): string | undefined
 }
 
 export function compileLocales(locales: string[]): string {
-  const entries = locales.map((locale) => `  "${locale}": () => import('virtual:kanjou/${locale}')`)
+  const entries = locales.map(
+    (locale) =>
+      `  "${locale}": () => import('virtual:kanjou/${locale}').then((mod) => mod.default)`,
+  )
 
   return `export default {\n${entries.join(',\n')}\n}`
 }
