@@ -1,7 +1,11 @@
-import type { KanjouPluginContext } from '#/shared/context'
+import { createContext } from '#/shared/context'
 
-export function missing(ctx: KanjouPluginContext) {
-  return async () => {
-    console.log(await ctx.getConfig())
-  }
+export interface MissingCommandOptions {
+  localesDir?: string
+  baseLocale?: string
+}
+
+export async function missing(options: MissingCommandOptions = {}) {
+  const ctx = createContext(options)
+  console.log(await ctx.getConfig())
 }

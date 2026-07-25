@@ -4,11 +4,11 @@ import type { Plugin } from 'vite'
 import path from 'node:path'
 import { normalizePath } from 'vite'
 
-import { compileAst, compileLocales, writeLocalesDts, writeVirtualDts } from '#/shared/codegen'
+import { compileMessages, compileLocales, writeLocalesDts, writeVirtualDts } from '#/shared/codegen'
 import { createContext } from '#/shared/context'
 import { basename, basenames, filterLocaleFiles, readLocaleFile, readdir } from '#/shared/io'
 
-export function kanjou(config?: UserConfig): Plugin {
+export function kanjou(config?: Omit<UserConfig, 'compile'>): Plugin {
   const ctx = createContext(config)
 
   return {
@@ -17,12 +17,12 @@ export function kanjou(config?: UserConfig): Plugin {
       const config = await ctx.getConfig()
 
       const fileDir = normalizePath(path.dirname(file))
-      const sourceLocale = normalizePath(path.resolve(config.sourceLocale))
-      const localesDir = normalizePath(path.dirname(sourceLocale))
+      const localesDir = normalizePath(path.resolve(config.localesDir))
 
       if (fileDir !== localesDir) return
 
-      if (file === sourceLocale) await writeLocalesDts(config)
+      const fileLocaleName = basename(file)
+      if (fileLocaleName === config.baseLocale) await writeLocalesDts(config)
 
       const modules = []
 
@@ -40,9 +40,9 @@ export function kanjou(config?: UserConfig): Plugin {
 
       if (!config.dts) return
 
-      const localeFiles = await readdir(path.dirname(config.sourceLocale))
+      const localeFiles = filterLocaleFiles(await readdir(config.localesDir))
 
-      filterLocaleFiles(localeFiles).forEach((file) => this.addWatchFile(file.absolute))
+      localeFiles.forEach((file) => this.addWatchFile(file.absolute))
 
       await Promise.all([writeLocalesDts(config), writeVirtualDts(config)])
     },
@@ -54,16 +54,17 @@ export function kanjou(config?: UserConfig): Plugin {
 
       const config = await ctx.getConfig()
 
-      const localeFiles = await readdir(path.dirname(config.sourceLocale))
+      const localeFiles = filterLocaleFiles(await readdir(config.localesDir))
 
       if (id === '\0virtual:kanjou/locales') return compileLocales(basenames(localeFiles))
 
       const locale = id.split('/')[1]
-      const localeFile = localeFiles.find((localeFile) => localeFile.name === locale)!
+      const localeFile = localeFiles.find((localeFile) => localeFile.name === locale)
+      if (!localeFile) this.error(`failed to load locale "${locale}" - not found`)
 
       const messages = await readLocaleFile(localeFile)
 
-      return compileAst(messages ?? {})
+      return compileMessages(messages ?? {})
     },
   }
 }

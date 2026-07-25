@@ -1,7 +1,11 @@
-import type { KanjouPluginContext } from '#/shared/context'
+import { createContext } from '#/shared/context'
 
-export function unused(ctx: KanjouPluginContext) {
-  return async () => {
-    console.log(await ctx.getConfig())
-  }
+export interface UnusedCommandOptions {
+  localesDir?: string
+  baseLocale?: string
+}
+
+export async function unused(options: UnusedCommandOptions = {}) {
+  const ctx = createContext(options)
+  console.log(await ctx.getConfig())
 }

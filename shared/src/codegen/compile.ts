@@ -4,15 +4,18 @@ import type { CodeBlockWriter, PropertySignatureStructure } from 'ts-morph'
 import { parseMessage } from 'messageformat'
 import { ModuleDeclarationKind, Project, StructureKind, Writers } from 'ts-morph'
 
-export function compileAst(messages: Record<string, string>): string | undefined {
-  const ast = Object.entries(messages).reduce(
+export function parseMessages(messages: Record<string, string>): Record<string, Model.Message> {
+  return Object.entries(messages).reduce(
     (acc, [key, value]) => {
       acc[key] = parseMessage(value)
       return acc
     },
     {} as Record<string, Model.Message>,
   )
+}
 
+export function compileMessages(messages: Record<string, string>): string {
+  const ast = parseMessages(messages)
   return `export default ${JSON.stringify(ast, null, 2)}`
 }
 

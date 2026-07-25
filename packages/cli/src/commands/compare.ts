@@ -1,48 +1,50 @@
 import consola from 'consola'
-import path from 'node:path'
 
-import type { KanjouPluginContext } from '#/shared/context'
-
+import { createContext } from '#/shared/context'
 import { filterLocaleFiles, readLocaleFile, readdir } from '#/shared/io'
 
-export function compare(ctx: KanjouPluginContext) {
-  return async () => {
-    const config = await ctx.getConfig()
+export interface CompareCommandOptions {
+  localesDir?: string
+  baseLocale?: string
+}
 
-    const localesDir = path.dirname(config.sourceLocale)
-    const localeFiles = await readdir(localesDir)
-    const locales = filterLocaleFiles(localeFiles).map((file) => file.name)
+export async function compare(options: CompareCommandOptions = {}) {
+  const ctx = createContext(options)
+  const config = await ctx.getConfig()
 
-    const keysByLocale = new Map(
-      await Promise.all(
-        localeFiles.map(async (file) => {
-          const messages = await readLocaleFile(file)
-          return [file.name, new Set(Object.keys(messages!))] as const
-        }),
-      ),
-    )
+  const files = await readdir(config.localesDir)
+  const localeFiles = filterLocaleFiles(files)
+  const locales = localeFiles.map((file) => file.name)
 
-    for (const locale of locales) {
-      const ownKeys = keysByLocale.get(locale)!
+  const keysByLocale = new Map(
+    await Promise.all(
+      localeFiles.map(async (file) => {
+        const messages = await readLocaleFile(file)
+        return [file.name, new Set(Object.keys(messages!))] as const
+      }),
+    ),
+  )
 
-      const missingKeyOrigins = new Map<string, Set<string>>()
+  for (const locale of locales) {
+    const ownKeys = keysByLocale.get(locale)!
 
-      for (const other of locales) {
-        if (other === locale) continue
+    const missingKeyOrigins = new Map<string, Set<string>>()
 
-        const missingKeys = keysByLocale.get(other)!.difference(ownKeys)
+    for (const other of locales) {
+      if (other === locale) continue
 
-        for (const key of missingKeys) missingKeyOrigins.getOrInsert(key, new Set()).add(other)
-      }
+      const missingKeys = keysByLocale.get(other)!.difference(ownKeys)
 
-      if (!missingKeyOrigins.size) continue
-
-      const lines = missingKeyOrigins
-        .entries()
-        .map(([key, origins]) => `  missing "${key}" from ${[...origins].join(', ')}`)
-        .toArray()
-
-      consola.log(`${locale}\n${lines.join('\n')}`)
+      for (const key of missingKeys) missingKeyOrigins.getOrInsert(key, new Set()).add(other)
     }
+
+    if (!missingKeyOrigins.size) continue
+
+    const lines = missingKeyOrigins
+      .entries()
+      .map(([key, origins]) => `  missing "${key}" from ${[...origins].join(', ')}`)
+      .toArray()
+
+    consola.log(`${locale}\n${lines.join('\n')}`)
   }
 }

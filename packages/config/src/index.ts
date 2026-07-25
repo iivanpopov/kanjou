@@ -5,12 +5,17 @@ import consola from 'consola'
 import { createConfigLoader as createLoader } from 'unconfig'
 
 export interface UserConfig {
-  sourceLocale: string
+  localesDir: string
+  baseLocale: string
   format?: boolean | PrettierOptions
   dts?: {
     outDir?: string
     localesPath?: string
     virtualPath?: string
+  }
+  compile?: {
+    outDir?: string
+    format?: 'js' | 'json'
   }
 }
 
@@ -22,7 +27,7 @@ export type LoadUserConfigResult<Config = UserConfig> = LoadConfigResult<Config>
 
 export async function loadConfig<Config = UserConfig>(
   cwd: string = process.cwd(),
-  inlineConfig: Partial<UserConfig>,
+  inlineConfig?: Partial<UserConfig>,
 ): Promise<LoadConfigResult<Config>> {
   const loader = createLoader<Config>({
     cwd,
@@ -35,22 +40,18 @@ export async function loadConfig<Config = UserConfig>(
 
   result.config = Object.assign({}, result.config, inlineConfig)
 
-  if (!(result.config as UserConfig)?.sourceLocale) {
-    throw new Error('[@kanjou/config] "sourceLocale" is strictly required in the configuration')
-  }
-
   return result
 }
 
 export function createRecoveryConfigLoader<Config extends UserConfig = UserConfig>(): (
   cwd: string | undefined,
-  inlineConfig: Partial<UserConfig>,
+  inlineConfig?: Partial<UserConfig>,
 ) => Promise<LoadConfigResult<Config>> {
   let lastResolved: LoadConfigResult<Config>
 
   return async (
     cwd: string = process.cwd(),
-    inlineConfig: Partial<UserConfig>,
+    inlineConfig?: Partial<UserConfig>,
   ): Promise<LoadConfigResult<Config>> => {
     try {
       const config = await loadConfig<Config>(cwd, inlineConfig)

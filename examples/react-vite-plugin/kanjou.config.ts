@@ -1,7 +1,8 @@
 import { defineConfig } from '@kanjou/cli'
 
 export default defineConfig({
-  sourceLocale: './src/assets/locales/en.ts',
+  localesDir: './src/assets/locales',
+  baseLocale: 'en',
   dts: { outDir: './generated' },
   format: {
     singleQuote: true,

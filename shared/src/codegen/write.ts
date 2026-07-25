@@ -24,11 +24,18 @@ export async function writeLocalesDts(config: UserConfig) {
   const localesPath = resolveLocalesDtsPath(config)
   if (!localesPath) return
 
-  const localesDir = path.dirname(config.sourceLocale)
-  const localeFiles = filterLocaleFiles(await readdir(localesDir))
+  const files = await readdir(config.localesDir)
+  const localeFiles = filterLocaleFiles(files)
   const locales = localeFiles.map((file) => file.name)
 
-  const messages = (await readLocaleFile(config.sourceLocale)) ?? {}
+  const sourceFile = localeFiles.find((file) => file.name === config.baseLocale)
+  if (!sourceFile) {
+    throw new Error(
+      `[@kanjou/codegen] Base locale "${config.baseLocale}" file not found in "${config.localesDir}"`,
+    )
+  }
+
+  const messages = (await readLocaleFile(sourceFile)) ?? {}
   const localesDts = compileLocalesDts(messages, locales)
   const formattedDts = await format(localesDts, config.format)
   await writeFile(localesPath, formattedDts, { mkdir: { recursive: true } })

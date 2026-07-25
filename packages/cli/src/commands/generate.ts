@@ -1,20 +1,23 @@
 import consola from 'consola'
 
-import type { KanjouPluginContext } from '#/shared/context'
-
 import { writeLocalesDts, writeVirtualDts } from '#/shared/codegen'
+import { createContext } from '#/shared/context'
 
-export function generate(ctx: KanjouPluginContext) {
-  return async () => {
-    const config = await ctx.getConfig()
+export interface GenerateCommandOptions {
+  localesDir?: string
+  baseLocale?: string
+}
 
-    if (!config.dts) {
-      consola.warn('dts not configured - nothing to generate')
-      return
-    }
+export async function generate(options: GenerateCommandOptions = {}) {
+  const ctx = createContext(options)
+  const config = await ctx.getConfig()
 
-    await Promise.all([writeLocalesDts(config), writeVirtualDts(config)])
-
-    consola.success('generated .d.ts files')
+  if (!config.dts) {
+    consola.warn('dts not configured - nothing to generate')
+    return
   }
+
+  await Promise.all([writeLocalesDts(config), writeVirtualDts(config)])
+
+  consola.success('Generated .d.ts files')
 }
