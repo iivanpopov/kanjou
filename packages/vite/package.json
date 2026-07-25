@@ -1,6 +1,6 @@
 {
   "name": "@kanjou/vite",
-  "version": "0.0.29",
+  "version": "0.0.30",
   "private": false,
   "license": "ISC",
   "author": "Ivan Popov <iivanpopov@proton.me>",
@@ -22,7 +22,11 @@
     "prepublishOnly": "pnpm build"
   },
   "dependencies": {
-    "@kanjou/config": "workspace:*"
+    "@kanjou/config": "workspace:*",
+    "jiti": "^2.7.0",
+    "messageformat": "^4.0.0",
+    "prettier": "catalog:",
+    "ts-morph": "^28.0.0"
   },
   "devDependencies": {
     "@types/node": "catalog:",

@@ -172,6 +172,18 @@ importers:
       consola:
         specifier: 'catalog:'
         version: 3.4.2
+      jiti:
+        specifier: ^2.7.0
+        version: 2.7.0
+      messageformat:
+        specifier: ^4.0.0
+        version: 4.0.0
+      prettier:
+        specifier: 'catalog:'
+        version: 3.9.6
+      ts-morph:
+        specifier: ^28.0.0
+        version: 28.0.0
     devDependencies:
       tsdown:
         specifier: catalog:tooling
@@ -232,6 +244,18 @@ importers:
       '@kanjou/config':
         specifier: workspace:*
         version: link:../config
+      jiti:
+        specifier: ^2.7.0
+        version: 2.7.0
+      messageformat:
+        specifier: ^4.0.0
+        version: 4.0.0
+      prettier:
+        specifier: 'catalog:'
+        version: 3.9.6
+      ts-morph:
+        specifier: ^28.0.0
+        version: 28.0.0
     devDependencies:
       '@types/node':
         specifier: 'catalog:'
