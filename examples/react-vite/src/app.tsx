@@ -1,4 +1,3 @@
-import type { Locale } from '@kanjou/react'
 import type { ChangeEvent } from 'react'
 
 import { useState } from 'react'
@@ -18,7 +17,7 @@ export function App() {
   }
 
   const handleLocaleChange = (event: ChangeEvent<HTMLSelectElement>) => {
-    void setLocale(event.target.value as Locale)
+    void setLocale(event.target.value)
   }
 
   return (
