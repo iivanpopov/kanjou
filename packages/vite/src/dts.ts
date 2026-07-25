@@ -85,7 +85,7 @@ export async function compileLocalesDts(sourceLocale: string) {
 
       return {
         kind: StructureKind.PropertySignature,
-        name: key,
+        name: JSON.stringify(key),
         type: Writers.objectType({ properties: values.values().toArray() }),
       }
     },
@@ -141,7 +141,7 @@ declare module 'virtual:kanjou/*' {
 }
 
 declare module 'virtual:kanjou/locales' {
-  const locales: Record<import('@kanjou/react').Locale, () => Promise<import('@kanjou/react').Messages>>
+  const locales: Record<import('@kanjou/react').Locale, () => Promise<Record<string, import('@kanjou/react').Message>>>
   export default locales
 }`
 
