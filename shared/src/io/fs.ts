@@ -16,9 +16,7 @@ export async function writeFile(file: string, data: WriteFileData, options?: Wri
   await fs.writeFile(file, data, options)
 }
 
-export type ReaddirReturn = Promise<ParsedPath[]>
-
-export async function readdir(dir: string): ReaddirReturn {
+export async function readdir(dir: string) {
   const files = await fs.readdir(dir)
   return files.map((file) => {
     const absolute = path.resolve(dir, file)

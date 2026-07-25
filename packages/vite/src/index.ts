@@ -4,13 +4,9 @@ import type { Plugin } from 'vite'
 import path from 'node:path'
 import { normalizePath } from 'vite'
 
+import { compileAst, compileLocales, writeLocalesDts, writeVirtualDts } from '#/shared/codegen'
 import { createContext } from '#/shared/context'
-import { readdir } from '#/shared/fs'
-import { basename, basenames } from '#/shared/path'
-
-import { writeLocalesDts, writeVirtualDts } from './dts'
-import { filterLocaleFiles, readLocaleFile } from './utils'
-import { compileAst, compileLocales } from './virtual'
+import { basename, basenames, filterLocaleFiles, readLocaleFile, readdir } from '#/shared/io'
 
 export function kanjou(config?: UserConfig): Plugin {
   const ctx = createContext(config)

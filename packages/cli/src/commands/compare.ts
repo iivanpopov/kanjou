@@ -1,27 +1,25 @@
 import consola from 'consola'
-import fs from 'node:fs'
 import path from 'node:path'
 
 import type { KanjouPluginContext } from '#/shared/context'
 
-import { basenames } from '#/shared/path'
-
-function readLocaleKeys(dir: string, locale: string) {
-  const filePath = path.join(dir, `${locale}.json`)
-  const content = fs.readFileSync(filePath, 'utf-8')
-  const json = JSON.parse(content) as Record<string, unknown>
-  return new Set(Object.keys(json))
-}
+import { filterLocaleFiles, readLocaleFile, readdir } from '#/shared/io'
 
 export function compare(ctx: KanjouPluginContext) {
   return async () => {
     const config = await ctx.getConfig()
 
     const localesDir = path.dirname(config.sourceLocale)
-    const locales = basenames(fs.readdirSync(localesDir))
+    const localeFiles = await readdir(localesDir)
+    const locales = filterLocaleFiles(localeFiles).map((file) => file.name)
 
     const keysByLocale = new Map(
-      locales.map((locale) => [locale, readLocaleKeys(localesDir, locale)]),
+      await Promise.all(
+        localeFiles.map(async (file) => {
+          const messages = await readLocaleFile(file)
+          return [file.name, new Set(Object.keys(messages!))] as const
+        }),
+      ),
     )
 
     for (const locale of locales) {

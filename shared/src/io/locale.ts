@@ -2,11 +2,13 @@ import { createJiti } from 'jiti'
 import fs from 'node:fs/promises'
 import path from 'node:path'
 
-import type { ParsedPath } from '#/shared/path'
+import type { ParsedPath } from './path'
 
-import { parse } from '#/shared/path'
+import { parse } from './path'
 
-export async function readLocaleFile(localeFile: string | ParsedPath) {
+export async function readLocaleFile(
+  localeFile: string | ParsedPath,
+): Promise<Record<string, string> | undefined> {
   const file = typeof localeFile === 'string' ? parse(localeFile) : localeFile
 
   let messages: Record<string, string> | undefined = undefined

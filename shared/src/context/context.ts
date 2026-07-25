@@ -1,4 +1,4 @@
-import type { UserConfig, LoadUserConfigResult } from '@kanjou/config'
+import type { LoadUserConfigResult, UserConfig } from '@kanjou/config'
 
 import { createRecoveryConfigLoader } from '@kanjou/config'
 
