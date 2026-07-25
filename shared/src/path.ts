@@ -9,7 +9,7 @@ export function basenames(files: (string | path.ParsedPath)[]): string[] {
   return files.map(basename)
 }
 
-export type ParsedFile = path.ParsedPath & {
+export interface ParsedPath extends path.ParsedPath {
   /** Absolute path to file: path.resolve(dir, parsed.base) */
   absolute: string
 }
@@ -17,5 +17,5 @@ export type ParsedFile = path.ParsedPath & {
 export function parse(file: string) {
   const parsed = path.parse(file)
   Object.assign(parsed, { absolute: path.resolve(parsed.dir, parsed.base) })
-  return parsed as ParsedFile
+  return parsed as ParsedPath
 }

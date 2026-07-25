@@ -1,7 +1,7 @@
 import fs from 'node:fs/promises'
 import path from 'node:path'
 
-import type { ParsedFile } from './path'
+import type { ParsedPath } from './path'
 
 export type FsWriteFileParams = Parameters<typeof fs.writeFile>
 export type WriteFileData = FsWriteFileParams[1]
@@ -16,7 +16,7 @@ export async function writeFile(file: string, data: WriteFileData, options?: Wri
   await fs.writeFile(file, data, options)
 }
 
-export type ReaddirReturn = Promise<ParsedFile[]>
+export type ReaddirReturn = Promise<ParsedPath[]>
 
 export async function readdir(dir: string): ReaddirReturn {
   const files = await fs.readdir(dir)
@@ -24,6 +24,6 @@ export async function readdir(dir: string): ReaddirReturn {
     const absolute = path.resolve(dir, file)
     const parsed = path.parse(absolute)
     Object.assign(parsed, { absolute })
-    return parsed as ParsedFile
+    return parsed as ParsedPath
   })
 }
