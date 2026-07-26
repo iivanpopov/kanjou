@@ -31,12 +31,12 @@ export function KanjouProvider({ children, ...value }: KanjouProviderProps): Rea
   return <KanjouContext value={value}>{children}</KanjouContext>
 }
 
-export interface UseI18nReturn {
+export interface UseKanjouReturn {
   locale: Locale
   t: Translate
 }
 
-export function useI18n(): UseI18nReturn {
+export function useKanjou(): UseKanjouReturn {
   const { locale, functions, options, messages } = use(KanjouContext)
 
   const opts = Object.assign({}, options, { functions })

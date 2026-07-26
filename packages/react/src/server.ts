@@ -3,23 +3,23 @@ import type { Functions, Locale, Message, MessageFormatOptions } from './types'
 
 import { createTranslate } from './translate'
 
-export interface CreateI18nOptions {
+export interface CreateKanjouOptions {
   locale: Locale
   messages: Record<string, Message>
   functions?: Functions
   options?: MessageFormatOptions
 }
 
-export interface CreateI18nReturn {
+export interface CreateKanjouReturn {
   t: Translate
 }
 
-export function createI18n({
+export function createKanjou({
   messages,
   locale,
   functions,
   options,
-}: CreateI18nOptions): CreateI18nReturn {
+}: CreateKanjouOptions): CreateKanjouReturn {
   const opts = Object.assign({}, options, { functions })
   const t = createTranslate(messages, locale, opts)
 
