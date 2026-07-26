@@ -20,8 +20,11 @@ export async function readdir(dir: string) {
   const files = await fs.readdir(dir)
   return files.map((file) => {
     const absolute = path.resolve(dir, file)
+    const relative = path.join(dir, file)
+
     const parsed = path.parse(absolute)
-    Object.assign(parsed, { absolute })
+
+    Object.assign(parsed, { absolute, relative })
     return parsed as ParsedPath
   })
 }

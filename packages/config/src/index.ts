@@ -4,19 +4,25 @@ import type { LoadConfigResult } from 'unconfig'
 import consola from 'consola'
 import { createConfigLoader as createLoader } from 'unconfig'
 
+export type DtsOptions = {
+  locales?: boolean
+  virtual?: boolean
+  outDir?: string
+  localesPath?: string
+  virtualPath?: string
+}
+
+export interface CompileOptions {
+  outDir?: string
+  extension?: 'js' | 'json'
+}
+
 export interface UserConfig {
   localesDir: string
   baseLocale: string
-  format?: boolean | PrettierOptions
-  dts?: {
-    outDir?: string
-    localesPath?: string
-    virtualPath?: string
-  }
-  compile?: {
-    outDir?: string
-    format?: 'js' | 'json'
-  }
+  prettier?: PrettierOptions
+  dts?: DtsOptions
+  compile?: CompileOptions
 }
 
 export function defineConfig(config: UserConfig): UserConfig {
@@ -28,6 +34,7 @@ export type LoadUserConfigResult<Config = UserConfig> = LoadConfigResult<Config>
 export async function loadConfig<Config = UserConfig>(
   cwd: string = process.cwd(),
   inlineConfig?: Partial<UserConfig>,
+  defaults?: Partial<UserConfig>,
 ): Promise<LoadConfigResult<Config>> {
   const loader = createLoader<Config>({
     cwd,
@@ -38,7 +45,7 @@ export async function loadConfig<Config = UserConfig>(
 
   if (!result.config && !inlineConfig) consola.error('[@kanjou/config] Config file not found')
 
-  result.config = Object.assign({}, result.config, inlineConfig)
+  result.config = Object.assign({}, defaults, result.config, inlineConfig)
 
   return result
 }
@@ -46,15 +53,17 @@ export async function loadConfig<Config = UserConfig>(
 export function createRecoveryConfigLoader<Config extends UserConfig = UserConfig>(): (
   cwd: string | undefined,
   inlineConfig?: Partial<UserConfig>,
+  defaults?: Partial<UserConfig>,
 ) => Promise<LoadConfigResult<Config>> {
   let lastResolved: LoadConfigResult<Config>
 
   return async (
     cwd: string = process.cwd(),
     inlineConfig?: Partial<UserConfig>,
+    defaults?: Partial<UserConfig>,
   ): Promise<LoadConfigResult<Config>> => {
     try {
-      const config = await loadConfig<Config>(cwd, inlineConfig)
+      const config = await loadConfig<Config>(cwd, inlineConfig, defaults)
       lastResolved = config
       return config
     } catch (error) {

@@ -10,17 +10,17 @@ export interface KanjouPluginContext<Config extends UserConfig = UserConfig> {
 
 export function createContext<Config extends UserConfig = UserConfig>(
   inlineConfig: Partial<UserConfig> = {},
+  defaults?: Partial<UserConfig>,
 ): KanjouPluginContext<Config> {
   const root = process.cwd()
 
   const loadConfig = createRecoveryConfigLoader<Config>()
 
   let _config = {} as Config
-  const _ready = reloadConfig(inlineConfig)
+  const _ready = reloadConfig()
 
-  async function reloadConfig(newInlineConfig?: Partial<UserConfig>) {
-    const mergedInline = Object.assign({}, inlineConfig, newInlineConfig)
-    const result = await loadConfig(root, mergedInline)
+  async function reloadConfig() {
+    const result = await loadConfig(root, inlineConfig, defaults)
     _config = result.config
     return result
   }

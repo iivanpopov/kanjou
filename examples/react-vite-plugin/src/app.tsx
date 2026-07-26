@@ -1,11 +1,12 @@
 import type { Locale } from '@kanjou/react'
 import type { ChangeEvent } from 'react'
 
-import { useI18n } from '@kanjou/react'
 import { useState } from 'react'
 
+import { useIntl } from './providers/intl-provider'
+
 export function App() {
-  const { t, locale, setLocale } = useI18n()
+  const { t, locale, setLocale } = useIntl()
   const [count, setCount] = useState(1)
 
   const handleDecrement = () => {
@@ -17,7 +18,7 @@ export function App() {
   }
 
   const handleLocaleChange = (event: ChangeEvent<HTMLSelectElement>) => {
-    setLocale(event.target.value as Locale)
+    void setLocale(event.target.value as Locale)
   }
 
   return (

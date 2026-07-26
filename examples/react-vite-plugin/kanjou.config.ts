@@ -1,10 +1,10 @@
 import { defineConfig } from '@kanjou/cli'
 
 export default defineConfig({
-  localesDir: './src/assets/locales',
   baseLocale: 'en',
-  dts: { outDir: './generated' },
-  format: {
+  localesDir: './src/assets/locales',
+  dts: { outDir: './generated/kanjou' },
+  prettier: {
     singleQuote: true,
     printWidth: 100,
     semi: false,

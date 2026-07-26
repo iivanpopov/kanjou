@@ -4,7 +4,7 @@ import type { Plugin } from 'vite'
 import path from 'node:path'
 import { normalizePath } from 'vite'
 
-import { compileMessages, compileLocales, writeLocalesDts, writeVirtualDts } from '#/shared/codegen'
+import { compileLocales, compileMessages, writeLocalesDts, writeVirtualDts } from '#/shared/codegen'
 import { createContext } from '#/shared/context'
 import { basename, basenames, filterLocaleFiles, readLocaleFile, readdir } from '#/shared/io'
 
@@ -21,8 +21,12 @@ export function kanjou(config?: Omit<UserConfig, 'compile'>): Plugin {
 
       if (fileDir !== localesDir) return
 
-      const fileLocaleName = basename(file)
-      if (fileLocaleName === config.baseLocale) await writeLocalesDts(config)
+      if (basename(file) === config.baseLocale && config.dts?.locales) {
+        const localesPath =
+          config.dts.localesPath ?? path.join(config.dts.outDir!, 'locales.kanjou.d.ts')
+
+        await writeLocalesDts(localesPath, config)
+      }
 
       const modules = []
 
@@ -44,7 +48,13 @@ export function kanjou(config?: Omit<UserConfig, 'compile'>): Plugin {
 
       localeFiles.forEach((file) => this.addWatchFile(file.absolute))
 
-      await Promise.all([writeLocalesDts(config), writeVirtualDts(config)])
+      const localesPath =
+        config.dts.localesPath ?? path.join(config.dts.outDir!, 'locales.kanjou.d.ts')
+      const virtualPath =
+        config.dts.virtualPath ?? path.join(config.dts.outDir!, 'virtual.kanjou.d.ts')
+
+      if (config.dts.locales) await writeLocalesDts(localesPath, config)
+      if (config.dts.virtual) await writeVirtualDts(virtualPath, config)
     },
     resolveId(id) {
       if (id.startsWith('virtual:kanjou/')) return '\0' + id

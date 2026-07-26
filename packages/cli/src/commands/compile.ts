@@ -1,40 +1,73 @@
+import type { UserConfig } from '@kanjou/config'
+import type { Options as PrettierOptions } from 'prettier'
+
 import consola from 'consola'
 import path from 'node:path'
 
-import { compileMessages, parseMessages } from '#/shared/codegen'
-import { createContext } from '#/shared/context'
+import type { ParsedPath } from '#/shared/io'
+
+import { compileMessages, format, parseMessages } from '#/shared/codegen'
 import { filterLocaleFiles, readLocaleFile, readdir, writeFile } from '#/shared/io'
 
-export interface CompileCommandOptions {
+import { context } from '../cli'
+
+export interface CompileOptions {
   localesDir?: string
   baseLocale?: string
   outDir?: string
-  format?: 'js' | 'json'
+  extension?: 'js' | 'json'
 }
 
-export async function compile(options: CompileCommandOptions = {}) {
-  const { localesDir, baseLocale, ...compile } = options
-  const ctx = createContext({ localesDir, baseLocale, compile })
-  const config = await ctx.getConfig()
+export interface ResolvedCompileOptions {
+  localesDir: string
+  baseLocale: string
+  outDir: string
+  extension: 'js' | 'json'
+  prettier: Omit<PrettierOptions, 'parser'> | undefined
+}
 
-  const files = await readdir(config.localesDir)
-  const localeFiles = filterLocaleFiles(files)
+function resolveOptions(options: CompileOptions, config: UserConfig): ResolvedCompileOptions {
+  const prettier = Object.assign({}, config.prettier, {
+    parser: !options.extension ? 'typescript' : 'json',
+  })
 
-  const outDir = options.outDir ?? config.compile?.outDir ?? path.join(config.localesDir, '.kanjou')
-  const format = options.format ?? config.compile?.format ?? 'js'
+  return {
+    baseLocale: options.baseLocale ?? config.baseLocale,
+    localesDir: options.localesDir ?? config.localesDir,
+    outDir: options.outDir ?? config.compile?.outDir ?? path.join(config.localesDir, 'compiled'),
+    extension: options.extension ?? config.compile?.extension ?? 'js',
+    prettier,
+  }
+}
+
+export async function compile(_options: CompileOptions = {}) {
+  const config = await context.getConfig()
+  const options = resolveOptions(_options, config)
+
+  const localeFiles = filterLocaleFiles(await readdir(options.localesDir))
+
+  const outFiles = new Map<ParsedPath, string>(
+    localeFiles.map((file) => [
+      file,
+      path.join(options.outDir, `${file.name}.${options.extension}`),
+    ]),
+  )
 
   await Promise.all(
-    localeFiles.map(async (file) => {
-      const messages = await readLocaleFile(file)
-      const code =
-        format === 'js'
-          ? compileMessages(messages ?? {})
-          : JSON.stringify(parseMessages(messages ?? {}), null, 2)
+    outFiles.entries().map(async ([key, value]) => {
+      const messages = await readLocaleFile(key)
 
-      const outPath = path.join(outDir, `${file.name}.${format}`)
-      await writeFile(outPath, code, { mkdir: { recursive: true } })
+      const code =
+        options.extension === 'js'
+          ? compileMessages(messages!)
+          : JSON.stringify(parseMessages(messages!), null, 2)
+      const formattedCode = await format(code, options.prettier)
+
+      await writeFile(value, formattedCode, { mkdir: { recursive: true } })
     }),
   )
 
-  consola.success(`compiled ${localeFiles.length} locale(s) to ${outDir}`)
+  outFiles.entries().forEach(([key, value]) => {
+    consola.success(`${key.relative} -> ${value}`)
+  })
 }

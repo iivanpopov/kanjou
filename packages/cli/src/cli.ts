@@ -1,6 +1,10 @@
 import { cac } from 'cac'
 
+import { createContext } from '#/shared/context'
+
 import { compare, compile, generate, missing, unused } from './commands'
+
+export const context = createContext()
 
 const cli = cac('kanjou')
 
@@ -9,13 +13,17 @@ cli
   .option('-l, --locales-dir <dir>', 'Directory containing locale files')
   .option('-b, --base-locale <name>', 'Base locale name (e.g. en)')
   .option('-o, --out-dir <dir>', 'Output directory for compiled AST files')
-  .option('-f, --format <format>', 'Output format (mjs or json)')
+  .option('-e, --extension <format>', 'Output extension (js or json)')
   .action(compile)
 
 cli
   .command('generate', 'Generate locale .d.ts type declarations.')
   .option('-l, --locales-dir <dir>', 'Directory containing locale files')
   .option('-b, --base-locale <name>', 'Base locale name (e.g. en)')
+  .option('--locales', 'Generate locale .d.ts declarations')
+  .option('--no-locales', 'Disable locale .d.ts generation')
+  .option('--virtual', 'Generate virtual .d.ts declarations')
+  .option('--no-virtual', 'Disable virtual .d.ts generation')
   .action(generate)
 
 cli

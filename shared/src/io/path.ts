@@ -10,12 +10,15 @@ export function basenames(files: (string | path.ParsedPath)[]): string[] {
 }
 
 export interface ParsedPath extends path.ParsedPath {
-  /** Absolute path to file: path.resolve(dir, parsed.base) */
   absolute: string
+  relative: string
 }
 
 export function parse(file: string) {
   const parsed = path.parse(file)
-  Object.assign(parsed, { absolute: path.resolve(parsed.dir, parsed.base) })
+  Object.assign(parsed, {
+    absolute: path.resolve(parsed.dir, parsed.base),
+    relative: path.join(parsed.dir, parsed.base),
+  })
   return parsed as ParsedPath
 }
