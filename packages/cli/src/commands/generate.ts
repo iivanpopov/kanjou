@@ -37,18 +37,18 @@ function resolveOptions(options: GenerateOptions, config: UserConfig): ResolvedG
   }
 }
 
-export async function generate(_options: GenerateOptions = {}) {
+export async function generate(options: GenerateOptions) {
   const ctx = createContext()
   const config = await ctx.getConfig()
-  const options = resolveOptions(_options, config)
+  const _options = resolveOptions(options, config)
 
-  if (options.localesPath) {
-    await writeLocalesDts(options.localesPath, options)
-    consola.success(`generated ${options.localesPath}`)
+  if (_options.localesPath) {
+    await writeLocalesDts(_options.localesPath, _options)
+    consola.success(`generated ${_options.localesPath}`)
   }
 
-  if (options.virtualPath) {
-    await writeVirtualDts(options.virtualPath, options)
-    consola.success(`generated ${options.virtualPath}`)
+  if (_options.virtualPath) {
+    await writeVirtualDts(_options.virtualPath, _options)
+    consola.success(`generated ${_options.virtualPath}`)
   }
 }

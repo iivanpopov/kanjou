@@ -19,10 +19,10 @@ function resolveOptions(options: MissingOptions, config: UserConfig): ResolvedMi
   }
 }
 
-export async function missing(_options: MissingOptions = {}) {
+export async function missing(options: MissingOptions) {
   const ctx = createContext()
   const config = await ctx.getConfig()
-  const options = resolveOptions(_options, config)
+  const _options = resolveOptions(options, config)
 
-  console.log(options)
+  console.log(_options)
 }

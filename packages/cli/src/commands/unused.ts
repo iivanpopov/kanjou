@@ -19,10 +19,10 @@ function resolveOptions(options: UnusedOptions, config: UserConfig): ResolvedUnu
   }
 }
 
-export async function unused(_options: UnusedOptions = {}) {
+export async function unused(options: UnusedOptions = {}) {
   const ctx = createContext()
   const config = await ctx.getConfig()
-  const options = resolveOptions(_options, config)
+  const _options = resolveOptions(options, config)
 
-  console.log(options)
+  console.log(_options)
 }

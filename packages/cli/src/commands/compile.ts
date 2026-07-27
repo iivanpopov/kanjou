@@ -40,16 +40,16 @@ function resolveOptions(options: CompileOptions, config: UserConfig): ResolvedCo
   }
 }
 
-export async function compile(_options: CompileOptions = {}) {
+export async function compile(options: CompileOptions) {
   const config = await context.getConfig()
-  const options = resolveOptions(_options, config)
+  const _options = resolveOptions(options, config)
 
-  const localeFiles = filterLocaleFiles(await readdir(options.localesDir))
+  const localeFiles = filterLocaleFiles(await readdir(_options.localesDir))
 
   const outFiles = new Map<ParsedPath, string>(
     localeFiles.map((file) => [
       file,
-      path.join(options.outDir, `${file.name}.${options.extension}`),
+      path.join(_options.outDir, `${file.name}.${_options.extension}`),
     ]),
   )
 
@@ -58,10 +58,10 @@ export async function compile(_options: CompileOptions = {}) {
       const messages = await readLocaleFile(key)
 
       const code =
-        options.extension === 'js'
+        _options.extension === 'js'
           ? compileMessages(messages!)
           : JSON.stringify(parseMessages(messages!), null, 2)
-      const formattedCode = await format(code, options.prettier)
+      const formattedCode = await format(code, _options.prettier)
 
       await writeFile(value, formattedCode, { mkdir: { recursive: true } })
     }),

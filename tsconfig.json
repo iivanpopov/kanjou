@@ -13,7 +13,7 @@
     "paths": {
       "@kanjou/config": ["./packages/config/src/index.ts"],
       "@kanjou/react": ["./packages/react/src/index.ts"],
-      "@kanjou/react/server": ["./packages/react/src/server.ts"],
+      "@kanjou/react/server": ["./packages/react/src/server/index.ts"],
       "@kanjou/vite": ["./packages/vite/src/index.ts"],
       "@kanjou/cli": ["./packages/cli/src/index.ts"],
       "#/shared/*": ["./shared/src/*"]

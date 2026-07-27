@@ -22,10 +22,7 @@ export interface KanjouCache {
 }
 
 export function createCache(): KanjouCache {
-  return {
-    messages: new Map(),
-    intl: {},
-  }
+  return { intl: {}, messages: new Map() }
 }
 
 export function createIntl<FormatterKind extends keyof Formatters>(

@@ -23,7 +23,7 @@ function resolveOptions(options: CompareOptions, config: UserConfig): ResolvedCo
   }
 }
 
-export async function compare(_options: CompareOptions = {}) {
+export async function compare(_options: CompareOptions) {
   const config = await context.getConfig()
   const options = resolveOptions(_options, config)
 
