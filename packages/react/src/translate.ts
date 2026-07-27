@@ -2,6 +2,7 @@ import type { MessagePart } from 'messageformat'
 
 import { MessageFormat } from 'messageformat'
 
+import type { KanjouCache } from './cache'
 import type {
   Locale,
   Message,
@@ -22,13 +23,10 @@ export interface TranslateParts {
 export interface Translate {
   <Key extends MessageKey>(key: Key, values?: MessageValues<Key>): string
   unsafe: (key: any, values?: Record<string, any>) => string
-
-  parts: TranslateParts
 }
 
-const cache: Map<string, MessageFormat<string, string>> = new Map()
-
 function translate<Key extends MessageKey>(
+  cache: KanjouCache,
   messages: Record<string, Message>,
   locale: Locale,
   key: Key,
@@ -38,7 +36,7 @@ function translate<Key extends MessageKey>(
   const message = messages[key]
   if (!message) return key
 
-  const formatter = cache.getOrInsert(
+  const formatter = cache.messages.getOrInsert(
     `${locale}:${key}`,
     new MessageFormat(locale, message, options as any),
   )
@@ -46,7 +44,8 @@ function translate<Key extends MessageKey>(
   return formatter.format(values)
 }
 
-function translateToParts<Key extends MessageKey>(
+function translateParts<Key extends MessageKey>(
+  cache: KanjouCache,
   messages: Record<string, Message>,
   locale: Locale,
   key: Key,
@@ -56,7 +55,7 @@ function translateToParts<Key extends MessageKey>(
   const message = messages[key]
   if (!message) return [{ type: 'text', value: key }]
 
-  const formatter = cache.getOrInsert(
+  const formatter = cache.messages.getOrInsert(
     `${locale}:${key}`,
     new MessageFormat(locale, message, options as any),
   )
@@ -65,18 +64,26 @@ function translateToParts<Key extends MessageKey>(
 }
 
 export function createTranslate(
+  cache: KanjouCache,
   messages: Record<string, Message>,
   locale: Locale,
   options?: MessageFormatOptions,
 ): Translate {
-  const t: Translate = (key, values) => translate(messages, locale, key, values, options)
-  t.unsafe = (key, values) => translate(messages, locale, key, values, options)
-
-  const parts: TranslateParts = (key, values) =>
-    translateToParts(messages, locale, key, values, options)
-  parts.unsafe = (key, values) => translateToParts(messages, locale, key, values, options)
-
-  t.parts = parts
+  const t: Translate = (key, values) => translate(cache, messages, locale, key, values, options)
+  t.unsafe = (key, values) => translate(cache, messages, locale, key, values, options)
 
   return t
+}
+
+export function createTranslateParts(
+  cache: KanjouCache,
+  messages: Record<string, Message>,
+  locale: Locale,
+  options?: MessageFormatOptions,
+): TranslateParts {
+  const parts: TranslateParts = (key, values) =>
+    translateParts(cache, messages, locale, key, values, options)
+  parts.unsafe = (key, values) => translateParts(cache, messages, locale, key, values, options)
+
+  return parts
 }
