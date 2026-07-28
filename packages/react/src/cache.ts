@@ -1,43 +1,23 @@
-import type { Locale } from './types'
-
-export interface Formatters {
-  dateTime: typeof Intl.DateTimeFormat
-  duration: typeof Intl.DurationFormat
-  list: typeof Intl.ListFormat
-  number: typeof Intl.NumberFormat
-  relativeTime: typeof Intl.RelativeTimeFormat
-}
-
-const formatters: Formatters = {
-  dateTime: Intl.DateTimeFormat,
-  duration: Intl.DurationFormat,
-  list: Intl.ListFormat,
-  number: Intl.NumberFormat,
-  relativeTime: Intl.RelativeTimeFormat,
-}
+import type { MessageFormat } from 'messageformat'
 
 export interface KanjouCache {
-  messages: Map<string, any>
-  intl: { [Key in keyof Formatters]?: Map<string, any> }
+  messages: Map<string, MessageFormat>
+  displayNames: Map<string, Intl.DisplayNames>
+  dateTime: Map<string, Intl.DateTimeFormat>
+  duration: Map<string, Intl.DurationFormat>
+  list: Map<string, Intl.ListFormat>
+  number: Map<string, Intl.NumberFormat>
+  relativeTime: Map<string, Intl.RelativeTimeFormat>
 }
 
 export function createCache(): KanjouCache {
-  return { intl: {}, messages: new Map() }
-}
-
-export function createIntl<FormatterKind extends keyof Formatters>(
-  kind: FormatterKind,
-  locale: Locale,
-  options: ConstructorParameters<Formatters[FormatterKind]>[1] | undefined,
-  cache: KanjouCache,
-): InstanceType<Formatters[FormatterKind]> {
-  const intlCache = (cache.intl[kind] ??= new Map<string, any>())
-  const key = options ? `${locale}:${JSON.stringify(options)}` : locale
-
-  const Formatter = formatters[kind] as any
-  const instance = intlCache.getOrInsert(key, new Formatter(locale, options))
-
-  if (intlCache.size > 100) intlCache.delete(intlCache.keys().next().value!)
-
-  return instance
+  return {
+    messages: new Map(),
+    displayNames: new Map(),
+    dateTime: new Map(),
+    duration: new Map(),
+    list: new Map(),
+    number: new Map(),
+    relativeTime: new Map(),
+  }
 }

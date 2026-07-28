@@ -2,18 +2,13 @@ import type { Context, ReactNode } from 'react'
 
 import { createContext, use, useMemo, useRef } from 'react'
 
-import type { Translate, TranslateParts } from './translate'
-import type { Functions, Locale, Message, MessageFormatOptions } from './types'
+import type { KanjouInstance } from './instance'
+import type { Functions, Message, MessageFormatOptions } from './types'
 
 import { createCache } from './cache'
-import { createFormatters } from './formatters'
-import { createTranslateParts, createTranslate } from './translate'
+import { createKanjouInstance } from './instance'
 
-export interface KanjouContextValue extends ReturnType<typeof createFormatters> {
-  locale: Locale
-  t: Translate
-  parts: TranslateParts
-}
+export type KanjouContextValue = KanjouInstance
 
 export const KanjouContext: Context<KanjouContextValue> = createContext({} as KanjouContextValue)
 
@@ -36,23 +31,14 @@ export function KanjouProvider({
   const _options = useMemo(() => ({ ...options, functions }), [])
 
   const contextValue = useMemo(
-    () => ({
-      locale,
-      t: createTranslate(cacheRef.current, messages, locale, _options),
-      parts: createTranslateParts(cacheRef.current, messages, locale, _options),
-      ...createFormatters(cacheRef.current, locale),
-    }),
+    () => createKanjouInstance(cacheRef.current, messages, locale, _options),
     [locale, messages],
   )
 
   return <KanjouContext value={contextValue}>{children}</KanjouContext>
 }
 
-export interface UseKanjouReturn extends ReturnType<typeof createFormatters> {
-  locale: Locale
-  t: Translate
-  parts: TranslateParts
-}
+export type UseKanjouReturn = KanjouInstance
 
 export function useKanjou(): UseKanjouReturn {
   return use(KanjouContext)

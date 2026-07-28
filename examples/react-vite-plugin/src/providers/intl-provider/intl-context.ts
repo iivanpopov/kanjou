@@ -4,7 +4,7 @@ import { createContext } from 'react'
 
 export interface IntlContextValue {
   locale: Locale
-  setLocale: (locale: Locale) => void
+  setLocale: (locale: Locale) => Promise<void>
   messages: Record<string, Message>
   setMessages: (messages: Record<string, Message>) => void
 }

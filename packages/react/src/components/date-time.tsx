@@ -2,27 +2,12 @@ import type { ReactNode } from 'react'
 
 import { useKanjou } from '../react'
 
-export type FormattableDateTime = Parameters<Intl.DateTimeFormat['format']>[0]
-
-type BaseProps = {
+export interface KanjouDateTimeProps {
   options?: Intl.DateTimeFormatOptions
+  dateTime: number | Date
 }
-
-type SingleDateTimeProps = BaseProps & {
-  format?: 'format'
-  dateTime: FormattableDateTime
-}
-
-type RangeDateTimeProps = BaseProps & {
-  format: 'range'
-  start: Parameters<Intl.DateTimeFormat['formatRange']>[0]
-  end: Parameters<Intl.DateTimeFormat['formatRange']>[1]
-}
-
-export type KanjouDateTimeProps = SingleDateTimeProps | RangeDateTimeProps
 
 export function KanjouDateTime(props: KanjouDateTimeProps): ReactNode {
-  const kanjou = useKanjou()
-
-  return kanjou.dateTime(props)
+  const { formatDate } = useKanjou()
+  return formatDate(props.dateTime, props.options)
 }

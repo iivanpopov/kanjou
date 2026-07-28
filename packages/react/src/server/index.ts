@@ -1,10 +1,9 @@
 import type { KanjouCache } from '../cache'
-import type { Translate, TranslateParts } from '../translate'
+import type { KanjouInstance } from '../instance'
 import type { Functions, Locale, Message, MessageFormatOptions } from '../types'
 
 import { createCache } from '../cache'
-import { createFormatters } from '../formatters'
-import { createTranslateParts, createTranslate } from '../translate'
+import { createKanjouInstance } from '../instance'
 import { createComponents } from './components'
 
 export interface CreateKanjouOptions {
@@ -12,14 +11,9 @@ export interface CreateKanjouOptions {
   messages: Record<string, Message>
   functions?: Functions
   options?: Omit<MessageFormatOptions, 'functions'>
-  cache?: KanjouCache
 }
 
-export interface CreateKanjouReturn
-  extends ReturnType<typeof createFormatters>, ReturnType<typeof createComponents> {
-  t: Translate
-  parts: TranslateParts
-}
+export type CreateKanjouReturn = KanjouInstance & ReturnType<typeof createComponents>
 
 export function createKanjou(
   { messages, locale, functions, options }: CreateKanjouOptions,
@@ -27,10 +21,8 @@ export function createKanjou(
 ): CreateKanjouReturn {
   const _options = { ...options, functions }
 
-  const t = createTranslate(cache, messages, locale, _options)
-  const parts = createTranslateParts(cache, messages, locale, _options)
-  const formatters = createFormatters(cache, locale)
-  const components = createComponents(cache, locale)
+  const instance = createKanjouInstance(cache, messages, locale, _options)
+  const components = createComponents(instance)
 
-  return { t, parts, ...formatters, ...components }
+  return { ...instance, ...components }
 }

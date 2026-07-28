@@ -2,15 +2,12 @@ import type { ReactNode } from 'react'
 
 import { useKanjou } from '../react'
 
-export type FormattableList = Parameters<Intl.ListFormat['format']>[0]
-
 export interface KanjouListProps {
   options?: Intl.ListFormatOptions
-  list: FormattableList
+  list: Iterable<string>
 }
 
 export function KanjouList(props: KanjouListProps): ReactNode {
-  const kanjou = useKanjou()
-
-  return kanjou.list(props)
+  const { formatList } = useKanjou()
+  return formatList(props.list, props.options)
 }

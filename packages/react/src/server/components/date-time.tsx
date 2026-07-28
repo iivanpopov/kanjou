@@ -1,26 +1,12 @@
 import type { ReactNode } from 'react'
 
-import type { KanjouCache } from '../../cache'
-import type { KanjouDateTimeProps as BaseKanjouDateTimeProps } from '../../components/date-time'
-import type { Locale } from '../../types'
+import type { KanjouDateTimeProps as ClientProps } from '../../components/date-time'
+import type { FormatDate } from '../../functions'
 
-import { createIntl } from '../../cache'
-
-export type { FormattableDateTime } from '../../components/date-time'
-
-export type KanjouDateTimeProps = BaseKanjouDateTimeProps & {
-  cache: KanjouCache
-  locale: Locale
+export interface KanjouDateTimeProps extends ClientProps {
+  formatDate: FormatDate
 }
 
-export function KanjouDateTime({
-  cache,
-  locale,
-  options,
-  ...props
-}: KanjouDateTimeProps): ReactNode {
-  const intl = createIntl('dateTime', locale, options, cache)
-
-  if (props.format === 'range') return intl.formatRange(props.start, props.end)
-  return intl.format(props.dateTime)
+export function KanjouDateTime(props: KanjouDateTimeProps): ReactNode {
+  return props.formatDate(props.dateTime, props.options)
 }

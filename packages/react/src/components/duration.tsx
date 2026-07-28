@@ -1,8 +1,8 @@
 import type { ReactNode } from 'react'
 
-import { useKanjou } from '../react'
+import type { FormattableDuration } from '../functions'
 
-export type FormattableDuration = Parameters<Intl.DurationFormat['format']>[0]
+import { useKanjou } from '../react'
 
 export interface KanjouDurationProps {
   options?: Intl.DurationFormatOptions
@@ -10,7 +10,6 @@ export interface KanjouDurationProps {
 }
 
 export function KanjouDuration(props: KanjouDurationProps): ReactNode {
-  const kanjou = useKanjou()
-
-  return kanjou.duration(props)
+  const { formatDuration } = useKanjou()
+  return formatDuration(props.duration, props.options)
 }

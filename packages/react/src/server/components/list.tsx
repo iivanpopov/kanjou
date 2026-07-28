@@ -1,20 +1,12 @@
 import type { ReactNode } from 'react'
 
-import type { KanjouCache } from '../../cache'
-import type { KanjouListProps as BaseKanjouListProps } from '../../components/list'
-import type { Locale } from '../../types'
+import type { KanjouListProps as ClientProps } from '../../components/list'
+import type { FormatList } from '../../functions'
 
-import { createIntl } from '../../cache'
-
-export type { FormattableList } from '../../components/list'
-
-export interface KanjouListProps extends BaseKanjouListProps {
-  cache: KanjouCache
-  locale: Locale
+export interface KanjouListProps extends ClientProps {
+  formatList: FormatList
 }
 
-export function KanjouList({ cache, locale, options, list }: KanjouListProps): ReactNode {
-  const intl = createIntl('list', locale, options, cache)
-
-  return intl.format(list)
+export function KanjouList(props: KanjouListProps): ReactNode {
+  return props.formatList(props.list, props.options)
 }

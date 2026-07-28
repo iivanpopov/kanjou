@@ -1,29 +1,12 @@
 import type { ReactNode } from 'react'
 
-import type { KanjouCache } from '../../cache'
-import type { KanjouRelativeTimeProps as BaseKanjouRelativeTimeProps } from '../../components/relative-time'
-import type { Locale } from '../../types'
+import type { KanjouRelativeTimeProps as ClientProps } from '../../components/relative-time'
+import type { FormatRelativeTime } from '../../functions'
 
-import { createIntl } from '../../cache'
-
-export type {
-  FormattableRelativeTimeUnit,
-  FormattableRelativeTimeValue,
-} from '../../components/relative-time'
-
-export interface KanjouRelativeTimeProps extends BaseKanjouRelativeTimeProps {
-  cache: KanjouCache
-  locale: Locale
+export interface KanjouRelativeTimeProps extends ClientProps {
+  formatRelativeTime: FormatRelativeTime
 }
 
-export function KanjouRelativeTime({
-  cache,
-  locale,
-  options,
-  value,
-  unit,
-}: KanjouRelativeTimeProps): ReactNode {
-  const intl = createIntl('relativeTime', locale, options, cache)
-
-  return intl.format(value, unit)
+export function KanjouRelativeTime(props: KanjouRelativeTimeProps): ReactNode {
+  return props.formatRelativeTime(props.value, props.options)
 }

@@ -1,21 +1,12 @@
 import type { ReactNode } from 'react'
 
-import type { KanjouCache } from '../../cache'
-import type { KanjouNumberProps as BaseKanjouNumberProps } from '../../components/number'
-import type { Locale } from '../../types'
+import type { KanjouNumberProps as ClientProps } from '../../components/number'
+import type { FormatNumber } from '../../functions'
 
-import { createIntl } from '../../cache'
-
-export type { FormattableNumber } from '../../components/number'
-
-export type KanjouNumberProps = BaseKanjouNumberProps & {
-  cache: KanjouCache
-  locale: Locale
+export interface KanjouNumberProps extends ClientProps {
+  formatNumber: FormatNumber
 }
 
-export function KanjouNumber({ cache, locale, options, ...props }: KanjouNumberProps): ReactNode {
-  const intl = createIntl('number', locale, options, cache)
-
-  if (props.format === 'range') return intl.formatRange(props.start, props.end)
-  return intl.format(props.number)
+export function KanjouNumber(props: KanjouNumberProps): ReactNode {
+  return props.formatNumber(props.number, props.options)
 }
