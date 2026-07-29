@@ -1,30 +1,8 @@
-import { createJiti } from 'jiti'
-import fs from 'node:fs/promises'
 import path from 'node:path'
 
 import type { ParsedPath } from './path'
 
-import { parse } from './path'
-
-export async function readLocaleFile(
-  localeFile: string | ParsedPath,
-): Promise<Record<string, string> | undefined> {
-  const file = typeof localeFile === 'string' ? parse(localeFile) : localeFile
-
-  let messages: Record<string, string> | undefined = undefined
-
-  if (['.ts', '.js'].includes(file.ext)) {
-    const jiti = createJiti(import.meta.url)
-    messages = await jiti.import(file.absolute, { default: true })
-  } else if (file.ext === '.json') {
-    const messagesRaw = await fs.readFile(file.absolute, 'utf-8')
-    messages = JSON.parse(messagesRaw)
-  }
-
-  return messages
-}
-
-const LOCALE_FILE_EXT_NAME = new Set(['.ts', '.js', '.json'])
+const LOCALE_FILE_EXT_NAME = new Set(['.ts', '.js', '.mts', '.mjs', '.json'])
 
 export function filterLocaleFiles<File extends string | ParsedPath>(files: File[]): File[] {
   return files.filter((file) =>

@@ -6,8 +6,9 @@ import path from 'node:path'
 
 import type { ParsedPath } from '#/shared/io'
 
-import { compileMessages, format, parseMessages } from '#/shared/codegen'
-import { filterLocaleFiles, readLocaleFile, readdir, writeFile } from '#/shared/io'
+import { compileMessages, parseMessages } from '#/shared/codegen'
+import { format } from '#/shared/format'
+import { filterLocaleFiles, loadFile, readdir, writeFile } from '#/shared/io'
 
 import { context } from '../cli'
 
@@ -55,7 +56,7 @@ export async function compile(options: CompileOptions) {
 
   await Promise.all(
     outFiles.entries().map(async ([key, value]) => {
-      const messages = await readLocaleFile(key)
+      const messages = await loadFile<Record<string, string>>(key)
 
       const code =
         _options.extension === 'js'
@@ -67,7 +68,7 @@ export async function compile(options: CompileOptions) {
     }),
   )
 
-  outFiles.entries().forEach(([key, value]) => {
-    consola.success(`${key.relative} -> ${value}`)
+  outFiles.entries().forEach(([from, to]) => {
+    consola.success(`${from.relative} -> ${to}`)
   })
 }

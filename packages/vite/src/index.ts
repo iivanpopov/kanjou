@@ -6,7 +6,7 @@ import { normalizePath } from 'vite'
 
 import { compileLocales, compileMessages, writeLocalesDts, writeVirtualDts } from '#/shared/codegen'
 import { createContext } from '#/shared/context'
-import { basename, basenames, filterLocaleFiles, readLocaleFile, readdir } from '#/shared/io'
+import { basename, basenames, filterLocaleFiles, loadFile, readdir } from '#/shared/io'
 
 export function kanjou(config?: Omit<UserConfig, 'compile'>): Plugin {
   const ctx = createContext(config)
@@ -72,7 +72,7 @@ export function kanjou(config?: Omit<UserConfig, 'compile'>): Plugin {
       const localeFile = localeFiles.find((localeFile) => localeFile.name === locale)
       if (!localeFile) this.error(`failed to load locale "${locale}" - not found`)
 
-      const messages = await readLocaleFile(localeFile)
+      const messages = await loadFile<Record<string, string>>(localeFile)
 
       return compileMessages(messages ?? {})
     },

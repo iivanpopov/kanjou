@@ -16,9 +16,9 @@ export interface ParsedPath extends path.ParsedPath {
 
 export function parse(file: string) {
   const parsed = path.parse(file)
-  Object.assign(parsed, {
+  return {
+    ...parsed,
     absolute: path.resolve(parsed.dir, parsed.base),
     relative: path.join(parsed.dir, parsed.base),
-  })
-  return parsed as ParsedPath
+  }
 }

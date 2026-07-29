@@ -2,7 +2,7 @@ import type { UserConfig } from '@kanjou/config'
 
 import consola from 'consola'
 
-import { filterLocaleFiles, readLocaleFile, readdir } from '#/shared/io'
+import { filterLocaleFiles, loadFile, readdir } from '#/shared/io'
 
 import { context } from '../cli'
 
@@ -33,7 +33,7 @@ export async function compare(_options: CompareOptions) {
   const keysByLocale = new Map(
     await Promise.all(
       localeFiles.map(async (file) => {
-        const messages = await readLocaleFile(file)
+        const messages = await loadFile<Record<string, string>>(file)
         return [file.name, new Set(Object.keys(messages!))] as const
       }),
     ),

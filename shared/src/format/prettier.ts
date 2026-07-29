@@ -2,6 +2,8 @@ import type { Options as PrettierOptions } from 'prettier'
 
 import prettier from 'prettier'
 
+export type { PrettierOptions }
+
 export async function format(source: string, options?: boolean | PrettierOptions): Promise<string> {
   if (!options) return source
 

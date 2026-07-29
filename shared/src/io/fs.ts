@@ -1,7 +1,10 @@
+import { createJiti } from 'jiti'
 import fs from 'node:fs/promises'
 import path from 'node:path'
 
 import type { ParsedPath } from './path'
+
+import { parse } from './path'
 
 export type FsWriteFileParams = Parameters<typeof fs.writeFile>
 export type WriteFileData = FsWriteFileParams[1]
@@ -27,4 +30,13 @@ export async function readdir(dir: string) {
     Object.assign(parsed, { absolute, relative })
     return parsed as ParsedPath
   })
+}
+
+const jiti = createJiti(import.meta.url)
+
+export async function loadFile<T = unknown>(
+  localeFile: string | ParsedPath,
+): Promise<T | undefined> {
+  const file = typeof localeFile === 'string' ? parse(localeFile) : localeFile
+  return jiti.import<T>(file.absolute, { default: true })
 }

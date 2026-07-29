@@ -1,8 +1,8 @@
-import type { Options as PrettierOptions } from 'prettier'
+import type { PrettierOptions } from '../format'
 
-import { filterLocaleFiles, readLocaleFile, readdir, writeFile } from '../io'
+import { format } from '../format'
+import { filterLocaleFiles, loadFile, readdir, writeFile } from '../io'
 import { compileLocalesDts, compileVirtualDts } from './compile'
-import { format } from './format'
 
 export interface WriteLocalesDtsOptions {
   baseLocale: string
@@ -19,7 +19,7 @@ export async function writeLocalesDts(localesPath: string, options: WriteLocales
     throw new Error(`"${options.baseLocale}" file not found in "${options.localesDir}"`)
   }
 
-  const messages = await readLocaleFile(baseLocale)
+  const messages = await loadFile<Record<string, string>>(baseLocale)
   const localesDts = compileLocalesDts(messages!, locales)
   const formattedDts = await format(localesDts, options.prettier)
   await writeFile(localesPath, formattedDts, { mkdir: { recursive: true } })
