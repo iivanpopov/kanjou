@@ -5,6 +5,7 @@ import type {
   FormatDisplayName,
   FormatList,
   FormatNumber,
+  FormatPlural,
   FormatRelativeTime,
   FormatTime,
   FormatDuration,
@@ -21,6 +22,7 @@ import {
   createFormatMessage,
   createFormatMessageParts,
   createFormatNumber,
+  createFormatPlural,
   createFormatRelativeTime,
   createFormatTime,
   createFormatDuration,
@@ -35,6 +37,7 @@ export interface KanjouInstance {
   formatDate: FormatDate
   formatTime: FormatTime
   formatNumber: FormatNumber
+  formatPlural: FormatPlural
   formatList: FormatList
   formatDisplayName: FormatDisplayName
   formatRelativeTime: FormatRelativeTime
@@ -59,6 +62,7 @@ export function createKanjouInstance(
     formatDate: createFormatDate(formatters.getDateTimeFormat, locale),
     formatTime: createFormatTime(formatters.getDateTimeFormat, locale),
     formatNumber: createFormatNumber(formatters.getNumberFormat, locale),
+    formatPlural: createFormatPlural(formatters.getPluralRules, locale),
     formatList: createFormatList(formatters.getListFormat, locale),
     formatDisplayName: createFormatDisplayName(formatters.getDisplayNames, locale),
     formatRelativeTime: createFormatRelativeTime(formatters.getRelativeTimeFormat, locale),

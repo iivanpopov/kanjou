@@ -10,6 +10,7 @@ export interface Formatters {
   getDurationFormat: Factory<typeof Intl.DurationFormat>
   getListFormat: Factory<typeof Intl.ListFormat>
   getNumberFormat: Factory<typeof Intl.NumberFormat>
+  getPluralRules: Factory<typeof Intl.PluralRules>
   getRelativeTimeFormat: Factory<typeof Intl.RelativeTimeFormat>
 }
 
@@ -34,6 +35,10 @@ export function createFormatters(cache: KanjouCache): Formatters {
     (...args) => new Intl.NumberFormat(...args),
     cache.number,
   )
+  const getPluralRules: Factory<typeof Intl.PluralRules> = memoize(
+    (...args) => new Intl.PluralRules(...args),
+    cache.pluralRules,
+  )
   const getRelativeTimeFormat: Factory<typeof Intl.RelativeTimeFormat> = memoize(
     (...args) => new Intl.RelativeTimeFormat(...args),
     cache.relativeTime,
@@ -45,6 +50,7 @@ export function createFormatters(cache: KanjouCache): Formatters {
     getDurationFormat,
     getListFormat,
     getNumberFormat,
+    getPluralRules,
     getRelativeTimeFormat,
   }
 }

@@ -4,6 +4,7 @@ import type { KanjouDateTimeProps } from '../../components/date-time'
 import type { KanjouDurationProps } from '../../components/duration'
 import type { KanjouListProps } from '../../components/list'
 import type { KanjouNumberProps } from '../../components/number'
+import type { KanjouPluralProps } from '../../components/plural'
 import type { KanjouRelativeTimeProps } from '../../components/relative-time'
 import type { KanjouInstance } from '../../instance'
 
@@ -11,12 +12,16 @@ import { KanjouDateTime } from './date-time'
 import { KanjouDuration } from './duration'
 import { KanjouList } from './list'
 import { KanjouNumber } from './number'
+import { KanjouPlural } from './plural'
 import { KanjouRelativeTime } from './relative-time'
 
 export function createComponents(instance: KanjouInstance) {
   return {
     Number: (props: KanjouNumberProps): ReactNode => (
       <KanjouNumber {...props} formatNumber={instance.formatNumber} />
+    ),
+    Plural: (props: KanjouPluralProps): ReactNode => (
+      <KanjouPlural {...props} formatPlural={instance.formatPlural} />
     ),
     DateTime: (props: KanjouDateTimeProps): ReactNode => (
       <KanjouDateTime {...props} formatDate={instance.formatDate} />

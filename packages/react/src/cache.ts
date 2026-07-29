@@ -7,6 +7,7 @@ export interface KanjouCache {
   duration: Map<string, Intl.DurationFormat>
   list: Map<string, Intl.ListFormat>
   number: Map<string, Intl.NumberFormat>
+  pluralRules: Map<string, Intl.PluralRules>
   relativeTime: Map<string, Intl.RelativeTimeFormat>
 }
 
@@ -18,6 +19,7 @@ export function createCache(): KanjouCache {
     duration: new Map(),
     list: new Map(),
     number: new Map(),
+    pluralRules: new Map(),
     relativeTime: new Map(),
   }
 }
