@@ -14,12 +14,15 @@ export default defineConfig({
   localesDir: './src/locales',
   dts: {
     outDir: './src/generated/kanjou',
-    locales: true,
-    virtual: true,
+    locales: true, // <- by default
+    virtual: true, // <- by default
   },
   prettier: {
     singleQuote: true,
     semi: false,
+  },
+  compile: {
+    outDir: './src/locales/compiled', // <- $localesDir/compiled by default
   },
 })
 ```
@@ -32,11 +35,13 @@ import react from '@vitejs/plugin-react'
 import { kanjou } from '@kanjou/vite'
 
 export default defineConfig({
-  plugins: [kanjou(), react()],
+  plugins: [kanjou(), react()], // or kanjou(Omit<UserConfig, "compile">)
 })
 ```
 
 ## Server Components Usage
+
+### COMPONENTS WIP, RAW API
 
 ```tsx
 import { createKanjou } from '@kanjou/react/server'
@@ -61,6 +66,8 @@ export async function ServerPage() {
 ```
 
 ## Client Components Usage
+
+### COMPONENTS WIP, RAW API
 
 ```tsx
 'use client'
@@ -147,6 +154,7 @@ declare module '@kanjou/react' {
       'welcome': { name: string }
       'cart.total': { amount: { __fn: 'currency' } }
     }
+    functions: typeof functions
   }
 }
 ```
@@ -156,13 +164,18 @@ declare module '@kanjou/react' {
 - **Strict Key Autocomplete**: `t('key')` auto-completes validated keys.
 - **Inferred Message Values**: `t('welcome', { name: 'Alex' })` enforces required variables.
 - **MessageFormat Function Mapping**: MF2 function calls inside messages map to specific input types:
-  - `string`: standard string values
-  - `number`: `Intl.NumberFormatOptions & Intl.PluralRulesOptions`
-  - `integer`: integer display, grouping, and sign options
-  - `currency`: currency code (`USD`, `EUR`), display, and sign options
-  - `percent`: fraction digits, rounding mode, and formatting
-  - `offset`: numeric offsets with `add` / `subtract`
+
+> DEFAULT FUNCTIONS!!!
+
+- `string`: standard string values
+- `number`: `Intl.NumberFormatOptions & Intl.PluralRulesOptions`
+- `integer`: integer display, grouping, and sign options
+- `currency`: currency code (`USD`, `EUR`), display, and sign options
+- `percent`: fraction digits, rounding mode, and formatting
+- `offset`: numeric offsets with `add` / `subtract`
+
+> custom function
 
 ```ts
-  date1: `Date: {$date :fmtDate style=cool}`, // fmtDate - function, style - prop
+  `Date: {$date :fmtDate style=cool}`, // fmtDate - function, style - prop
 ```

@@ -28,9 +28,10 @@ export interface ResolvedCompileOptions {
 }
 
 function resolveOptions(options: CompileOptions, config: UserConfig): ResolvedCompileOptions {
-  const prettier = Object.assign({}, config.prettier, {
+  const prettier = {
+    ...config.prettier,
     parser: !options.extension ? 'typescript' : 'json',
-  })
+  }
 
   return {
     baseLocale: options.baseLocale ?? config.baseLocale,
