@@ -1,16 +1,16 @@
 import type { Formatters } from '../formatters'
 import type { Locale } from '../types'
 
-export type FormattableDuration = Parameters<Intl.DurationFormat['format']>[0]
+export type Duration = Parameters<Intl.DurationFormat['format']>[0]
 
 export interface FormatDuration {
-  (duration: FormattableDuration, options?: Intl.DurationFormatOptions): string
+  (duration: Duration, options?: Intl.DurationFormatOptions): string
 }
 
 export function formatDuration(
   getDurationFormat: Formatters['getDurationFormat'],
   locale: Locale,
-  duration: FormattableDuration,
+  duration: Duration,
   options?: Intl.DurationFormatOptions,
 ): string {
   return getDurationFormat(locale, options).format(duration)

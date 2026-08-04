@@ -1,12 +1,13 @@
 import type { Locale } from '@kanjou/react'
 import type { ChangeEvent } from 'react'
 
+import { KanjouRich } from '@kanjou/react'
 import { useState } from 'react'
 
 import { useIntl } from './providers/intl-provider'
 
 export function App() {
-  const { t, locale, setLocale } = useIntl()
+  const { t, locale, setLocale, formatRich } = useIntl()
   const [count, setCount] = useState(1)
 
   const handleDecrement = () => {
@@ -32,6 +33,15 @@ export function App() {
           <button onClick={handleDecrement}>-</button>
           <button onClick={handleIncrement}>+</button>
         </div>
+      </div>
+
+      {/* rich text component usage */}
+      <div>
+        <h3>Rich Component:</h3>
+        <p>
+          <KanjouRich id="richText" />
+        </p>
+        {formatRich('customCard')}
       </div>
 
       <select value={locale} onChange={handleLocaleChange}>

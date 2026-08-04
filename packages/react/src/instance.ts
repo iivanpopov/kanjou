@@ -10,8 +10,8 @@ import type {
   FormatTime,
   FormatDuration,
   FormatMessage,
-  FormatMessageParts,
 } from './functions'
+import type { FormatRich, RichComponents } from './rich'
 import type { MessageFormatOptions, Message, Locale } from './types'
 
 import { createFormatters } from './formatters'
@@ -20,19 +20,20 @@ import {
   createFormatDisplayName,
   createFormatList,
   createFormatMessage,
-  createFormatMessageParts,
   createFormatNumber,
   createFormatPlural,
   createFormatRelativeTime,
   createFormatTime,
   createFormatDuration,
 } from './functions'
+import { createFormatRich } from './rich'
 
 export interface KanjouInstance {
   locale: Locale
   t: FormatMessage
+  rich: FormatRich
+  formatRich: FormatRich
   formatMessage: FormatMessage
-  parts: FormatMessageParts
   formatters: Formatters
   formatDate: FormatDate
   formatTime: FormatTime
@@ -49,16 +50,19 @@ export function createKanjouInstance(
   messages: Record<string, Message>,
   locale: Locale,
   options?: MessageFormatOptions,
+  components?: RichComponents,
 ): KanjouInstance {
   const formatters = createFormatters(cache)
-  const formatMessage = createFormatMessage(cache, messages, locale, options)
+  const formatMessage = createFormatMessage(cache.messages, messages, locale, options)
+  const formatRich = createFormatRich(cache.messages, messages, locale, options, components)
 
   return {
     locale,
     formatters,
-    formatMessage,
     t: formatMessage,
-    parts: createFormatMessageParts(cache, messages, locale, options),
+    rich: formatRich,
+    formatRich,
+    formatMessage,
     formatDate: createFormatDate(formatters.getDateTimeFormat, locale),
     formatTime: createFormatTime(formatters.getDateTimeFormat, locale),
     formatNumber: createFormatNumber(formatters.getNumberFormat, locale),

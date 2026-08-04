@@ -1,12 +1,12 @@
 import type { ReactNode } from 'react'
 
-import type { FormattableDuration } from '../functions'
+import type { Duration } from '../functions'
 
 import { useKanjou } from '../react'
 
 export interface KanjouDurationProps {
   options?: Intl.DurationFormatOptions
-  duration: FormattableDuration
+  duration: Duration
 }
 
 export function KanjouDuration(props: KanjouDurationProps): ReactNode {

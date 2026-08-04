@@ -2,6 +2,8 @@ rich text
 cli + extract
 namespacing
 
+also examples react-vite-plugin
+
 ## Configuration
 
 ### `kanjou.config.ts`

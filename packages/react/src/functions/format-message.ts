@@ -18,7 +18,7 @@ export interface FormatMessage {
 }
 
 function formatMessage<Key extends MessageKey>(
-  cache: KanjouCache,
+  cache: KanjouCache['messages'],
   messages: Record<string, Message>,
   locale: Locale,
   key: Key,
@@ -28,7 +28,7 @@ function formatMessage<Key extends MessageKey>(
   const message = messages[key]
   if (!message) return key
 
-  const formatter = cache.messages.getOrInsertComputed(
+  const formatter = cache.getOrInsertComputed(
     `${locale}:${key}`,
     () => new MessageFormat(locale, message, options as any),
   )
@@ -44,27 +44,8 @@ export interface FormatMessageParts {
   unsafe: (key: any, values?: Record<string, any>) => MessagePart<string>[]
 }
 
-function formatMessageParts<Key extends MessageKey>(
-  cache: KanjouCache,
-  messages: Record<string, Message>,
-  locale: Locale,
-  key: Key,
-  values?: MessageValues<Key>,
-  options?: MessageFormatOptions,
-): MessagePart<InferPartsType<Key>>[] {
-  const message = messages[key]
-  if (!message) return [{ type: 'text', value: key }]
-
-  const formatter = cache.messages.getOrInsertComputed(
-    `${locale}:${key}`,
-    () => new MessageFormat(locale, message, options as any),
-  )
-
-  return formatter.formatToParts(values)
-}
-
 export function createFormatMessage(
-  cache: KanjouCache,
+  cache: KanjouCache['messages'],
   messages: Record<string, Message>,
   locale: Locale,
   options?: MessageFormatOptions,
@@ -74,17 +55,4 @@ export function createFormatMessage(
   t.unsafe = (key, values) => formatMessage(cache, messages, locale, key, values, options)
 
   return t
-}
-
-export function createFormatMessageParts(
-  cache: KanjouCache,
-  messages: Record<string, Message>,
-  locale: Locale,
-  options?: MessageFormatOptions,
-): FormatMessageParts {
-  const parts: FormatMessageParts = (key, values) =>
-    formatMessageParts(cache, messages, locale, key, values, options)
-  parts.unsafe = (key, values) => formatMessageParts(cache, messages, locale, key, values, options)
-
-  return parts
 }

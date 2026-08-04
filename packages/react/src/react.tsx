@@ -3,6 +3,7 @@ import type { Context, ReactNode } from 'react'
 import { createContext, use, useMemo, useRef } from 'react'
 
 import type { KanjouInstance } from './instance'
+import type { RichComponents } from './rich'
 import type { Functions, Message, MessageFormatOptions } from './types'
 
 import { createCache } from './cache'
@@ -17,12 +18,14 @@ export interface KanjouProviderProps {
   locale: string
   messages: Record<string, Message>
   functions?: Functions
+  components?: RichComponents
   options?: Omit<MessageFormatOptions, 'functions'>
 }
 
 export function KanjouProvider({
   children,
   functions,
+  components,
   options,
   locale,
   messages,
@@ -31,7 +34,7 @@ export function KanjouProvider({
   const _options = useMemo(() => ({ ...options, functions }), [])
 
   const contextValue = useMemo(
-    () => createKanjouInstance(cacheRef.current, messages, locale, _options),
+    () => createKanjouInstance(cacheRef.current, messages, locale, _options, components),
     [locale, messages],
   )
 
