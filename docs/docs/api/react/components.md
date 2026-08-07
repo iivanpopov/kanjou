@@ -1,5 +1,6 @@
 ---
 title: Components
+render_with_liquid: false
 ---
 
 # Formatting Components

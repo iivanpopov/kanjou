@@ -1,5 +1,6 @@
 ---
 title: Functions
+render_with_liquid: false
 ---
 
 # Functions
