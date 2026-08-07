@@ -112,5 +112,6 @@ export default defineConfig({
       '/examples/': sidebarsExamples(),
     },
   },
+  base: '/kanjou/',
   titleTemplate: ':title - Kanjou',
 })
