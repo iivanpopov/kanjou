@@ -2,10 +2,13 @@ packages:
   - './packages/*'
   - './examples/*'
   - './shared'
+  - './docs'
 
 allowBuilds:
+  esbuild: true
   lefthook: true
   sharp: false
+  vue-demi: true
 
 catalog:
   '@types/node': ^26.1.1
