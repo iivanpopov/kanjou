@@ -19,12 +19,16 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
+
       - uses: pnpm/setup@v2
         with:
           version: 11
           cache: true
+
       - run: pnpm i --frozen-lockfile
+
       - run: pnpm --filter docs build
+
       - uses: actions/upload-pages-artifact@v3
         with:
           path: docs/.vitepress/dist
