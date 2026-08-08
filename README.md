@@ -1,4 +1,10 @@
-Internationalization for React powered by [MessageFormat 2](https://messageformat.unicode.org). **Kanjou** is not supposed to mean something. Just a _random_ japanese word.
+<div align="center">
+  <img src="https://raw.githubusercontent.com/iivanpopov/kanjou/dev/docs/public/logo.svg" alt="Project Logo">
+</div>
+
+Internationalization for React powered by [MessageFormat 2](https://messageformat.unicode.org).
+
+> **Kanjou** is not supposed to mean something. Just a _random_ japanese word.
 
 ## Quick Start
 
