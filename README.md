@@ -32,8 +32,9 @@ import en from './locales/en'
 
 function App() {
   const { t } = useKanjou()
+  //                       ⌄ fully typed values
   return <p>{t('apples', { count: 3 })}</p>
-  //                  ^ fully typed key  ^ typed variables
+  //           ^ fully typed key
 }
 
 createRoot(document.getElementById('root')!).render(
