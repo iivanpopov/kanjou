@@ -8,5 +8,5 @@ export interface KanjouRelativeTimeProps extends ClientProps {
 }
 
 export function KanjouRelativeTime(props: KanjouRelativeTimeProps): ReactNode {
-  return props.formatRelativeTime(props.value, props.options)
+  return props.formatRelativeTime(props.value, props.unit, props.options)
 }

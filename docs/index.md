@@ -4,22 +4,28 @@ layout: home
 hero:
   name: 'Kanjou'
   text: 'Internationalization'
-  tagline: 'Next-generation i18n for React powered by MF2 and E2E type safety.'
+  tagline: 'Type-safe React i18n powered by MessageFormat 2'
+  image:
+    src: /logo.svg
+    alt: Project Logo
   actions:
     - theme: brand
       text: Get Started
-      link: /docs
+      link: /introduction/getting-started
     - theme: alt
       text: View on GitHub
       link: https://github.com/iivanpopov/kanjou
 features:
-  - icon: 🎯
+  - icon: 🌐
     title: MessageFormat 2
-    details: Built on the latest MF2 specification with native support for custom functions, tags, and formatting rules.
+    details: Built on the latest MF2 specification with native support for custom functions and tags.
+  - icon: 🛡️
+    title: Type Safety
+    details: Full TypeScript integration providing autocompletion and compile-time validation for keys and values.
+  - icon: 🛠️
+    title: Easy to use
+    details: Basically no config is needed to start using Kanjou. Just load your translations and here you are.
   - icon: ⚛️
     title: React Components
-    details: Embed React elements and custom UI components directly inside message templates effortlessly.
-  - icon: 🛡️
-    title: E2E Type Safety
-    details: Full TypeScript integration providing autocompletion and compile-time validation for keys and variables.
+    details: Use components to match JSX code style. MF2 tags are supported through rich text feature.
 ---

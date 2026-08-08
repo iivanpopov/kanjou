@@ -1,8 +1,8 @@
-import type { PrettierOptions } from '../format'
+import type { PrettierOptions } from '../prettier'
 
-import { format } from '../format'
 import { filterLocaleFiles, loadFile, readdir, writeFile } from '../io'
-import { compileLocalesDts, compileVirtualDts } from './compile'
+import { format } from '../prettier'
+import { compileLocalesDts, VIRTUAL_DTS } from './compile'
 
 export interface WriteLocalesDtsOptions {
   baseLocale: string
@@ -30,6 +30,6 @@ export interface WriteVirtualDtsOptions {
 }
 
 export async function writeVirtualDts(virtualPath: string, options: WriteVirtualDtsOptions) {
-  const formattedDts = await format(compileVirtualDts(), options.prettier)
+  const formattedDts = await format(VIRTUAL_DTS, options.prettier)
   await writeFile(virtualPath, formattedDts, { mkdir: { recursive: true } })
 }

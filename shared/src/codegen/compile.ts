@@ -146,7 +146,3 @@ declare module 'virtual:kanjou/locales' {
   const locales: Record<import('@kanjou/react').Locale, () => Promise<Record<string, import('@kanjou/react').Message>>>
   export default locales
 }`
-
-export function compileVirtualDts(): string {
-  return VIRTUAL_DTS
-}

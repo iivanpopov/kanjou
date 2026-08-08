@@ -1,6 +1,7 @@
 export * from './date-time'
 export * from './duration'
 export * from './list'
+export * from './message'
 export * from './number'
 export * from './plural'
 export * from './relative-time'

@@ -5,7 +5,7 @@ import { MessageFormat } from 'messageformat'
 import { createElement, Fragment } from 'react'
 
 import type { KanjouCache } from './cache'
-import type { Locale, Message, MessageFormatOptions, MessageKey, MessageValues } from './types'
+import type { Locale, Message, MessageFormatOptions, MessageId, MessageValues } from './types'
 
 export type RichComponentProps<Props extends Record<string, any> = Record<string, any>> = {
   children?: ReactNode
@@ -18,7 +18,7 @@ export type RichComponent<Props extends Record<string, any> = Record<string, any
 export type RichComponents = Record<string, RichComponent<any>>
 
 export interface FormatRich {
-  <Key extends MessageKey>(key: Key, values?: MessageValues<Key>): ReactNode
+  <Id extends MessageId>(id: Id, values?: MessageValues<Id>): ReactNode
 }
 
 type Part = MessagePart<string>
@@ -96,12 +96,12 @@ export function createFormatRich(
   options?: MessageFormatOptions,
   components?: RichComponents,
 ): FormatRich {
-  return (key, values) => {
-    const message = messages[key]
-    if (!message) return key
+  return (id, values) => {
+    const message = messages[id]
+    if (!message) return id
 
     const formatter = cache.getOrInsertComputed(
-      `${locale}:${key}`,
+      `${locale}:${id}`,
       () => new MessageFormat(locale, message, options as any),
     )
 

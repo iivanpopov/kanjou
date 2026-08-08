@@ -2,14 +2,14 @@ import type { ReactNode } from 'react'
 
 import type { KanjouRichProps as ClientProps } from '../../components/rich'
 import type { FormatRich } from '../../rich'
-import type { MessageKey } from '../../types'
+import type { MessageId } from '../../types'
 
-export interface KanjouRichProps<Key extends MessageKey = MessageKey> extends ClientProps<Key> {
+export interface KanjouRichProps<Id extends MessageId = MessageId> extends ClientProps<Id> {
   formatRich: FormatRich
 }
 
-export function KanjouRich<Key extends MessageKey = MessageKey>(
-  props: KanjouRichProps<Key>,
+export function KanjouRich<Id extends MessageId = MessageId>(
+  props: KanjouRichProps<Id>,
 ): ReactNode {
   return props.formatRich(props.id, props.values)
 }

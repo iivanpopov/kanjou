@@ -7,8 +7,8 @@ import path from 'node:path'
 import type { ParsedPath } from '#/shared/io'
 
 import { compileMessages, parseMessages } from '#/shared/codegen'
-import { format } from '#/shared/format'
 import { filterLocaleFiles, loadFile, readdir, writeFile } from '#/shared/io'
+import { format } from '#/shared/prettier'
 
 import { context } from '../cli'
 

@@ -1,15 +1,15 @@
 import type { ReactNode } from 'react'
 
-import type { MessageKey, MessageValues } from '../types'
+import type { MessageId, MessageValues } from '../types'
 
 import { useKanjou } from '../react'
 
-export interface KanjouRichProps<Key extends MessageKey = MessageKey> {
-  id: Key
-  values?: MessageValues<Key>
+export interface KanjouRichProps<Id extends MessageId = MessageId> {
+  id: Id
+  values?: MessageValues<Id>
 }
 
-export function KanjouRich<Key extends MessageKey>(props: KanjouRichProps<Key>): ReactNode {
+export function KanjouRich<Id extends MessageId>(props: KanjouRichProps<Id>): ReactNode {
   const { formatRich } = useKanjou()
   return formatRich(props.id, props.values)
 }

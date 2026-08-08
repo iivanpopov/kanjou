@@ -1,3 +1,5 @@
+import type { JitiResolveOptions } from 'jiti'
+
 import { createJiti } from 'jiti'
 import fs from 'node:fs/promises'
 import path from 'node:path'
@@ -6,9 +8,10 @@ import type { ParsedPath } from './path'
 
 import { parse } from './path'
 
-export type FsWriteFileParams = Parameters<typeof fs.writeFile>
-export type WriteFileData = FsWriteFileParams[1]
-export type WriteFileOptions = FsWriteFileParams[2] & { mkdir?: boolean | { recursive: boolean } }
+export type WriteFileData = Parameters<typeof fs.writeFile>[1]
+export type WriteFileOptions = Parameters<typeof fs.writeFile>[2] & {
+  mkdir?: boolean | { recursive: boolean }
+}
 
 export async function writeFile(file: string, data: WriteFileData, options?: WriteFileOptions) {
   if (typeof options?.mkdir === 'boolean' && options?.mkdir) {
@@ -27,16 +30,16 @@ export async function readdir(dir: string) {
 
     const parsed = path.parse(absolute)
 
-    Object.assign(parsed, { absolute, relative })
-    return parsed as ParsedPath
+    return Object.assign(parsed, { absolute, relative })
   })
 }
 
 const jiti = createJiti(import.meta.url)
 
-export async function loadFile<T = unknown>(
+export async function loadFile<Value = unknown>(
   localeFile: string | ParsedPath,
-): Promise<T | undefined> {
+  options?: JitiResolveOptions,
+): Promise<Value | undefined> {
   const file = typeof localeFile === 'string' ? parse(localeFile) : localeFile
-  return jiti.import<T>(file.absolute, { default: true })
+  return jiti.import<Value>(file.absolute, { default: true, ...options })
 }

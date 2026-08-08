@@ -1,19 +1,21 @@
 {
   "name": "kanjou",
+  "private": true,
   "license": "ISC",
   "author": "Ivan Popov <iivanpopov@proton.me>",
   "type": "module",
   "scripts": {
-    "build": "pnpm -r build",
+    "build": "pnpm --filter \"./packages/*\" build",
     "fmt": "oxfmt",
     "lint": "oxlint",
     "prepare": "lefthook install"
   },
   "devDependencies": {
+    "@changesets/cli": "^2.31.1",
     "@types/node": "catalog:",
     "lefthook": "^2.1.10",
-    "oxfmt": "^0.60.0",
-    "oxlint": "^1.75.0",
+    "oxfmt": "^0.62.0",
+    "oxlint": "^1.77.0",
     "oxlint-tsgolint": "^7.0.2001",
     "typescript": "catalog:tooling"
   }
