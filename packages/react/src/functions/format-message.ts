@@ -1,8 +1,6 @@
 import type { MessagePart } from 'messageformat'
 
-import { MessageFormat } from 'messageformat'
-
-import type { KanjouCache } from '../cache'
+import type { Formatters } from '../formatters'
 import type {
   Locale,
   Message,
@@ -17,8 +15,8 @@ export interface FormatMessage {
   unsafe: (id: any, values?: Record<string, any>) => string
 }
 
-function formatMessage<Id extends MessageId>(
-  cache: KanjouCache['messages'],
+export function formatMessage<Id extends MessageId>(
+  getMessageFormat: Formatters['getMessageFormat'],
   messages: Record<string, Message>,
   locale: Locale,
   id: Id,
@@ -28,10 +26,7 @@ function formatMessage<Id extends MessageId>(
   const message = messages[id]
   if (!message) return id
 
-  const formatter = cache.getOrInsertComputed(
-    `${locale}:${id}`,
-    () => new MessageFormat(locale, message, options as any),
-  )
+  const formatter = getMessageFormat(locale, message, options)
 
   return formatter.format(values)
 }
@@ -42,14 +37,14 @@ export interface FormatMessageParts {
 }
 
 export function createFormatMessage(
-  cache: KanjouCache['messages'],
+  getMessageFormat: Formatters['getMessageFormat'],
   messages: Record<string, Message>,
   locale: Locale,
   options?: MessageFormatOptions,
 ): FormatMessage {
   const t: FormatMessage = (id, values) =>
-    formatMessage(cache, messages, locale, id, values, options)
-  t.unsafe = (id, values) => formatMessage(cache, messages, locale, id, values, options)
+    formatMessage(getMessageFormat, messages, locale, id, values, options)
+  t.unsafe = (id, values) => formatMessage(getMessageFormat, messages, locale, id, values, options)
 
   return t
 }

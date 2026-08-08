@@ -3,23 +3,21 @@ import type { Context, ReactNode } from 'react'
 import { createContext, use, useMemo, useRef } from 'react'
 
 import type { KanjouInstance } from './instance'
-import type { RichComponents } from './rich'
+import type { RichComponent } from './rich'
 import type { Functions, Message, MessageFormatOptions } from './types'
 
 import { createCache } from './cache'
 import { createKanjouInstance } from './instance'
 
-export type KanjouContextValue = KanjouInstance
-
-export const KanjouContext: Context<KanjouContextValue> = createContext({} as KanjouContextValue)
+export const KanjouContext: Context<KanjouInstance> = createContext({} as KanjouInstance)
 
 export interface KanjouProviderProps {
   children: ReactNode
   locale: string
   messages: Record<string, Message>
-  functions?: Functions
-  components?: RichComponents
   options?: Omit<MessageFormatOptions, 'functions'>
+  functions?: Functions
+  components?: Record<string, RichComponent>
 }
 
 export function KanjouProvider({
@@ -34,15 +32,16 @@ export function KanjouProvider({
   const _options = useMemo(() => ({ ...options, functions }), [])
 
   const contextValue = useMemo(
-    () => createKanjouInstance(cacheRef.current, messages, locale, _options, components),
+    () =>
+      cacheRef.current.instances.getOrInsertComputed(locale, () =>
+        createKanjouInstance(cacheRef.current, messages, locale, _options, components),
+      ),
     [locale, messages],
   )
 
   return <KanjouContext value={contextValue}>{children}</KanjouContext>
 }
 
-export type UseKanjouReturn = KanjouInstance
-
-export function useKanjou(): UseKanjouReturn {
+export function useKanjou(): KanjouInstance {
   return use(KanjouContext)
 }

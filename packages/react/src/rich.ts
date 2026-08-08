@@ -1,10 +1,9 @@
 import type { MessageMarkupPart, MessagePart } from 'messageformat'
 import type { ReactNode } from 'react'
 
-import { MessageFormat } from 'messageformat'
 import { createElement, Fragment } from 'react'
 
-import type { KanjouCache } from './cache'
+import type { Formatters } from './formatters'
 import type { Locale, Message, MessageFormatOptions, MessageId, MessageValues } from './types'
 
 export type RichComponentProps<Props extends Record<string, any> = Record<string, any>> = {
@@ -15,37 +14,30 @@ export type RichComponent<Props extends Record<string, any> = Record<string, any
   props: RichComponentProps<Props>,
 ) => ReactNode
 
-export type RichComponents = Record<string, RichComponent<any>>
-
 export interface FormatRich {
   <Id extends MessageId>(id: Id, values?: MessageValues<Id>): ReactNode
 }
 
-type Part = MessagePart<string>
-
-function isMarkup(part: Part): part is MessageMarkupPart {
+function isMarkup(part: MessagePart<string>): part is MessageMarkupPart {
   return part.type === 'markup' && 'kind' in part
 }
 
-function toText(part: Part): string {
-  if ('value' in part && part.value !== null) {
-    return typeof part.value === 'string' ? part.value : String(part.value as any)
-  }
+function toText(part: MessagePart<string>): string {
+  if ('value' in part && part.value !== null) return String(part.value as any)
   return ''
 }
 
-function toChildren(nodes: ReactNode[]): ReactNode {
-  if (nodes.length === 0) return ''
+function toNode(nodes: ReactNode[]): ReactNode {
+  if (nodes.length === 0) return null
   if (nodes.length === 1) return nodes[0]
-  return createElement(Fragment, null, ...nodes)
+  return createElement(Fragment, null, nodes)
 }
 
-// review ai slop
 function formatRich(
-  parts: Part[],
+  parts: MessagePart<string>[],
   index: number,
   nested: boolean,
-  components?: RichComponents,
+  components?: Record<string, RichComponent<any>>,
 ): [ReactNode[], number] {
   const nodes: ReactNode[] = []
 
@@ -59,6 +51,7 @@ function formatRich(
 
     if (isMarkup(part)) {
       const { kind, name } = part
+      const render = components?.[name]
 
       if (kind === 'close') {
         if (nested) return [nodes, index + 1]
@@ -67,17 +60,16 @@ function formatRich(
       }
 
       if (kind === 'standalone') {
-        const render = components?.[name]
-        const props = part.options ? { ...part.options } : {}
-        nodes.push(render ? render(props) : null)
+        nodes.push(render?.(part.options))
         index++
         continue
       }
 
       const [children, next] = formatRich(parts, index + 1, true, components)
-      const render = components?.[name]
-      const props = { children: toChildren(children), ...part.options }
-      nodes.push(render ? render(props) : toChildren(children))
+
+      const _children = toNode(children)
+      nodes.push(render?.({ ...part.options, children: _children }) ?? _children)
+
       index = next
       continue
     }
@@ -90,23 +82,20 @@ function formatRich(
 }
 
 export function createFormatRich(
-  cache: KanjouCache['messages'],
+  getMessageFormat: Formatters['getMessageFormat'],
   messages: Record<string, Message>,
   locale: Locale,
   options?: MessageFormatOptions,
-  components?: RichComponents,
+  components?: Record<string, RichComponent<any>>,
 ): FormatRich {
   return (id, values) => {
     const message = messages[id]
     if (!message) return id
 
-    const formatter = cache.getOrInsertComputed(
-      `${locale}:${id}`,
-      () => new MessageFormat(locale, message, options as any),
-    )
+    const formatter = getMessageFormat(locale, message, options)
 
     const parts = formatter.formatToParts(values)
     const [nodes] = formatRich(parts, 0, false, components)
-    return toChildren(nodes)
+    return toNode(nodes)
   }
 }

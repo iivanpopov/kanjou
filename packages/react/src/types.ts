@@ -1,4 +1,4 @@
-import type { Model, MessageFormatOptions as MfOptions } from 'messageformat'
+import type { MessageFormat, Model, MessageFormatOptions as MfOptions } from 'messageformat'
 import type { MessageFunctionContext, MessageValue } from 'messageformat/functions'
 
 export interface Register {}
@@ -37,6 +37,12 @@ export type MessageFormatOptions<
 > = Omit<MfOptions<MessageType, PartsType>, 'functions'> & {
   functions?: Functions
 }
+
+export type MessageFormatFactory = (
+  locale: string,
+  message: string | Message,
+  options?: MessageFormatOptions,
+) => MessageFormat
 
 export type NumericInput =
   | number

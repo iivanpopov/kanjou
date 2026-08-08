@@ -3,5 +3,5 @@
 export { KanjouProvider, useKanjou } from './react'
 export * from './components'
 export type * from './types'
-export type { RichComponent, RichComponentProps, RichComponents, FormatRich as Rich } from './rich'
-export type { KanjouContextValue, KanjouProviderProps, UseKanjouReturn } from './react'
+export type { RichComponent, RichComponentProps } from './rich'
+export type { KanjouProviderProps, KanjouContext } from './react'

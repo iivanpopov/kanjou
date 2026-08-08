@@ -1,5 +1,4 @@
 import type { KanjouCache } from './cache'
-import type { Formatters } from './formatters'
 import type {
   FormatDate,
   FormatDisplayName,
@@ -11,7 +10,7 @@ import type {
   FormatDuration,
   FormatMessage,
 } from './functions'
-import type { FormatRich, RichComponents } from './rich'
+import type { FormatRich, RichComponent } from './rich'
 import type { MessageFormatOptions, Message, Locale } from './types'
 
 import { createFormatters } from './formatters'
@@ -34,7 +33,6 @@ export interface KanjouInstance {
   rich: FormatRich
   formatRich: FormatRich
   formatMessage: FormatMessage
-  formatters: Formatters
   formatDate: FormatDate
   formatTime: FormatTime
   formatNumber: FormatNumber
@@ -50,18 +48,24 @@ export function createKanjouInstance(
   messages: Record<string, Message>,
   locale: Locale,
   options?: MessageFormatOptions,
-  components?: RichComponents,
+  components?: Record<string, RichComponent>,
 ): KanjouInstance {
   const formatters = createFormatters(cache)
-  const formatMessage = createFormatMessage(cache.messages, messages, locale, options)
-  const formatRich = createFormatRich(cache.messages, messages, locale, options, components)
+  const formatMessage = createFormatMessage(formatters.getMessageFormat, messages, locale, options)
+  const formatRich = createFormatRich(
+    formatters.getMessageFormat,
+    messages,
+    locale,
+    options,
+    components,
+  )
 
   return {
     locale,
-    formatters,
+
     t: formatMessage,
     rich: formatRich,
-    formatRich,
+
     formatMessage,
     formatDate: createFormatDate(formatters.getDateTimeFormat, locale),
     formatTime: createFormatTime(formatters.getDateTimeFormat, locale),
@@ -71,5 +75,6 @@ export function createKanjouInstance(
     formatDisplayName: createFormatDisplayName(formatters.getDisplayNames, locale),
     formatRelativeTime: createFormatRelativeTime(formatters.getRelativeTimeFormat, locale),
     formatDuration: createFormatDuration(formatters.getDurationFormat, locale),
+    formatRich,
   }
 }
