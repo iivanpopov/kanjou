@@ -32,9 +32,9 @@ import en from './locales/en'
 
 function App() {
   const { t } = useKanjou()
-  //                       ⌄ fully typed values
+  //           ⌄ fully typed key
   return <p>{t('apples', { count: 3 })}</p>
-  //           ^ fully typed key
+  //                       ^ fully typed values
 }
 
 createRoot(document.getElementById('root')!).render(
@@ -47,3 +47,9 @@ createRoot(document.getElementById('root')!).render(
 ## Documentation
 
 The documentation is available [here](https://iivanpopov.github.io/kanjou)
+
+## License
+
+[ISC](https://github.com/iivanpopov/kanjou/blob/main/LICENSE)
+
+Copyright © 2026-PRESENT [Ivan Popov](https://github.com/iivanpopov)
