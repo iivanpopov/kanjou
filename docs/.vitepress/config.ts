@@ -28,6 +28,9 @@ export default defineConfig({
       '/guide/': sidebarGuide(),
       '/reference/': sidebarReference(),
     },
+    outline: {
+      level: [2, 3],
+    },
   },
   base: '/kanjou/',
   markdown: {

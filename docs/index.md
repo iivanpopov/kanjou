@@ -18,14 +18,20 @@ hero:
 features:
   - icon: 🌐
     title: MessageFormat 2
-    details: Built on the latest MF2 specification with native support for custom functions and tags.
+    details: Built on the Unicode MF2 standard. Native pluralization, selection, and custom function support out of the box.
   - icon: 🛡️
-    title: Type Safety
-    details: Full TypeScript integration providing autocompletion and compile-time validation for keys and values.
+    title: Fully Type-Safe
+    details: Autocomplete on keys, compile-time validation of values, and inferred types for custom functions.
+  - icon: 🎨
+    title: Rich Text
+    details: Map MF2 markup tags to React components. Wrap translations in any custom component.
+  - icon: 📦
+    title: Browser API
+    details: Format dates, times, numbers, currencies, durations, lists, and relative times via the native Intl API.
   - icon: 🛠️
-    title: Easy to use
-    details: Basically no config is needed to start using Kanjou. Just load your translations and here you are.
-  - icon: ⚛️
-    title: React Components
-    details: Use components to match JSX code style. MF2 tags are supported through rich text feature.
+    title: CLI
+    details: Pre-compile messages to AST bundles, generate .d.ts declarations, and find missing, unused, or divergent keys across locales.
+  - icon: 🌍
+    title: SSR Ready
+    details: Works with Next.js and TanStack Start out of the box. Server and client rendering with no extra configuration.
 ---
