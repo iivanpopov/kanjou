@@ -3,8 +3,8 @@ import type { ReactNode } from 'react'
 
 import { createElement, Fragment } from 'react'
 
-import type { Formatters } from './formatters'
-import type { Locale, Message, MessageFormatOptions, MessageId, MessageValues } from './types'
+import type { FormatMessageParts } from '../functions'
+import type { MessageId, MessageValues } from '../types'
 
 export type RichComponentProps<Props extends Record<string, any> = Record<string, any>> = {
   children?: ReactNode
@@ -33,7 +33,7 @@ function toNode(nodes: ReactNode[]): ReactNode {
   return createElement(Fragment, null, nodes)
 }
 
-function formatRich(
+export function formatRich(
   parts: MessagePart<string>[],
   index: number,
   nested: boolean,
@@ -82,19 +82,11 @@ function formatRich(
 }
 
 export function createFormatRich(
-  getMessageFormat: Formatters['getMessageFormat'],
-  messages: Record<string, Message>,
-  locale: Locale,
-  options?: MessageFormatOptions,
+  formatMessageParts: FormatMessageParts,
   components?: Record<string, RichComponent<any>>,
 ): FormatRich {
   return (id, values) => {
-    const message = messages[id]
-    if (!message) return id
-
-    const formatter = getMessageFormat(locale, message, options)
-
-    const parts = formatter.formatToParts(values)
+    const parts = formatMessageParts(id, values)
     const [nodes] = formatRich(parts, 0, false, components)
     return toNode(nodes)
   }

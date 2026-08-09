@@ -9,8 +9,8 @@ import type {
   FormatTime,
   FormatDuration,
   FormatMessage,
+  FormatMessageParts,
 } from './functions'
-import type { FormatRich, RichComponent } from './rich'
 import type { MessageFormatOptions, Message, Locale } from './types'
 
 import { createFormatters } from './formatters'
@@ -19,20 +19,19 @@ import {
   createFormatDisplayName,
   createFormatList,
   createFormatMessage,
+  createFormatMessageParts,
   createFormatNumber,
   createFormatPlural,
   createFormatRelativeTime,
   createFormatTime,
   createFormatDuration,
 } from './functions'
-import { createFormatRich } from './rich'
 
 export interface KanjouInstance {
   locale: Locale
   t: FormatMessage
-  rich: FormatRich
-  formatRich: FormatRich
   formatMessage: FormatMessage
+  formatMessageParts: FormatMessageParts
   formatDate: FormatDate
   formatTime: FormatTime
   formatNumber: FormatNumber
@@ -48,25 +47,23 @@ export function createKanjouInstance(
   messages: Record<string, Message>,
   locale: Locale,
   options?: MessageFormatOptions,
-  components?: Record<string, RichComponent>,
 ): KanjouInstance {
   const formatters = createFormatters(cache)
   const formatMessage = createFormatMessage(formatters.getMessageFormat, messages, locale, options)
-  const formatRich = createFormatRich(
+  const formatMessageParts = createFormatMessageParts(
     formatters.getMessageFormat,
     messages,
     locale,
     options,
-    components,
   )
 
   return {
     locale,
 
     t: formatMessage,
-    rich: formatRich,
 
     formatMessage,
+    formatMessageParts,
     formatDate: createFormatDate(formatters.getDateTimeFormat, locale),
     formatTime: createFormatTime(formatters.getDateTimeFormat, locale),
     formatNumber: createFormatNumber(formatters.getNumberFormat, locale),
@@ -75,6 +72,5 @@ export function createKanjouInstance(
     formatDisplayName: createFormatDisplayName(formatters.getDisplayNames, locale),
     formatRelativeTime: createFormatRelativeTime(formatters.getRelativeTimeFormat, locale),
     formatDuration: createFormatDuration(formatters.getDurationFormat, locale),
-    formatRich,
   }
 }

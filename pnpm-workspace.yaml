@@ -15,6 +15,7 @@ overrides:
 catalog:
   '@types/node': ^26.1.2
   consola: ^3.4.2
+  messageformat: ^4.0.0
   prettier: ^3.9.6
 
 catalogs:

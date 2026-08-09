@@ -7,7 +7,6 @@ import type { KanjouMessageProps } from '../../components/message'
 import type { KanjouNumberProps } from '../../components/number'
 import type { KanjouPluralProps } from '../../components/plural'
 import type { KanjouRelativeTimeProps } from '../../components/relative-time'
-import type { KanjouRichProps } from '../../components/rich'
 import type { KanjouInstance } from '../../instance'
 import type { MessageId } from '../../types'
 
@@ -18,7 +17,6 @@ import { KanjouMessage } from './message'
 import { KanjouNumber } from './number'
 import { KanjouPlural } from './plural'
 import { KanjouRelativeTime } from './relative-time'
-import { KanjouRich } from './rich'
 
 export function createComponents(instance: KanjouInstance) {
   return {
@@ -39,9 +37,6 @@ export function createComponents(instance: KanjouInstance) {
     ),
     RelativeTime: (props: KanjouRelativeTimeProps): ReactNode => (
       <KanjouRelativeTime {...props} formatRelativeTime={instance.formatRelativeTime} />
-    ),
-    Rich: <Id extends MessageId>(props: KanjouRichProps<Id>): ReactNode => (
-      <KanjouRich {...props} formatRich={instance.formatRich} />
     ),
     Message: <Id extends MessageId>(props: KanjouMessageProps<Id>): ReactNode => (
       <KanjouMessage {...props} formatMessage={instance.formatMessage} />

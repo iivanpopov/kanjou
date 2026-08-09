@@ -15,7 +15,11 @@ export function variadic<Return>(fn: (...args: any[]) => Return, cache: Cache): 
   return cache.getOrInsertComputed(key, () => fn.apply(null, args))
 }
 
-export function memoize<Factory extends AnyFunction>(factory: Factory, cache: Cache): Factory {
-  const method = factory.length > 1 ? variadic : monadic
-  return method.bind(null, factory, cache) as Factory
+export function memoize<Factory extends AnyFunction>(
+  factory: Factory,
+  cache: Cache,
+  method?: typeof monadic | typeof variadic,
+): Factory {
+  const _method = method ?? (factory.length > 1 ? variadic : monadic)
+  return _method.bind(null, factory, cache) as Factory
 }

@@ -2,7 +2,7 @@ import { MessageFormat } from 'messageformat'
 
 import type { Factory } from '#/shared/types'
 
-import { memoize } from '#/shared/memoize'
+import { memoize, monadic } from '#/shared/memoize'
 
 import type { KanjouCache } from './cache'
 import type { MessageFormatFactory } from './types'
@@ -38,6 +38,7 @@ export function createFormatters(cache: KanjouCache): Formatters {
   const getMessageFormat: MessageFormatFactory = memoize(
     (locale, message, options) => new MessageFormat(locale, message, options as any),
     cache.messages,
+    monadic,
   )
   const getNumberFormat: Factory<typeof Intl.NumberFormat> = memoize(
     (...args) => new Intl.NumberFormat(...args),
