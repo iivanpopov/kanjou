@@ -1,6 +1,7 @@
 import type { DefaultTheme } from 'vitepress'
 
 import { defineConfig } from 'vitepress'
+import { groupIconMdPlugin, groupIconVitePlugin } from 'vitepress-plugin-group-icons'
 
 export default defineConfig({
   title: 'Kanjou',
@@ -20,21 +21,29 @@ export default defineConfig({
     },
     footer: {
       message: 'Released under the ISC License.',
-      copyright: 'Copyright © 2026-present Ivan Popov.',
+      copyright: 'Copyright © 2026-PRESENT Ivan Popov.',
     },
     nav: nav(),
     sidebar: {
-      '/introduction/': sidebar(),
+      '/guide/': sidebarGuide(),
       '/reference/': sidebarReference(),
     },
   },
   base: '/kanjou/',
+  markdown: {
+    config(md) {
+      md.use(groupIconMdPlugin)
+    },
+  },
+  vite: {
+    plugins: [groupIconVitePlugin()],
+  },
 })
 
 function nav(): DefaultTheme.NavItem[] {
   return [
-    { text: 'Introduction', link: '/introduction/getting-started', activeMatch: '/introduction/' },
-    { text: 'Reference', link: '/reference/', activeMatch: '/reference/' },
+    { text: 'Guide', link: '/guide/getting-started', activeMatch: '/guide/' },
+    { text: 'Reference', link: '/reference/react', activeMatch: '/reference/' },
     {
       text: 'v0',
       items: [
@@ -45,21 +54,41 @@ function nav(): DefaultTheme.NavItem[] {
   ]
 }
 
-function sidebar(): DefaultTheme.SidebarItem[] {
+function sidebarGuide(): DefaultTheme.SidebarItem[] {
   return [
     {
       text: 'Introduction',
       items: [
-        { text: 'Philosophy', link: '/introduction/philosophy' },
-        { text: 'Getting Started', link: '/introduction/getting-started' },
-        { text: 'Syntax', link: '/introduction/syntax' },
-        { text: 'TypeScript', link: '/introduction/typescript' },
-        { text: 'Limitations', link: '/introduction/limitations' },
+        { text: 'Philosophy', link: '/guide/philosophy' },
+        { text: 'Getting Started', link: '/guide/getting-started' },
+        { text: 'Syntax', link: '/guide/syntax' },
+        { text: 'TypeScript', link: '/guide/typescript' },
+        { text: 'Limitations', link: '/guide/limitations' },
       ],
     },
+    {
+      text: 'Essentials',
+      items: [
+        { text: 'Client', link: '/guide/client' },
+        { text: 'Server', link: '/guide/server' },
+        { text: 'Components', link: '/guide/components' },
+        { text: 'Vite Plugin', link: '/guide/vite-plugin' },
+        { text: 'CLI', link: '/guide/cli' },
+      ],
+    },
+    { text: 'API Reference', link: '/reference/react' },
   ]
 }
 
 function sidebarReference(): DefaultTheme.SidebarItem[] {
-  return []
+  return [
+    {
+      text: 'Reference',
+      items: [
+        { text: 'React', link: '/reference/react' },
+        { text: 'Vite Plugin', link: '/reference/vite-plugin' },
+        { text: 'CLI', link: '/reference/cli' },
+      ],
+    },
+  ]
 }

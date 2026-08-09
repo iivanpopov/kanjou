@@ -7,8 +7,10 @@ packages:
 allowBuilds:
   esbuild: true
   lefthook: true
-  sharp: false
   vue-demi: true
+
+overrides:
+  vite: catalog:tooling
 
 catalog:
   '@types/node': ^26.1.2
