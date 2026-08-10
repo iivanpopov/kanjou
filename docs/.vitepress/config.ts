@@ -72,8 +72,9 @@ function sidebarGuide(): DefaultTheme.SidebarItem[] {
     {
       text: 'Essentials',
       items: [
-        { text: 'Client', link: '/guide/client' },
-        { text: 'Server', link: '/guide/server' },
+        { text: 'Translation', link: '/guide/translation' },
+        { text: 'Formatters', link: '/guide/formatters' },
+        { text: 'Rich Text', link: '/guide/rich-text' },
         { text: 'Components', link: '/guide/components' },
         { text: 'Vite Plugin', link: '/guide/vite-plugin' },
         { text: 'CLI', link: '/guide/cli' },

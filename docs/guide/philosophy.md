@@ -28,12 +28,4 @@ If you want **any** messages loading feature, you need to implement it _yourself
 
 I've chosen **MF2** for it's simplicity, feature richness. Also **Message Format 2** does support [variables](https://messageformat.unicode.org/docs/reference/variables), [markup](https://messageformat.unicode.org/docs/reference/markup) and [functions](https://messageformat.unicode.org/docs/reference/functions).
 
-```[MF2 Syntax Example]
-.input {$count :number}
-.match $count
-0   {{ No items. }}
-one {{ 1 item. }}
-*   {{ {$count} items. }}
-```
-
 [^1]: **Messages** — translations, just **string-string** object. Or **string-object**, if it is [precompiled](./cli.md#compile).
