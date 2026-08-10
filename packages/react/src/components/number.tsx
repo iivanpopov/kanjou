@@ -1,10 +1,10 @@
 import type { ReactNode } from 'react'
 
-import { useKanjou } from '../react'
+import { useKanjou } from '../context'
 
 export interface KanjouNumberProps {
-  options?: Intl.NumberFormatOptions
   number: number | bigint
+  options?: Intl.NumberFormatOptions
 }
 
 export function KanjouNumber(props: KanjouNumberProps): ReactNode {

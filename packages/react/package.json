@@ -1,6 +1,6 @@
 {
   "name": "@kanjou/react",
-  "version": "0.0.32",
+  "version": "0.1.0",
   "private": false,
   "license": "ISC",
   "author": "Ivan Popov <iivanpopov@proton.me>",
@@ -14,8 +14,8 @@
   "exports": {
     ".": {
       "react-server": {
-        "types": "./dist/server/index.d.mts",
-        "import": "./dist/server/index.mjs"
+        "types": "./dist/server.d.mts",
+        "import": "./dist/server.mjs"
       },
       "default": {
         "types": "./dist/index.d.mts",

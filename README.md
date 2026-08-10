@@ -1,5 +1,5 @@
 <div align="center">
-  <img src="https://raw.githubusercontent.com/iivanpopov/kanjou/dev/docs/public/logo.svg" alt="Project Logo">
+  <img src="https://raw.githubusercontent.com/iivanpopov/kanjou/main/docs/public/logo.svg" alt="Project Logo">
 </div>
 
 Internationalization for React powered by [MessageFormat 2](https://messageformat.unicode.org).
@@ -24,18 +24,13 @@ one  {{You have {$count} apple.}}
 } as const
 ```
 
-Wrap your app with `KanjouProvider` and use the `useKanjou` hook:
+Wrap your app with `KanjouProvider`.
 
 ```tsx
-import { KanjouProvider, useKanjou } from '@kanjou/react'
-import en from './locales/en'
+// main.tsx
+import { KanjouProvider } from '@kanjou/react'
 
-function App() {
-  const { t } = useKanjou()
-  //           ⌄ fully typed key
-  return <p>{t('apples', { count: 3 })}</p>
-  //                       ^ fully typed values
-}
+import en from './locales/en'
 
 createRoot(document.getElementById('root')!).render(
   <KanjouProvider locale="en" messages={en}>
@@ -44,9 +39,23 @@ createRoot(document.getElementById('root')!).render(
 )
 ```
 
+And finally use the `useKanjou` hook:
+
+```tsx
+// app.tsx
+import { useKanjou } from '@kanjou/react'
+
+function App() {
+  const { t } = useKanjou()
+  //           ⌄ fully typed key
+  return <p>{t('apples', { count: 3 })}</p>
+  //                       ^ fully typed values
+}
+```
+
 ## Documentation
 
-The documentation is available [here](https://iivanpopov.github.io/kanjou)
+The documentation is available [here](https://iivanpopov.github.io/kanjou).
 
 ## License
 

@@ -1,6 +1,5 @@
 import type { MessagePart } from 'messageformat'
 
-import type { Formatters } from '../formatters'
 import type {
   Locale,
   Message,
@@ -9,6 +8,7 @@ import type {
   MessageFormatOptions,
   InferPartsType,
 } from '../types'
+import type { Formatters } from './index'
 
 export interface FormatMessage {
   <Id extends MessageId>(id: Id, values?: MessageValues<Id>): string

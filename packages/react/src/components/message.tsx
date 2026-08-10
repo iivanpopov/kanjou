@@ -2,7 +2,7 @@ import type { ReactNode } from 'react'
 
 import type { MessageId, MessageValues } from '../types'
 
-import { useKanjou } from '../react'
+import { useKanjou } from '../context'
 
 export interface KanjouMessageProps<Id extends MessageId = MessageId> {
   id: Id

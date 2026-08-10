@@ -1,10 +1,10 @@
 import type { ReactNode } from 'react'
 
-import { useKanjou } from '../react'
+import { useKanjou } from '../context'
 
 export interface KanjouListProps {
-  options?: Intl.ListFormatOptions
   list: Iterable<string>
+  options?: Intl.ListFormatOptions
 }
 
 export function KanjouList(props: KanjouListProps): ReactNode {

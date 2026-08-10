@@ -3,8 +3,8 @@ import type { ReactNode } from 'react'
 
 import { createElement, Fragment } from 'react'
 
-import type { FormatMessageParts } from '../functions'
 import type { MessageId, MessageValues } from '../types'
+import type { FormatMessageParts } from './format-message'
 
 export type RichComponentProps<Props extends Record<string, any> = Record<string, any>> = {
   children?: ReactNode
@@ -15,7 +15,11 @@ export type RichComponent<Props extends Record<string, any> = Record<string, any
 ) => ReactNode
 
 export interface FormatRich {
-  <Id extends MessageId>(id: Id, values?: MessageValues<Id>): ReactNode
+  <Id extends MessageId>(
+    id: Id,
+    values?: MessageValues<Id>,
+    components?: Record<string, RichComponent>,
+  ): ReactNode
 }
 
 function isMarkup(part: MessagePart<string>): part is MessageMarkupPart {
@@ -38,6 +42,7 @@ export function formatRich(
   index: number,
   nested: boolean,
   components?: Record<string, RichComponent<any>>,
+  overrideComponents?: Record<string, RichComponent<any>>,
 ): [ReactNode[], number] {
   const nodes: ReactNode[] = []
 
@@ -51,7 +56,7 @@ export function formatRich(
 
     if (isMarkup(part)) {
       const { kind, name } = part
-      const render = components?.[name]
+      const render = overrideComponents?.[name] ?? components?.[name]
 
       if (kind === 'close') {
         if (nested) return [nodes, index + 1]
@@ -65,7 +70,7 @@ export function formatRich(
         continue
       }
 
-      const [children, next] = formatRich(parts, index + 1, true, components)
+      const [children, next] = formatRich(parts, index + 1, true, components, overrideComponents)
 
       const _children = toNode(children)
       nodes.push(render?.({ ...part.options, children: _children }) ?? _children)
@@ -85,9 +90,9 @@ export function createFormatRich(
   formatMessageParts: FormatMessageParts,
   components?: Record<string, RichComponent<any>>,
 ): FormatRich {
-  return (id, values) => {
+  return (id, values, overrideComponents) => {
     const parts = formatMessageParts(id, values)
-    const [nodes] = formatRich(parts, 0, false, components)
+    const [nodes] = formatRich(parts, 0, false, components, overrideComponents)
     return toNode(nodes)
   }
 }

@@ -10,7 +10,7 @@ import type {
   FormatDuration,
   FormatMessage,
   FormatMessageParts,
-} from './functions'
+} from './formatters'
 import type { MessageFormatOptions, Message, Locale } from './types'
 
 import { createFormatters } from './formatters'
@@ -25,7 +25,7 @@ import {
   createFormatRelativeTime,
   createFormatTime,
   createFormatDuration,
-} from './functions'
+} from './formatters'
 
 export interface KanjouInstance {
   locale: Locale

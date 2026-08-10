@@ -1,7 +1,9 @@
 'use client'
 
-export { KanjouProvider, useKanjou } from './react'
+export * from './context'
 export * from './components'
 export * from './rich'
+
+export type * from './cache'
+export type * from './instance'
 export type * from './types'
-export type { KanjouProviderProps, KanjouContext } from './react'
