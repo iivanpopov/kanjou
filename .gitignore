@@ -1,5 +1,3 @@
 node_modules/
 dist/
-.next/
-generated/
-docs/.vitepress/cache/
+cache/

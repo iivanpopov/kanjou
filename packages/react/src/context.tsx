@@ -1,6 +1,6 @@
 import type { Context, ReactNode } from 'react'
 
-import { createContext, use, useMemo, useRef } from 'react'
+import { createContext, use, useMemo } from 'react'
 
 import type { KanjouInstance } from './instance'
 import type { Functions, Message, MessageFormatOptions } from './types'
@@ -25,14 +25,12 @@ export function KanjouProvider({
   locale,
   messages,
 }: KanjouProviderProps): ReactNode {
-  const cacheRef = useRef(createCache())
   const _options = useMemo(() => ({ ...options, functions }), [])
 
+  const cache = useMemo(() => createCache(), [])
+
   const contextValue = useMemo(
-    () =>
-      cacheRef.current.instances.getOrInsertComputed(locale, () =>
-        createKanjouInstance(cacheRef.current, messages, locale, _options),
-      ),
+    () => createKanjouInstance(cache, messages, locale, _options),
     [locale],
   )
 

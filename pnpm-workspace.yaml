@@ -13,7 +13,7 @@ overrides:
   vite: catalog:tooling
 
 catalog:
-  '@types/node': ^26.1.2
+  '@types/node': ^26.2.0
   consola: ^3.4.2
   messageformat: ^4.0.0
   prettier: ^3.9.6
@@ -29,4 +29,4 @@ catalogs:
   tooling:
     typescript: ^7.0.2
     tsdown: ^0.22.14
-    vite: ^8.2.1
+    vite: ^8.2.2
