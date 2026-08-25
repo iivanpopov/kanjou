@@ -52,7 +52,7 @@ bun install -D @kanjou/cli @kanjou/vite
 
 ## Using
 
-Define messages using [MF2 syntax](https://messageformat.unicode.org):
+Define messages using [MessageFormat 2 syntax](https://messageformat.unicode.org):
 
 ```ts [locales/en.ts]
 export default {
@@ -127,8 +127,8 @@ export default function Page() {
 
 ## What's next?
 
-- If you are using Vite, checkout the [Vite Plugin](./vite-plugin.md). It provides **virtual modules**[^1] and auto **types generation** with **HMR**.
-- If **NOT** you might need the [CLI](./cli.md) to do the same shit but manually. Should I add watchers myself? Request features through [GitHub Issues](https://github.com/iivanpopov/kanjou/issues).
+- If you are using Vite, check out the [Vite Plugin](./vite-plugin.md). It provides **virtual modules**[^1] and auto **types generation** with **HMR**.
+- Otherwise, you can use the [CLI](./cli.md) to manage translations manually. Feature requests can be submitted through [GitHub Issues](https://github.com/iivanpopov/kanjou/issues).
 - Explore documentation forward, specifically [Limitations](./limitations.md) and [Essentials](./translation.md) to understand the library's fundamentals and features.
 
 [^1]: **Virtual Module** — module that is resolved **dynamically** and actually **does not** exist.

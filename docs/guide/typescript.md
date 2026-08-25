@@ -1,6 +1,10 @@
+---
+title: 'TypeScript'
+---
+
 # TypeScript
 
-Kanjou is built with TypeScript and provides baseline declarations out of the box. However, achieving strict, end-to-end type safety for your translations—where message keys, variables, and locale strings are all statically checked—requires explicitly linking your specific translation data to Kanjou's type system.
+**Kanjou** is built with TypeScript and provides baseline declarations out of the box. However, achieving strict, end-to-end type safety for your translations—where message keys, variables, and locale strings are all statically checked—requires explicitly linking your specific translation data to **Kanjou**'s type system.
 
 ## The `Register` Interface
 
@@ -10,7 +14,7 @@ The core of this type system is a deliberately empty interface named `Register`,
 export interface Register {}
 ```
 
-Kanjou relies on TypeScript's declaration merging. By augmenting this interface within your project, you override the default loose types (where keys are `string` and variables are `any`) with the exact shape of your application's translations.
+**Kanjou** relies on TypeScript's declaration merging. By augmenting this interface within your project, you override the default loose types (where keys are `string` and variables are `any`) with the exact shape of your application's translations.
 
 You can populate three optional properties:
 
@@ -37,7 +41,7 @@ declare module '@kanjou/react' {
 }
 ```
 
-While the manual approach works fine, Kanjou provides tooling to generate and maintain this file automatically via Vite or the CLI.
+While the manual approach works fine, **Kanjou** provides tooling to generate and maintain this file automatically via Vite or the CLI.
 
 ## Generating Types via Vite
 
@@ -60,7 +64,7 @@ export default defineConfig({
 
 The next time you run `vite dev` or `vite build`, the plugin will write a `locales.kanjou.d.ts` file into the `src/types/` directory based on your locale data.
 
-Refer to the [Vite Plugin Reference](https://www.google.com/search?q=/reference/vite-plugin) for advanced configuration options.
+Refer to the [Vite Plugin Reference](../reference/vite-plugin.md) for advanced configuration options.
 
 ## Generating Types via CLI
 
@@ -104,10 +108,9 @@ kanjou generate --locales-dir src/i18n --base-locale en
 
 # Generate only the Register augmentation, skip virtual module types
 kanjou generate --no-virtual
-
 ```
 
-Refer to the [CLI Reference](https://www.google.com/search?q=/reference/cli) for a complete list of flags.
+Refer to the [CLI Reference](../reference/cli.md) for a complete list of flags.
 
 ## The Output
 
@@ -129,13 +132,13 @@ declare module '@kanjou/react' {
 
 As long as this file is picked up by your `tsconfig.json`[^1], your codebase immediately benefits from:
 
-- **Strict message IDs:** Calling `t('appels')` triggers a compiler error.
+- **Strict message IDs:** Calling `t('apples')` triggers a compiler error.
 - **Strict variables:** Calling `t('apples', { count: 'invalid' })` triggers a compiler error.
 - **Strict locales:** Rendering `<KanjouProvider locale="fr">` triggers a compiler error if `fr` is absent from the union.
 
 ## Typing Custom Functions
 
-When implementing [custom formatters](https://www.google.com/search?q=./formatters.md), you can teach Kanjou their expected input shapes by populating the `functions` property on the `Register` interface. This allows `t()` to properly infer variable types for that specific function.
+When implementing [custom formatters](./formatters.md), you can teach **Kanjou** their expected input shapes by populating the `functions` property on the `Register` interface. This allows `t()` to properly infer variable types for that specific function.
 
 ```ts [kanjou.d.ts]
 import type { MessageFunction } from '@kanjou/react'

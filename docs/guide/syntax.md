@@ -2,7 +2,7 @@
 title: 'Syntax'
 ---
 
-# Syntax Guide
+# Syntax
 
 **Kanjou** relies on [MessageFormat 2](https://messageformat.unicode.org). Check out their [official guide](https://messageformat.unicode.org/docs/quick-start) for a deep dive into the mechanics.
 
@@ -72,7 +72,7 @@ When you apply `.match` to a number, the system automatically falls back to CLDR
 .input {$count :number}
 .match $count
 one {{You have {$count} apple.}}
-{{You have {$count} apples.}}
+*   {{You have {$count} apples.}}
 ```
 
 ### Core Time: `:datetime`, `:date`, and `:time`
@@ -91,10 +91,7 @@ This is primarily useful for strict equality checks within a `.match` block:
 .input {$role :string}
 .match $role
 admin {{Hello, admin.}}
-```
-
-```
-{{Hello, user.}}
+*     {{Hello, user.}}
 ```
 
 ### Custom Formatters
@@ -123,4 +120,4 @@ The syntax supports three tag varieties:
 {#bold}{$count}{/bold} items selected. {#star-icon/}
 ```
 
-Keep in mind that markup is strictly distinct from HTML. Kanjou outputs the raw tags without interpreting them. You can learn more about rendering strategies in the [Rich Text](./rich-text.md) guide.
+Keep in mind that markup is strictly distinct from HTML. **Kanjou** outputs the raw tags without interpreting them. You can learn more about rendering strategies in the [Rich Text](./rich-text.md) guide.
