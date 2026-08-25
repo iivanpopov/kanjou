@@ -93,26 +93,33 @@ function App() {
 
 ### Server
 
-For RSC, especially for NextJS, use `defineKanjou` from `@kanjou/react`:
+For RSC, especially for NextJS, use `defineKanjou` from `@kanjou/react/server`.
+
+Pass all your locale messages upfront via the required `messages` option — `defineKanjou` will cache each locale instance on first use so you only need to specify the locale at the call site:
 
 ```ts [lib/kanjou.ts]
-import { defineKanjou } from '@kanjou/react'
+import { defineKanjou } from '@kanjou/react/server'
 
-export const createKanjou = defineKanjou()
+import en from '#/locales/en'
+import uk from '#/locales/uk'
+
+export const createKanjou = defineKanjou({
+  messages: { en, uk },
+})
 ```
 
 ```tsx [app/page.tsx]
 import { createKanjou } from '#/lib/kanjou'
 
-import en from '#/locales/en'
-
 export default function Page() {
-  const { t, Message } = createKanjou('en', en)
+  const { t, Message, Number, DateTime, Duration, List, RelativeTime, Rich } = createKanjou('en')
 
   return (
     <div>
       <p>{t('apples', { count: 3 })}</p>
       <Message id="apples" values={{ count: 5 }} />
+      <Number number={1234567} />
+      <DateTime dateTime={new Date()} />
     </div>
   )
 }

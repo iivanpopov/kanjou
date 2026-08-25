@@ -4,7 +4,7 @@ layout: home
 hero:
   name: 'Kanjou'
   text: 'Internationalization'
-  tagline: 'React intl powered by MessageFormat 2'
+  tagline: 'React Intl Powered by MessageFormat 2'
   image:
     src: /logo.svg
     alt: Project Logo

@@ -17,11 +17,14 @@ import { createCache } from './cache'
 import { createFormatRich } from './formatters'
 import { createKanjouInstance } from './instance'
 
-export interface DefineKanjouOptions {
+export type DefineKanjouMessages = Record<string, Record<string, Message>>
+
+export interface DefineKanjouOptions<Messages extends DefineKanjouMessages> {
   options?: Omit<MessageFormatOptions, 'functions'>
   functions?: Functions
   components?: Record<string, RichComponent<any>>
   cache?: KanjouCache
+  messages: Messages
 }
 
 export type CreateKanjouReturn = {
@@ -35,22 +38,20 @@ export type CreateKanjouReturn = {
   Message: <Id extends MessageId>(props: KanjouMessageProps<Id>) => ReactNode
 } & KanjouInstance
 
-export type DefineKanjouReturn = (
-  locale: Locale,
-  messages: Record<string, Message>,
-) => CreateKanjouReturn
+export type DefineKanjouReturn = (locale: Locale) => CreateKanjouReturn
 
-export function defineKanjou({
+export function defineKanjou<Messages extends DefineKanjouMessages>({
   options,
   functions,
   components,
   cache = createCache(),
-}: DefineKanjouOptions = {}): DefineKanjouReturn {
+  messages,
+}: DefineKanjouOptions<Messages>): DefineKanjouReturn {
   const _options = { ...options, functions }
 
-  return (locale: Locale, messages: Record<string, Message>) =>
+  return (locale: Locale) =>
     cache.instances.getOrInsertComputed(locale, () => {
-      const instance = createKanjouInstance(cache, messages, locale, _options)
+      const instance = createKanjouInstance(cache, messages[locale], locale, _options)
       const formatRich = createFormatRich(instance.formatMessageParts, components)
 
       return {
