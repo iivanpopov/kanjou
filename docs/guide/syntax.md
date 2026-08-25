@@ -2,21 +2,21 @@
 title: 'Syntax'
 ---
 
-# Syntax
+# Syntax Guide
 
-**Kanjou** is using [MessageFormat 2](https://messageformat.unicode.org) under the hood, so refer to their [docs](https://messageformat.unicode.org/docs/quick-start) for detailed view.
+**Kanjou** relies on [MessageFormat 2](https://messageformat.unicode.org). Check out their [official guide](https://messageformat.unicode.org/docs/quick-start) for a deep dive into the mechanics.
 
-## Variables
+## Working with Variables
 
-Variables are runtime values prefixed with `$`.
+Variables hold dynamic data evaluated during execution. Every variable identifier must begin with a `$`.
 
 ```
 Your name is {$name}.
 ```
 
-### Declarations
+### Defining Variables
 
-Use `.local` to define a variable **inside** the message:
+Use the `.local` directive to create a variable right inside your message body:
 
 ```
 .local $score = {0.42}
@@ -24,26 +24,26 @@ Use `.local` to define a variable **inside** the message:
 {{Your score: {$pct}}}
 ```
 
-Use `.input` to **explicitly annotate** an external variable:
+Use the `.input` directive to map data coming from outside the message:
 
 ```
 .input {$amount :number style=currency currency=USD}
 {{The price is {$amount}.}}
 ```
 
-`.input` acts as documentation — it tells both the developer and the translator what to expect.
+Think of `.input` as built-in documentation. It clarifies the exact data type required for both software engineers and localization teams.
 
-## Literals
+## Understanding Literals
 
-A literal is a **hardcoded value** — not a variable. It appears as an option value or standalone expression.
+Literals represent static data rather than dynamic variables. You will see them used as standalone expressions or configuration parameters.
 
 ```
 Today is {$date :datetime weekday=long}.
 ```
 
-Here `long` is an **unquoted** literal — just alphanumeric text.
+In the snippet above, `long` is an unquoted literal. Unquoted literals only allow standard alphanumeric characters.
 
-When a literal contains special characters (like `-` or `.`), **quote it** with `|`:
+Whenever you need to include punctuation or special characters, you must enclose the literal in `|` markers:
 
 ```
 The year is {$date :datetime year=|2-digit|}.
@@ -54,11 +54,11 @@ The year is {$date :datetime year=|2-digit|}.
 {{{$x}}}
 ```
 
-## Functions
+## Formatting Functions
 
-Functions transform or format a value. Syntax: `{operand :function option=value}`.
+Functions modify or format your data. The standard pattern follows the `{operand :function option=value}` shape.
 
-### Built-in: `:number` / `:integer`
+### Core Numbers: `:number` and `:integer`
 
 ```
 {$price :number style=currency currency=USD}
@@ -66,16 +66,16 @@ Functions transform or format a value. Syntax: `{operand :function option=value}
 {$pi :integer}
 ```
 
-As a **selector** in `.match` — uses CLDR plural rules by default:
+When you apply `.match` to a number, the system automatically falls back to CLDR pluralization standards:
 
 ```
 .input {$count :number}
 .match $count
-one  {{You have {$count} apple.}}
-*    {{You have {$count} apples.}}
+one {{You have {$count} apple.}}
+{{You have {$count} apples.}}
 ```
 
-### Built-in: `:datetime` / `:date` / `:time`
+### Core Time: `:datetime`, `:date`, and `:time`
 
 ```
 Today is {$date :datetime weekday=long}.
@@ -83,39 +83,44 @@ Short date: {$date :date style=short}.
 Clock: {$date :time style=medium}.
 ```
 
-### Built-in: `:string`
+### Core Text: `:string`
 
-Useful for **exact matching** in `.match`:
+This is primarily useful for strict equality checks within a `.match` block:
 
 ```
 .input {$role :string}
 .match $role
 admin {{Hello, admin.}}
-*     {{Hello, user.}}
 ```
 
-### Custom functions
+```
+{{Hello, user.}}
+```
 
-You can register your own — see [Formatters](./formatters.md).
+### Custom Formatters
+
+You have the ability to build and register bespoke functions. Read the [Formatters](./formatters.md) page for implementation details.
 
 ```
 {$languages :list type=AND}
 ```
 
-## Markup
+## Tag Markup
 
-Markup placeholders let you **wrap text in tags** without the formatter interpreting them — the host app decides what they mean.
+Markup placeholders provide a way to inject tags into your translations. The formatter passes these tags blindly to your application layer, which then decides how to render them.
 
 ```
 Click {#link}here{/link} to continue.
 ```
 
-- `{#link}` — **opening** tag
-- `{/link}` — **closing** tag
-- `{#icon/}` — **standalone** tag (self-closing)
+The syntax supports three tag varieties:
+
+- `{#link}` acts as an opening element.
+- `{/link}` acts as a closing element.
+- `{#icon/}` acts as an independent void element.
 
 ```
 {#bold}{$count}{/bold} items selected. {#star-icon/}
 ```
 
-> Markup is **not HTML**. The formatter passes tags through as-is. See [Rich Text](./rich-text.md) for how Kanjou handles them.
+Keep in mind that markup is strictly distinct from HTML. Kanjou outputs the raw tags without interpreting them. You can learn more about rendering strategies in the [Rich Text](./rich-text.md) guide.
