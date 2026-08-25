@@ -1,5 +1,4 @@
 import type { KanjouCache } from './cache'
-import type { Formatters } from './formatters'
 import type {
   FormatDate,
   FormatDisplayName,
@@ -10,8 +9,8 @@ import type {
   FormatTime,
   FormatDuration,
   FormatMessage,
-} from './functions'
-import type { FormatRich, RichComponents } from './rich'
+  FormatMessageParts,
+} from './formatters'
 import type { MessageFormatOptions, Message, Locale } from './types'
 
 import { createFormatters } from './formatters'
@@ -20,21 +19,19 @@ import {
   createFormatDisplayName,
   createFormatList,
   createFormatMessage,
+  createFormatMessageParts,
   createFormatNumber,
   createFormatPlural,
   createFormatRelativeTime,
   createFormatTime,
   createFormatDuration,
-} from './functions'
-import { createFormatRich } from './rich'
+} from './formatters'
 
 export interface KanjouInstance {
   locale: Locale
   t: FormatMessage
-  rich: FormatRich
-  formatRich: FormatRich
   formatMessage: FormatMessage
-  formatters: Formatters
+  formatMessageParts: FormatMessageParts
   formatDate: FormatDate
   formatTime: FormatTime
   formatNumber: FormatNumber
@@ -50,19 +47,23 @@ export function createKanjouInstance(
   messages: Record<string, Message>,
   locale: Locale,
   options?: MessageFormatOptions,
-  components?: RichComponents,
 ): KanjouInstance {
   const formatters = createFormatters(cache)
-  const formatMessage = createFormatMessage(cache.messages, messages, locale, options)
-  const formatRich = createFormatRich(cache.messages, messages, locale, options, components)
+  const formatMessage = createFormatMessage(formatters.getMessageFormat, messages, locale, options)
+  const formatMessageParts = createFormatMessageParts(
+    formatters.getMessageFormat,
+    messages,
+    locale,
+    options,
+  )
 
   return {
     locale,
-    formatters,
+
     t: formatMessage,
-    rich: formatRich,
-    formatRich,
+
     formatMessage,
+    formatMessageParts,
     formatDate: createFormatDate(formatters.getDateTimeFormat, locale),
     formatTime: createFormatTime(formatters.getDateTimeFormat, locale),
     formatNumber: createFormatNumber(formatters.getNumberFormat, locale),

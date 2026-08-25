@@ -1,10 +1,10 @@
 import type { ReactNode } from 'react'
 
-import { useKanjou } from '../react'
+import { useKanjou } from '../context'
 
 export interface KanjouDateTimeProps {
-  options?: Intl.DateTimeFormatOptions
   dateTime: number | Date
+  options?: Intl.DateTimeFormatOptions
 }
 
 export function KanjouDateTime(props: KanjouDateTimeProps): ReactNode {

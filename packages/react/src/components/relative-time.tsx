@@ -1,13 +1,13 @@
 import type { ReactNode } from 'react'
 
-import type { FormatRelativeTimeOptions } from '../functions'
+import type { FormatRelativeTimeOptions } from '../formatters'
 
-import { useKanjou } from '../react'
+import { useKanjou } from '../context'
 
 export interface KanjouRelativeTimeProps {
-  options: FormatRelativeTimeOptions
-  unit: Intl.RelativeTimeFormatUnit
   value: number
+  unit: Intl.RelativeTimeFormatUnit
+  options?: FormatRelativeTimeOptions
 }
 
 export function KanjouRelativeTime(props: KanjouRelativeTimeProps): ReactNode {

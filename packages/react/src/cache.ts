@@ -1,14 +1,24 @@
 import type { MessageFormat } from 'messageformat'
 
+import type { KanjouInstance } from './instance'
+import type { CreateKanjouReturn } from './server'
+
+export interface Cache<Value = any> {
+  get(key: string): Value | undefined
+  set(key: string, value: Value): void
+  getOrInsertComputed(key: string, callback: (key: string) => Value): Value
+}
+
 export interface KanjouCache {
-  messages: Map<string, MessageFormat>
-  displayNames: Map<string, Intl.DisplayNames>
-  dateTime: Map<string, Intl.DateTimeFormat>
-  duration: Map<string, Intl.DurationFormat>
-  list: Map<string, Intl.ListFormat>
-  number: Map<string, Intl.NumberFormat>
-  pluralRules: Map<string, Intl.PluralRules>
-  relativeTime: Map<string, Intl.RelativeTimeFormat>
+  messages: Cache<MessageFormat>
+  displayNames: Cache<Intl.DisplayNames>
+  dateTime: Cache<Intl.DateTimeFormat>
+  duration: Cache<Intl.DurationFormat>
+  list: Cache<Intl.ListFormat>
+  number: Cache<Intl.NumberFormat>
+  pluralRules: Cache<Intl.PluralRules>
+  relativeTime: Cache<Intl.RelativeTimeFormat>
+  instances: Cache<CreateKanjouReturn | KanjouInstance>
 }
 
 export function createCache(): KanjouCache {
@@ -21,5 +31,6 @@ export function createCache(): KanjouCache {
     number: new Map(),
     pluralRules: new Map(),
     relativeTime: new Map(),
+    instances: new Map(),
   }
 }

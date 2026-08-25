@@ -1,117 +1,174 @@
-import type { DefaultTheme } from 'vitepress'
-
 import { defineConfig } from 'vitepress'
-
-const sidebars = (): DefaultTheme.SidebarItem[] => [
-  {
-    text: 'Concepts',
-    collapsed: true,
-    items: [
-      { text: 'Why Kanjou', link: '/docs/concepts/why-kanjou' },
-      { text: 'MessageFormat 2', link: '/docs/concepts/messageformat2' },
-      { text: 'Type Safety', link: '/docs/concepts/type-safety' },
-      { text: 'State & Loading', link: '/docs/concepts/state-and-loading' },
-    ],
-  },
-  {
-    text: 'Getting Started',
-    collapsed: false,
-    items: [
-      { text: 'Installation', link: '/docs/getting-started/installation' },
-      { text: 'React + Vite', link: '/docs/getting-started/react-vite' },
-      {
-        text: 'React + Vite Plugin',
-        link: '/docs/getting-started/react-vite-plugin',
-      },
-      { text: 'Next.js', link: '/docs/getting-started/nextjs' },
-    ],
-  },
-  {
-    text: 'API',
-    collapsed: true,
-    items: [
-      {
-        text: 'React',
-        collapsed: true,
-        items: [
-          { text: 'KanjouProvider', link: '/docs/api/react/provider' },
-          { text: 'useKanjou', link: '/docs/api/react/use-kanjou' },
-          { text: 'Components', link: '/docs/api/react/components' },
-          { text: 'Server', link: '/docs/api/react/server' },
-        ],
-      },
-      {
-        text: 'CLI',
-        collapsed: true,
-        items: [
-          { text: 'Overview', link: '/docs/api/cli/' },
-          { text: 'compile', link: '/docs/api/cli/compile' },
-          { text: 'generate', link: '/docs/api/cli/generate' },
-          { text: 'compare', link: '/docs/api/cli/compare' },
-          { text: 'missing', link: '/docs/api/cli/missing' },
-          { text: 'unused', link: '/docs/api/cli/unused' },
-        ],
-      },
-      { text: 'Vite Plugin', link: '/docs/api/vite-plugin' },
-      { text: 'Config', link: '/docs/api/config' },
-    ],
-  },
-  {
-    text: 'Guides',
-    collapsed: true,
-    items: [
-      { text: 'Locale Files', link: '/docs/guides/locale-files' },
-      { text: 'MF2 Syntax', link: '/docs/guides/mf2-syntax' },
-      {
-        text: 'React Components in Templates',
-        link: '/docs/guides/react-components',
-      },
-      { text: 'Functions', link: '/docs/guides/functions' },
-      { text: 'SSR', link: '/docs/guides/ssr' },
-      { text: 'HMR', link: '/docs/guides/hmr' },
-    ],
-  },
-]
-
-const sidebarsExamples = (): DefaultTheme.SidebarItem[] => [
-  { text: 'React', link: '/examples/react' },
-  { text: 'React Vite Plugin', link: '/examples/react-vite-plugin' },
-  { text: 'Next.js', link: '/examples/nextjs' },
-]
+import { groupIconMdPlugin, groupIconVitePlugin } from 'vitepress-plugin-group-icons'
 
 export default defineConfig({
-  title: 'Kanjou',
-  description: 'Next-generation i18n for React powered by MessageFormat 2 and E2E type safety.',
-  lastUpdated: true,
+  head: [['link', { rel: 'icon', type: 'image/svg+xml', href: '/kanjou/logo.svg' }]],
   cleanUrls: true,
-  markdown: {
-    theme: {
-      light: 'github-light',
-      dark: 'github-dark',
+  base: '/kanjou/',
+  locales: {
+    root: {
+      label: 'English',
+      lang: 'en',
+      title: 'Kanjou',
+      description: 'Internationalization for React powered by MessageFormat 2',
+      themeConfig: {
+        nav: [
+          { text: 'Guide', link: '/guide/getting-started', activeMatch: '/guide/' },
+          { text: 'Reference', link: '/reference/react', activeMatch: '/reference/' },
+          {
+            text: 'v0',
+            items: [
+              { text: 'v0', link: 'https://github.com/iivanpopov/kanjou/tree/main' },
+              {
+                text: 'Changelog',
+                link: 'https://github.com/iivanpopov/kanjou/blob/main/packages/react/CHANGELOG.md',
+              },
+              { text: 'Releases', link: 'https://github.com/iivanpopov/kanjou/releases' },
+            ],
+          },
+        ],
+        sidebar: {
+          '/guide/': [
+            {
+              text: 'Introduction',
+              items: [
+                { text: 'Philosophy', link: '/guide/philosophy' },
+                { text: 'Getting Started', link: '/guide/getting-started' },
+                { text: 'Syntax', link: '/guide/syntax' },
+                { text: 'TypeScript', link: '/guide/typescript' },
+                { text: 'Limitations', link: '/guide/limitations' },
+              ],
+            },
+            {
+              text: 'Essentials',
+              items: [
+                { text: 'Translation', link: '/guide/translation' },
+                { text: 'Formatters', link: '/guide/formatters' },
+                { text: 'Rich Text', link: '/guide/rich-text' },
+                { text: 'Components', link: '/guide/components' },
+                { text: 'Vite Plugin', link: '/guide/vite-plugin' },
+                { text: 'CLI', link: '/guide/cli' },
+              ],
+            },
+            { text: 'API Reference', link: '/reference/react' },
+          ],
+          '/reference/': [
+            {
+              text: 'Reference',
+              items: [
+                { text: 'React', link: '/reference/react' },
+                { text: 'Vite Plugin', link: '/reference/vite-plugin' },
+                { text: 'CLI', link: '/reference/cli' },
+              ],
+            },
+          ],
+        },
+        editLink: {
+          pattern: 'https://github.com/iivanpopov/kanjou/edit/main/docs/:path',
+          text: 'Edit this page on GitHub',
+        },
+      },
+    },
+    uk: {
+      label: 'Українська',
+      lang: 'uk',
+      title: 'Kanjou',
+      description: 'Інтернаціоналізація для React на базі MessageFormat 2',
+      themeConfig: {
+        nav: [
+          { text: 'Гайд', link: '/uk/guide/getting-started', activeMatch: '/uk/guide/' },
+          { text: 'Референс', link: '/uk/reference/react', activeMatch: '/uk/reference/' },
+          {
+            text: 'v0',
+            items: [
+              { text: 'v0', link: 'https://github.com/iivanpopov/kanjou/tree/main' },
+              {
+                text: 'Зміни',
+                link: 'https://github.com/iivanpopov/kanjou/blob/main/packages/react/CHANGELOG.md',
+              },
+              { text: 'Релізи', link: 'https://github.com/iivanpopov/kanjou/releases' },
+            ],
+          },
+        ],
+        sidebar: {
+          '/uk/guide/': [
+            {
+              text: 'Вступ',
+              items: [
+                { text: 'Філософія', link: '/uk/guide/philosophy' },
+                { text: 'Початок роботи', link: '/uk/guide/getting-started' },
+                { text: 'Синтаксис', link: '/uk/guide/syntax' },
+                { text: 'TypeScript', link: '/uk/guide/typescript' },
+                { text: 'Обмеження', link: '/uk/guide/limitations' },
+              ],
+            },
+            {
+              text: 'Основне',
+              items: [
+                { text: 'Переклад', link: '/uk/guide/translation' },
+                { text: 'Форматери', link: '/uk/guide/formatters' },
+                { text: 'Rich Text', link: '/uk/guide/rich-text' },
+                { text: 'Компоненти', link: '/uk/guide/components' },
+                { text: 'Vite Plugin', link: '/uk/guide/vite-plugin' },
+                { text: 'CLI', link: '/uk/guide/cli' },
+              ],
+            },
+            { text: 'API Референс', link: '/uk/reference/react' },
+          ],
+          '/uk/reference/': [
+            {
+              text: 'Референс',
+              items: [
+                { text: 'React', link: '/uk/reference/react' },
+                { text: 'Vite Plugin', link: '/uk/reference/vite-plugin' },
+                { text: 'CLI', link: '/uk/reference/cli' },
+              ],
+            },
+          ],
+        },
+        editLink: {
+          pattern: 'https://github.com/iivanpopov/kanjou/edit/main/docs/:path',
+          text: 'Редагувати на GitHub',
+        },
+        outline: {
+          label: 'На цій сторінці',
+        },
+        lastUpdated: {
+          text: 'Оновлено',
+        },
+        docFooter: {
+          prev: 'Попередня',
+          next: 'Наступна',
+        },
+        footer: {
+          message: 'Розповсюджується під ліцензією ISC.',
+          copyright: 'Авторські права © 2026-PRESENT Іван Попов.',
+        },
+      },
     },
   },
   themeConfig: {
-    socialLinks: [{ icon: 'github', link: 'https://github.com/iivanpopov/kanjou' }],
-    search: {
-      provider: 'local',
-    },
-    editLink: {
-      pattern: 'https://github.com/iivanpopov/kanjou/edit/main/docs/:path',
-      text: 'Edit this page on GitHub',
-    },
+    logo: '/logo.svg',
+    socialLinks: [
+      { icon: 'github', link: 'https://github.com/iivanpopov/kanjou' },
+      { icon: 'npm', link: 'https://npmx.dev/org/kanjou' },
+    ],
+    search: { provider: 'local' },
+    lastUpdated: {},
     footer: {
       message: 'Released under the ISC License.',
-      copyright: 'Copyright © 2026-present Ivan Popov.',
+      copyright: 'Copyright © 2026-PRESENT Ivan Popov.',
     },
-    nav: [
-      { text: 'Docs', link: '/docs/' },
-      { text: 'Examples', link: '/examples/' },
-    ],
-    sidebar: {
-      '/': sidebars(),
-      '/examples/': sidebarsExamples(),
+    outline: {
+      level: [2, 3],
     },
   },
-  base: '/kanjou/',
-  titleTemplate: ':title - Kanjou',
+  markdown: {
+    config(md) {
+      md.use(groupIconMdPlugin)
+    },
+  },
+  vite: {
+    plugins: [groupIconVitePlugin()],
+  },
 })

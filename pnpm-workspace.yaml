@@ -7,23 +7,26 @@ packages:
 allowBuilds:
   esbuild: true
   lefthook: true
-  sharp: false
   vue-demi: true
 
+overrides:
+  vite: catalog:tooling
+
 catalog:
-  '@types/node': ^26.1.1
+  '@types/node': ^26.2.0
   consola: ^3.4.2
+  messageformat: ^4.0.0
   prettier: ^3.9.6
 
 catalogs:
   react:
     react: ^19.2.8
     react-dom: ^19.2.8
-    '@types/react': ^19.2.17
-    '@types/react-dom': ^19.2.3
-    '@vitejs/plugin-react': ^6.0.4
+    '@types/react': ^19.2.18
+    '@types/react-dom': ^19.2.4
+    '@vitejs/plugin-react': ^6.0.5
 
   tooling:
     typescript: ^7.0.2
-    tsdown: ^0.22.13
-    vite: ^8.1.5
+    tsdown: ^0.22.14
+    vite: ^8.2.2

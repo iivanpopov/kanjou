@@ -1,10 +1,10 @@
 import type { ReactNode } from 'react'
 
-import { useKanjou } from '../react'
+import { useKanjou } from '../context'
 
 export interface KanjouPluralProps {
-  options?: Intl.PluralRulesOptions
   value: number
+  options?: Intl.PluralRulesOptions
 }
 
 export function KanjouPlural(props: KanjouPluralProps): ReactNode {

@@ -1,4 +1,4 @@
-import type { Model, MessageFormatOptions as MfOptions } from 'messageformat'
+import type { MessageFormat, Model, MessageFormatOptions as MfOptions } from 'messageformat'
 import type { MessageFunctionContext, MessageValue } from 'messageformat/functions'
 
 export interface Register {}
@@ -7,18 +7,18 @@ export type Message = string | Model.Message
 export type DefaultMessageValue = string | number
 export type DefaultMessages = Record<string, Record<string, DefaultMessageValue>>
 
-export type MapPartsType<Key extends MessageKey> = {
-  [Value in keyof Messages[Key]]: Messages[Key][Value] extends {
+export type MapPartsType<Id extends MessageId> = {
+  [Value in keyof Messages[Id]]: Messages[Id][Value] extends {
     __fn: infer FunctionName extends keyof Functions
   }
     ? Functions[FunctionName] extends MessageFunction<any, any, any, infer PartsType>
       ? PartsType
       : 'string'
-    : Messages[Key][Value] extends number | bigint
+    : Messages[Id][Value] extends number | bigint
       ? 'number'
       : 'string'
 }
-export type InferPartsType<Key extends MessageKey> = MapPartsType<Key>[keyof MapPartsType<Key>]
+export type InferPartsType<Id extends MessageId> = MapPartsType<Id>[keyof MapPartsType<Id>]
 
 export type MessageFunction<
   Options = Record<string, unknown>,
@@ -37,6 +37,12 @@ export type MessageFormatOptions<
 > = Omit<MfOptions<MessageType, PartsType>, 'functions'> & {
   functions?: Functions
 }
+
+export type MessageFormatFactory = (
+  locale: string,
+  message: string | Message,
+  options?: MessageFormatOptions,
+) => MessageFormat
 
 export type NumericInput =
   | number
@@ -115,17 +121,17 @@ export type Functions = Register extends { functions: infer RegisteredFunctions 
   ? RegisteredFunctions & DefaultFunctions
   : DefaultFunctions
 
-export type MessageKey = keyof Messages
+export type MessageId = keyof Messages
 
 export type InferFunctionInput<FunctionName extends keyof Functions> =
   Functions[FunctionName] extends MessageFunction<any, infer Input> ? Input : undefined
 
-export type MessageValues<Key extends MessageKey> = {
-  [Value in keyof Messages[Key]]: Messages[Key][Value] extends {
+export type MessageValues<Id extends MessageId> = {
+  [Value in keyof Messages[Id]]: Messages[Id][Value] extends {
     __fn: infer FunctionName extends keyof Functions
   }
     ? InferFunctionInput<FunctionName>
-    : Messages[Key][Value] extends string
-      ? Messages[Key][Value]
+    : Messages[Id][Value] extends string
+      ? Messages[Id][Value]
       : DefaultMessageValue
 }

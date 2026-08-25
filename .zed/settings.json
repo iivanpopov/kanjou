@@ -1,13 +1,28 @@
 {
-  "language_servers": [
-    "...",
-    "!eslint",
-    "!tailwindcss-language-server",
-    "!unocss-language-server",
-    "!typescript-language-server",
-    "!vtsls",
-    "typescript-ls"
-  ],
+  "languages": {
+    "TypeScript": {
+      "language_servers": [
+        "...",
+        "typescript-ls",
+        "!vtsls",
+        "!typescript-language-server",
+        "!eslint",
+        "!tailwindcss-language-server",
+        "!unocss-language-server"
+      ]
+    },
+    "TSX": {
+      "language_servers": [
+        "...",
+        "typescript-ls",
+        "!vtsls",
+        "!typescript-language-server",
+        "!eslint",
+        "!tailwindcss-language-server",
+        "!unocss-language-server"
+      ]
+    }
+  },
   "format_on_save": "on",
   "formatter": [{ "language_server": { "name": "oxfmt" } }, { "code_action": "source.fixAll.oxc" }]
 }
