@@ -6,7 +6,7 @@ title: 'Getting Started'
 
 ## Installing
 
-There are 4 available packages: `@kanjou/react`, `@kanjou/vite`, `@kanjou/cli` and `@kanjou/config`. `@kanjou/config` is considered as **internal** and you **should not** install it directly.
+There are 4 available packages: `@kanjou/react`, `@kanjou/vite`, `@kanjou/cli`, `@kanjou/core` and `@kanjou/config`. `@kanjou/core` and `@kanjou/config` are considered as **internal** and you **should not** install it directly.
 
 ::: code-group
 
@@ -79,13 +79,13 @@ createRoot(document.getElementById('root')!).render(
 )
 ```
 
-And use the `useKanjou` hook:
+And use the `useFormatMessage` hook:
 
 ```tsx [app.tsx]
-import { useKanjou } from '@kanjou/react'
+import { useFormatMessage } from '@kanjou/react'
 
 function App() {
-  const { t } = useKanjou()
+  const { t } = useFormatMessage()
 
   return <p>{t('apples', { count: 3 })}</p>
 }
@@ -93,18 +93,18 @@ function App() {
 
 ### Server
 
-For RSC, especially for NextJS, use `defineKanjou` from `@kanjou/react/server`.
+For React Server Components and server environments, use `createKanjouFactory` from `@kanjou/react`.
 
-Pass all your locale messages upfront via the required `messages` option — `defineKanjou` will cache each locale instance on first use so you only need to specify the locale at the call site:
+Pass all your locale messages upfront via the `resources` option — the factory will cache each locale instance on first use so you only need to pass the locale at the call site:
 
 ```ts [lib/kanjou.ts]
-import { defineKanjou } from '@kanjou/react/server'
+import { createKanjouFactory } from '@kanjou/react'
 
 import en from '#/locales/en'
 import uk from '#/locales/uk'
 
-export const createKanjou = defineKanjou({
-  messages: { en, uk },
+export const createKanjou = createKanjouFactory({
+  resources: { en, uk },
 })
 ```
 
@@ -112,16 +112,9 @@ export const createKanjou = defineKanjou({
 import { createKanjou } from '#/lib/kanjou'
 
 export default function Page() {
-  const { t, Message, Number, DateTime, Duration, List, RelativeTime, Rich } = createKanjou('en')
+  const { t } = createKanjou('en')
 
-  return (
-    <div>
-      <p>{t('apples', { count: 3 })}</p>
-      <Message id="apples" values={{ count: 5 }} />
-      <Number number={1234567} />
-      <DateTime dateTime={new Date()} />
-    </div>
-  )
+  return <p>{t('apples', { count: 3 })}</p>
 }
 ```
 
@@ -129,6 +122,6 @@ export default function Page() {
 
 - If you are using Vite, check out the [Vite Plugin](./vite-plugin.md). It provides **virtual modules**[^1] and auto **types generation** with **HMR**.
 - Otherwise, you can use the [CLI](./cli.md) to manage translations manually. Feature requests can be submitted through [GitHub Issues](https://github.com/iivanpopov/kanjou/issues).
-- Explore documentation forward, specifically [Limitations](./limitations.md) and [Essentials](./translation.md) to understand the library's fundamentals and features.
+- Explore documentation forward, specifically [Essentials](./translation.md) to understand the library's fundamentals and features.
 
 [^1]: **Virtual Module** — module that is resolved **dynamically** and actually **does not** exist.

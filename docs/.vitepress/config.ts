@@ -36,7 +36,6 @@ export default defineConfig({
                 { text: 'Getting Started', link: '/guide/getting-started' },
                 { text: 'Syntax', link: '/guide/syntax' },
                 { text: 'TypeScript', link: '/guide/typescript' },
-                { text: 'Limitations', link: '/guide/limitations' },
               ],
             },
             {
@@ -99,7 +98,6 @@ export default defineConfig({
                 { text: 'Початок роботи', link: '/uk/guide/getting-started' },
                 { text: 'Синтаксис', link: '/uk/guide/syntax' },
                 { text: 'TypeScript', link: '/uk/guide/typescript' },
-                { text: 'Обмеження', link: '/uk/guide/limitations' },
               ],
             },
             {

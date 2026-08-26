@@ -1,9 +1,5 @@
 'use client'
 
 export * from './context'
-export * from './components'
-export * from './rich'
-
-export type * from './cache'
-export type * from './instance'
-export type * from './types'
+export * from './hooks'
+export type * from '@kanjou/core'

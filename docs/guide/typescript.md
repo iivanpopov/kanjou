@@ -16,15 +16,9 @@ export interface Register {}
 
 **Kanjou** relies on TypeScript's declaration merging. By augmenting this interface within your project, you override the default loose types (where keys are `string` and variables are `any`) with the exact shape of your application's translations.
 
-You can populate three optional properties:
+You can populate three optional properties: `messages`, `locale`, `functions`.
 
-| Field       | Type                                  | Description                                |
-| ----------- | ------------------------------------- | ------------------------------------------ |
-| `messages`  | `Record<string, Record<string, ...>>` | The structural shape of your base locale.  |
-| `locale`    | string union                          | The exact locale codes your app supports.  |
-| `functions` | object                                | Type signatures for any custom formatters. |
-
-Once this interface is augmented, APIs like `t()`, `useKanjou()`, and `<KanjouProvider>` inherit these strict types globally.
+Once this interface is augmented, APIs like `t()`, `useFormatMessage()`, and `<KanjouProvider>` inherit these strict types globally.
 
 ## Extending `Register` Manually
 
@@ -55,14 +49,16 @@ export default defineConfig({
   plugins: [
     kanjou({
       dts: {
-        outDir: 'src/types',
+        outDir: 'generated',
+        locales: true,
+        virtual: true,
       },
     }),
   ],
 })
 ```
 
-The next time you run `vite dev` or `vite build`, the plugin will write a `locales.kanjou.d.ts` file into the `src/types/` directory based on your locale data.
+The next time you run `vite dev` or `vite build`, the plugin will write a `locales.kanjou.d.ts` file into the `generated/` directory based on your locale data.
 
 Refer to the [Vite Plugin Reference](../reference/vite-plugin.md) for advanced configuration options.
 
@@ -117,15 +113,15 @@ Refer to the [CLI Reference](../reference/cli.md) for a complete list of flags.
 Regardless of whether you use Vite or the CLI, the resulting declaration file will look something like this:
 
 ```ts [locales.kanjou.d.ts]
+import type { InferFunctionInput, DefaultMessageValue } from '@kanjou/react'
+
 declare module '@kanjou/react' {
   interface Register {
-    messages: {
-      apples: {
-        count: number
-      }
-      greeting: Record<string, never>
-    }
     locale: 'en' | 'uk'
+    messages: {
+      apples: { count: DefaultMessageValue }
+      greeting: {}
+    }
   }
 }
 ```

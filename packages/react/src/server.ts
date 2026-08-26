@@ -1,78 +1,52 @@
-import type { ReactNode } from 'react'
+import type {
+  CreateKanjouFactoryOptions,
+  Kanjou,
+  Locale,
+  MessageId,
+  MessageValues,
+} from '@kanjou/core'
+import type { ElementType, ReactNode } from 'react'
 
-import type { KanjouCache } from './cache'
-import type { KanjouDateTimeProps } from './components/date-time'
-import type { KanjouDurationProps } from './components/duration'
-import type { KanjouListProps } from './components/list'
-import type { KanjouMessageProps } from './components/message'
-import type { KanjouNumberProps } from './components/number'
-import type { KanjouPluralProps } from './components/plural'
-import type { KanjouRelativeTimeProps } from './components/relative-time'
-import type { RichComponent } from './formatters'
-import type { KanjouInstance } from './instance'
-import type { KanjouRichProps } from './rich'
-import type { Functions, Locale, Message, MessageFormatOptions, MessageId } from './types'
+import { createKanjouFactory as _createKanjouFactory } from '@kanjou/core'
 
-import { createCache } from './cache'
-import { createFormatRich } from './formatters'
-import { createKanjouInstance } from './instance'
+import { formatRich } from './formatters/format-rich'
 
-export type DefineKanjouMessages = Record<string, Record<string, Message>>
-
-export interface DefineKanjouOptions<Messages extends DefineKanjouMessages> {
-  options?: Omit<MessageFormatOptions, 'functions'>
-  functions?: Functions
-  components?: Record<string, RichComponent<any>>
-  cache?: KanjouCache
-  messages: Messages
+export interface CreateReactKanjouFactoryOptions extends CreateKanjouFactoryOptions {
+  components?: Record<string, ElementType>
 }
 
-export type CreateKanjouReturn = {
-  Rich: <Id extends MessageId>(props: KanjouRichProps<Id>) => ReactNode
-  Number: (props: KanjouNumberProps) => ReactNode
-  Plural: (props: KanjouPluralProps) => ReactNode
-  DateTime: (props: KanjouDateTimeProps) => ReactNode
-  Duration: (props: KanjouDurationProps) => ReactNode
-  List: (props: KanjouListProps) => ReactNode
-  RelativeTime: (props: KanjouRelativeTimeProps) => ReactNode
-  Message: <Id extends MessageId>(props: KanjouMessageProps<Id>) => ReactNode
-} & KanjouInstance
+export interface ReactKanjou extends Kanjou {
+  formatRich: <Id extends MessageId>(
+    id: Id,
+    values?: MessageValues<Id>,
+    overrideComponents?: Record<string, ElementType>,
+  ) => ReactNode
+}
 
-export type DefineKanjouReturn = (locale: Locale) => CreateKanjouReturn
+export type CreateReactKanjouFactoryReturn = (
+  locale: Locale,
+  options?: { components?: Record<string, ElementType> },
+) => ReactKanjou
 
-export function defineKanjou<Messages extends DefineKanjouMessages>({
-  options,
-  functions,
+export function createKanjouFactory({
   components,
-  cache = createCache(),
-  messages,
-}: DefineKanjouOptions<Messages>): DefineKanjouReturn {
-  const _options = { ...options, functions }
+  ...options
+}: CreateReactKanjouFactoryOptions): CreateReactKanjouFactoryReturn {
+  const createKanjou = _createKanjouFactory(options)
 
-  return (locale: Locale) =>
-    cache.instances.getOrInsertComputed(locale, () => {
-      const instance = createKanjouInstance(cache, messages[locale], locale, _options)
-      const formatRich = createFormatRich(instance.formatMessageParts, components)
+  return (locale, options) => {
+    const kanjou = createKanjou(locale)
 
-      return {
-        ...instance,
-        Rich: (props) => formatRich(props.id, props.values, props.components),
-        Number: (props) => instance.formatNumber(props.number, props.options),
-        Plural: (props) => instance.formatPlural(props.value, props.options),
-        DateTime: (props) => instance.formatDate(props.dateTime, props.options),
-        Duration: (props) => instance.formatDuration(props.duration, props.options),
-        List: (props) => instance.formatList(props.list, props.options),
-        RelativeTime: (props) =>
-          instance.formatRelativeTime(props.value, props.unit, props.options),
-        Message: (props) => instance.formatMessage(props.id, props.values),
-      } satisfies CreateKanjouReturn
-    }) as CreateKanjouReturn
+    return {
+      ...kanjou,
+      formatRich: <Id extends MessageId>(
+        id: Id,
+        values?: MessageValues<Id>,
+        overrideComponents?: Record<string, ElementType>,
+      ) => {
+        const parts = kanjou.formatMessageParts(id, values)
+        return formatRich(parts, overrideComponents, options?.components, components)
+      },
+    }
+  }
 }
-
-export { createCache } from './cache'
-export { createKanjouInstance } from './instance'
-
-export type * from './cache'
-export type * from './instance'
-export type * from './types'
-export type * from './rich'

@@ -1,6 +1,8 @@
 import type { MessageFormat, Model, MessageFormatOptions as MfOptions } from 'messageformat'
 import type { MessageFunctionContext, MessageValue } from 'messageformat/functions'
 
+export type { MessageFormat, MessageMarkupPart, MessagePart } from 'messageformat'
+
 export interface Register {}
 
 export type Message = string | Model.Message
@@ -40,7 +42,7 @@ export type MessageFormatOptions<
 
 export type MessageFormatFactory = (
   locale: string,
-  message: string | Message,
+  message: Message,
   options?: MessageFormatOptions,
 ) => MessageFormat
 

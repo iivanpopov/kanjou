@@ -1,26 +1,7 @@
-import type { MessageMarkupPart, MessagePart } from 'messageformat'
-import type { ReactNode } from 'react'
+import type { MessageMarkupPart, MessagePart } from '@kanjou/core'
+import type { ElementType, ReactNode } from 'react'
 
 import { createElement, Fragment } from 'react'
-
-import type { MessageId, MessageValues } from '../types'
-import type { FormatMessageParts } from './format-message'
-
-export type RichComponentProps<Props extends Record<string, any> = Record<string, any>> = {
-  children?: ReactNode
-} & Props
-
-export type RichComponent<Props extends Record<string, any> = Record<string, any>> = (
-  props: RichComponentProps<Props>,
-) => ReactNode
-
-export interface FormatRich {
-  <Id extends MessageId>(
-    id: Id,
-    values?: MessageValues<Id>,
-    components?: Record<string, RichComponent>,
-  ): ReactNode
-}
 
 function isMarkup(part: MessagePart<string>): part is MessageMarkupPart {
   return part.type === 'markup' && 'kind' in part
@@ -37,12 +18,11 @@ function toNode(nodes: ReactNode[]): ReactNode {
   return createElement(Fragment, null, nodes)
 }
 
-export function formatRich(
+function consume(
   parts: MessagePart<string>[],
   index: number,
   nested: boolean,
-  components?: Record<string, RichComponent<any>>,
-  overrideComponents?: Record<string, RichComponent<any>>,
+  ...components: (Record<string, ElementType> | undefined)[]
 ): [ReactNode[], number] {
   const nodes: ReactNode[] = []
 
@@ -56,7 +36,7 @@ export function formatRich(
 
     if (isMarkup(part)) {
       const { kind, name } = part
-      const render = overrideComponents?.[name] ?? components?.[name]
+      const render = components[0]?.[name] ?? components[1]?.[name] ?? components[2]?.[name]
 
       if (kind === 'close') {
         if (nested) return [nodes, index + 1]
@@ -65,15 +45,15 @@ export function formatRich(
       }
 
       if (kind === 'standalone') {
-        nodes.push(render?.(part.options))
+        if (render) nodes.push(createElement(render, { ...part.options, key: index }))
         index++
         continue
       }
 
-      const [children, next] = formatRich(parts, index + 1, true, components, overrideComponents)
+      const [children, next] = consume(parts, index + 1, true, ...components)
 
       const _children = toNode(children)
-      nodes.push(render?.({ ...part.options, children: _children }) ?? _children)
+      nodes.push(createElement(render ?? Fragment, { ...part.options, key: index }, _children))
 
       index = next
       continue
@@ -86,13 +66,10 @@ export function formatRich(
   return [nodes, index]
 }
 
-export function createFormatRich(
-  formatMessageParts: FormatMessageParts,
-  components?: Record<string, RichComponent<any>>,
-): FormatRich {
-  return (id, values, overrideComponents) => {
-    const parts = formatMessageParts(id, values)
-    const [nodes] = formatRich(parts, 0, false, components, overrideComponents)
-    return toNode(nodes)
-  }
+export function formatRich(
+  parts: MessagePart<string>[],
+  ...components: (Record<string, ElementType> | undefined)[]
+): ReactNode {
+  const [nodes] = consume(parts, 0, false, ...components)
+  return toNode(nodes)
 }

@@ -2,23 +2,27 @@ import { MessageFormat } from 'messageformat'
 
 import type { Factory } from '#/shared/types'
 
-import { memoize, monadic } from '#/shared/memoize'
+import { memoize } from '#/shared/memoize'
 
 import type { KanjouCache } from '../cache'
 import type { MessageFormatFactory } from '../types'
 
 export interface Formatters {
+  getMessageFormat: MessageFormatFactory
   getDisplayNames: Factory<typeof Intl.DisplayNames>
   getDateTimeFormat: Factory<typeof Intl.DateTimeFormat>
   getDurationFormat: Factory<typeof Intl.DurationFormat>
   getListFormat: Factory<typeof Intl.ListFormat>
-  getMessageFormat: MessageFormatFactory
   getNumberFormat: Factory<typeof Intl.NumberFormat>
   getPluralRules: Factory<typeof Intl.PluralRules>
   getRelativeTimeFormat: Factory<typeof Intl.RelativeTimeFormat>
 }
 
 export function createFormatters(cache: KanjouCache): Formatters {
+  const getMessageFormat: MessageFormatFactory = memoize(
+    (locale, message, options) => new MessageFormat(locale, message, options as any),
+    cache.message,
+  )
   const getDisplayNames: Factory<typeof Intl.DisplayNames> = memoize(
     (...args) => new Intl.DisplayNames(...args),
     cache.displayNames,
@@ -34,11 +38,6 @@ export function createFormatters(cache: KanjouCache): Formatters {
   const getListFormat: Factory<typeof Intl.ListFormat> = memoize(
     (...args) => new Intl.ListFormat(...args),
     cache.list,
-  )
-  const getMessageFormat: MessageFormatFactory = memoize(
-    (locale, message, options) => new MessageFormat(locale, message, options as any),
-    cache.messages,
-    monadic,
   )
   const getNumberFormat: Factory<typeof Intl.NumberFormat> = memoize(
     (...args) => new Intl.NumberFormat(...args),
@@ -65,13 +64,12 @@ export function createFormatters(cache: KanjouCache): Formatters {
   }
 }
 
+export * from './format-message'
 export * from './format-date'
 export * from './format-display-name'
 export * from './format-duration'
 export * from './format-list'
-export * from './format-message'
 export * from './format-number'
 export * from './format-plural'
 export * from './format-relative-time'
 export * from './format-time'
-export * from './format-rich'
