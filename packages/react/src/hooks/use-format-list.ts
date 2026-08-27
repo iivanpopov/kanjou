@@ -1,11 +1,15 @@
 import { formatList } from '@kanjou/core'
+import { use } from 'react'
 
-import { useKanjouContext } from '../context'
+import { KanjouContext } from '../context'
 
-type UseFormatListReturn = (list: Iterable<string>, options?: Intl.ListFormatOptions) => string
+export type UseFormatListReturn = (
+  value: Iterable<string>,
+  options?: Intl.ListFormatOptions,
+) => string
 
 export function useFormatList(): UseFormatListReturn {
-  const { formatters, locale } = useKanjouContext()
+  const { locale } = use(KanjouContext)
 
-  return (value, options) => formatList(formatters.getListFormat, locale, value, options)
+  return (value, options) => formatList(locale, value, options)
 }

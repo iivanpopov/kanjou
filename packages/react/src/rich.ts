@@ -1,11 +1,7 @@
-import type { MessageMarkupPart, MessagePart } from '@kanjou/core'
+import type { MessagePart } from '@kanjou/core'
 import type { ElementType, ReactNode } from 'react'
 
 import { createElement, Fragment } from 'react'
-
-function isMarkup(part: MessagePart<string>): part is MessageMarkupPart {
-  return part.type === 'markup' && 'kind' in part
-}
 
 function toText(part: MessagePart<string>): string {
   if ('value' in part && part.value !== null) return String(part.value as any)
@@ -34,7 +30,7 @@ function consume(
       continue
     }
 
-    if (isMarkup(part)) {
+    if (part.type === 'markup' && 'kind' in part) {
       const { kind, name } = part
       const render = components[0]?.[name] ?? components[1]?.[name] ?? components[2]?.[name]
 

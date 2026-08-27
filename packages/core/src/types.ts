@@ -46,12 +46,6 @@ export type MessageFormatFactory = (
   options?: MessageFormatOptions,
 ) => MessageFormat
 
-export type NumericInput =
-  | number
-  | bigint
-  | string
-  | { valueOf: () => number | bigint; options?: Record<string, unknown> }
-
 export interface DefaultFunctions {
   string: MessageFunction<Record<string, unknown>, unknown, 'string'>
 
@@ -60,7 +54,7 @@ export interface DefaultFunctions {
       Intl.NumberFormatOptions &
         Intl.PluralRulesOptions & { select?: 'exact' | 'cardinal' | 'ordinal' }
     >,
-    NumericInput,
+    number,
     'number'
   >
 
@@ -72,7 +66,7 @@ export interface DefaultFunctions {
       signDisplay: Intl.NumberFormatOptions['signDisplay']
       useGrouping: Intl.NumberFormatOptions['useGrouping']
     }>,
-    NumericInput,
+    number,
     'number'
   >
 
@@ -82,7 +76,7 @@ export interface DefaultFunctions {
       currencyDisplay?: 'code' | 'symbol' | 'narrowSymbol' | 'name'
       currencySign?: 'standard' | 'accounting'
     },
-    NumericInput,
+    number,
     'number'
   >
 
@@ -98,7 +92,7 @@ export interface DefaultFunctions {
       trailingZeroDisplay: string
       useGrouping: Intl.NumberFormatOptions['useGrouping']
     }>,
-    NumericInput,
+    number,
     'number'
   >
 
@@ -110,7 +104,7 @@ export interface DefaultFunctions {
         subtract?: number
       }
     >,
-    NumericInput,
+    number,
     'number'
   >
 }

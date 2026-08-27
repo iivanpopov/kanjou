@@ -85,7 +85,7 @@ And use the `useFormatMessage` hook:
 import { useFormatMessage } from '@kanjou/react'
 
 function App() {
-  const { t } = useFormatMessage()
+  const t = useFormatMessage()
 
   return <p>{t('apples', { count: 3 })}</p>
 }
@@ -93,30 +93,7 @@ function App() {
 
 ### Server
 
-For React Server Components and server environments, use `createKanjouFactory` from `@kanjou/react`.
-
-Pass all your locale messages upfront via the `resources` option — the factory will cache each locale instance on first use so you only need to pass the locale at the call site:
-
-```ts [lib/kanjou.ts]
-import { createKanjouFactory } from '@kanjou/react'
-
-import en from '#/locales/en'
-import uk from '#/locales/uk'
-
-export const createKanjou = createKanjouFactory({
-  resources: { en, uk },
-})
-```
-
-```tsx [app/page.tsx]
-import { createKanjou } from '#/lib/kanjou'
-
-export default function Page() {
-  const { t } = createKanjou('en')
-
-  return <p>{t('apples', { count: 3 })}</p>
-}
-```
+Currently for React Server Components you need to create functions. `@kanjou/core` provides formatters which are used in `@kanjou/react`, you are available to use them.
 
 ## What's next?
 

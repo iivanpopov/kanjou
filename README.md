@@ -37,18 +37,7 @@ createRoot(document.getElementById('root')!).render(
     <App />
   </KanjouProvider>,
 )
-```
-
-And finally use the `useKanjou` hook:
-
-```tsx
-// app.tsx
-import { useKanjou } from '@kanjou/react'
-
-function App() {
-  const { t } = useKanjou()
-  //           ⌄ fully typed key
-  return <p>{t('apples', { count: 3 })}</p>
+use(KanjouContext)
   //                       ^ fully typed values
 }
 ```

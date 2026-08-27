@@ -1,33 +1,12 @@
-import type { MessageFormat } from 'messageformat'
+import type { AnyClass } from '#/shared/types'
 
-export interface Cache<Value = any> {
-  get(key: string): Value | undefined
-  set(key: string, value: Value): void
-  getOrInsertComputed(key: string, callback: (key: string) => Value): Value
-}
+const constructors = new WeakMap<AnyClass, Map<string, any>>()
 
-export interface KanjouCache {
-  instances: Cache
-  message: Cache<MessageFormat>
-  displayNames: Cache<Intl.DisplayNames>
-  dateTime: Cache<Intl.DateTimeFormat>
-  duration: Cache<Intl.DurationFormat>
-  list: Cache<Intl.ListFormat>
-  number: Cache<Intl.NumberFormat>
-  pluralRules: Cache<Intl.PluralRules>
-  relativeTime: Cache<Intl.RelativeTimeFormat>
-}
-
-export function createCache(): KanjouCache {
-  return {
-    instances: new Map(),
-    message: new Map(),
-    displayNames: new Map(),
-    dateTime: new Map(),
-    duration: new Map(),
-    list: new Map(),
-    number: new Map(),
-    pluralRules: new Map(),
-    relativeTime: new Map(),
-  }
+export function get<Class extends AnyClass>(
+  Class: Class,
+  ...args: ConstructorParameters<Class>
+): InstanceType<Class> {
+  const instances = constructors.getOrInsertComputed(Class, () => new Map())
+  const key = args.length === 1 && typeof args[0] === 'string' ? args[0] : JSON.stringify(args)
+  return instances.getOrInsertComputed(key, () => new Class(...args))
 }

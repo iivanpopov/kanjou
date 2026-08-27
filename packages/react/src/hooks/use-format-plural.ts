@@ -1,14 +1,15 @@
 import { formatPlural } from '@kanjou/core'
+import { use } from 'react'
 
-import { useKanjouContext } from '../context'
+import { KanjouContext } from '../context'
 
-type UseFormatPluralReturn = (
+export type UseFormatPluralReturn = (
   number: number,
   options?: Intl.PluralRulesOptions,
 ) => Intl.LDMLPluralRule
 
 export function useFormatPlural(): UseFormatPluralReturn {
-  const { formatters, locale } = useKanjouContext()
+  const { locale } = use(KanjouContext)
 
-  return (number, options) => formatPlural(formatters.getPluralRules, locale, number, options)
+  return (number, options) => formatPlural(locale, number, options)
 }

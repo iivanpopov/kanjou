@@ -1,11 +1,15 @@
 import { formatTime } from '@kanjou/core'
+import { use } from 'react'
 
-import { useKanjouContext } from '../context'
+import { KanjouContext } from '../context'
 
-type UseFormatTimeReturn = (value: number | Date, options?: Intl.DateTimeFormatOptions) => string
+export type UseFormatTimeReturn = (
+  date: number | Date,
+  options?: Intl.DateTimeFormatOptions,
+) => string
 
 export function useFormatTime(): UseFormatTimeReturn {
-  const { formatters, locale } = useKanjouContext()
+  const { locale } = use(KanjouContext)
 
-  return (value, options) => formatTime(formatters.getDateTimeFormat, locale, value, options)
+  return (value, options) => formatTime(locale, value, options)
 }

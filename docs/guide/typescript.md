@@ -4,7 +4,7 @@ title: 'TypeScript'
 
 # TypeScript
 
-**Kanjou** is built with TypeScript and provides baseline declarations out of the box. However, achieving strict, end-to-end type safety for your translations—where message keys, variables, and locale strings are all statically checked—requires explicitly linking your specific translation data to **Kanjou**'s type system.
+**Kanjou** is built with TypeScript and provides baseline declarations out of the box. However, achieving strict, end-to-end type safety for your translations — where message keys, variables, and locale strings are all statically checked—requires explicitly linking your specific translation data to **Kanjou**'s type system.
 
 ## The `Register` Interface
 
@@ -14,7 +14,7 @@ The core of this type system is a deliberately empty interface named `Register`,
 export interface Register {}
 ```
 
-**Kanjou** relies on TypeScript's declaration merging. By augmenting this interface within your project, you override the default loose types (where keys are `string` and variables are `any`) with the exact shape of your application's translations.
+**Kanjou** relies on TypeScript's declaration merging. By augmenting this interface, you override the default loose types with the exact shape of your application's translations.
 
 You can populate three optional properties: `messages`, `locale`, `functions`.
 
@@ -22,15 +22,15 @@ Once this interface is augmented, APIs like `t()`, `useFormatMessage()`, and `<K
 
 ## Extending `Register` Manually
 
-You can configure this by hand. Create a `.d.ts` file (for example, `kanjou.d.ts`) anywhere in your source tree and define the module shape:
+You can configure this by hand. Create a `.d.ts` file anywhere in your source tree and define the module shape:
 
 ```ts [kanjou.d.ts]
-import type en from './locales/en'
-
 declare module '@kanjou/react' {
   interface Register {
-    messages: typeof en
-    locale: 'en' | 'uk' | 'ja'
+    locale: 'en' | 'uk'
+    messages: {
+      greeting: { name: string }
+    }
   }
 }
 ```
@@ -39,7 +39,7 @@ While the manual approach works fine, **Kanjou** provides tooling to generate an
 
 ## Generating Types via Vite
 
-If your project uses `@kanjou/vite`, you only need to configure the `dts` property. The plugin generates the declaration file on startup and continuously updates it via HMR whenever you edit your base translation file.
+If your project uses `@kanjou/vite`, you need to configure the plugin using following way:
 
 ```ts [vite.config.ts]
 import { kanjou } from '@kanjou/vite'
@@ -48,19 +48,21 @@ import { defineConfig } from 'vite'
 export default defineConfig({
   plugins: [
     kanjou({
+      baseLocale: 'en', // locale which kanjou is generating types from
+      localesDir: './src/assets/locales', // path to your locales
       dts: {
-        outDir: 'generated',
-        locales: true,
-        virtual: true,
+        outDir: './generated', // path where .d.ts files are going to appear
+        locales: true, // off by default
+        virtual: true, // off by default
       },
     }),
   ],
 })
 ```
 
-The next time you run `vite dev` or `vite build`, the plugin will write a `locales.kanjou.d.ts` file into the `generated/` directory based on your locale data.
+The plugin generates the declaration file on startup and continuously updates it via HMR whenever you edit your base translation file.
 
-Refer to the [Vite Plugin Reference](../reference/vite-plugin.md) for advanced configuration options.
+Refer to the [Vite Plugin Reference](../reference/vite-plugin.md) for more information.
 
 ## Generating Types via CLI
 
@@ -86,12 +88,12 @@ bunx kanjou generate
 
 :::
 
-You will typically want to wire this into your npm scripts so you can run it whenever you update your base locale:
+You will typically want to wire this into your npm scripts:
 
 ```json [package.json]
 {
   "scripts": {
-    "gen:kanjou": "kanjou generate"
+    "gen:intl": "kanjou generate"
   }
 }
 ```
@@ -99,20 +101,20 @@ You will typically want to wire this into your npm scripts so you can run it whe
 The CLI supports flags to customize the output paths and behavior:
 
 ```sh
-# Specify a custom locales directory and output location
-kanjou generate --locales-dir src/i18n --base-locale en
+# specify a custom locales directory
+kanjou generate --locales-dir src/i18n --base-locale uk
 
-# Generate only the Register augmentation, skip virtual module types
+# generate only the Register augmentation, skip virtual module types
 kanjou generate --no-virtual
 ```
 
-Refer to the [CLI Reference](../reference/cli.md) for a complete list of flags.
+Refer to the [CLI Reference](../reference/cli.md) for more...
 
-## The Output
+## Output
 
 Regardless of whether you use Vite or the CLI, the resulting declaration file will look something like this:
 
-```ts [locales.kanjou.d.ts]
+```ts [generated/locales.kanjou.d.ts]
 import type { InferFunctionInput, DefaultMessageValue } from '@kanjou/react'
 
 declare module '@kanjou/react' {
@@ -125,12 +127,6 @@ declare module '@kanjou/react' {
   }
 }
 ```
-
-As long as this file is picked up by your `tsconfig.json`[^1], your codebase immediately benefits from:
-
-- **Strict message IDs:** Calling `t('apples')` triggers a compiler error.
-- **Strict variables:** Calling `t('apples', { count: 'invalid' })` triggers a compiler error.
-- **Strict locales:** Rendering `<KanjouProvider locale="fr">` triggers a compiler error if `fr` is absent from the union.
 
 ## Typing Custom Functions
 

@@ -4,7 +4,7 @@ import type { LoadConfigResult } from 'unconfig'
 import consola from 'consola'
 import { createConfigLoader as createLoader } from 'unconfig'
 
-export type DtsOptions = {
+export interface DtsOptions {
   locales?: boolean
   virtual?: boolean
   outDir?: string

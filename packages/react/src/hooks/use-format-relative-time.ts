@@ -1,16 +1,16 @@
 import { formatRelativeTime } from '@kanjou/core'
+import { use } from 'react'
 
-import { useKanjouContext } from '../context'
+import { KanjouContext } from '../context'
 
-type UseFormatRelativeTimeReturn = (
+export type UseFormatRelativeTimeReturn = (
   value: number,
   unit: Intl.RelativeTimeFormatUnit,
   options?: Intl.RelativeTimeFormatOptions,
 ) => string
 
 export function useFormatRelativeTime(): UseFormatRelativeTimeReturn {
-  const { formatters, locale } = useKanjouContext()
+  const { locale } = use(KanjouContext)
 
-  return (value, unit, options) =>
-    formatRelativeTime(formatters.getRelativeTimeFormat, locale, value, unit, options)
+  return (value, unit, options) => formatRelativeTime(locale, value, unit, options)
 }

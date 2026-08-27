@@ -1,26 +1,27 @@
 import type { MessageId, MessageValues } from '@kanjou/core'
 import type { ElementType, ReactNode } from 'react'
 
-import { useKanjouContext } from '../context'
-import { formatRich } from '../formatters/format-rich'
-import { useFormatMessageParts } from './use-format-message'
+import { formatMessageParts } from '@kanjou/core'
+import { use } from 'react'
 
-interface UseFormatRichOptions {
+import { KanjouContext } from '../context'
+import { formatRich } from '../rich'
+
+export interface UseFormatRichOptions {
   components?: Record<string, ElementType>
 }
 
-type UseFormatRichReturn = <Id extends MessageId>(
+export type UseFormatRichReturn = <Id extends MessageId>(
   id: Id,
   values?: MessageValues<Id>,
   components?: Record<string, ElementType>,
 ) => ReactNode
 
 export function useFormatRich(options: UseFormatRichOptions): UseFormatRichReturn {
-  const context = useKanjouContext()
-  const formatParts = useFormatMessageParts()
+  const { locale, messages, components } = use(KanjouContext)
 
-  return (id, values, components) => {
-    const parts = formatParts(id, values)
-    return formatRich(parts, components, options.components, context.components)
+  return (id, values, overrideComponents) => {
+    const parts = formatMessageParts(locale, messages, id, values)
+    return formatRich(parts, overrideComponents, options.components, components)
   }
 }

@@ -1,16 +1,12 @@
-import type { Functions, Message, MessageFormatOptions, KanjouCache } from '@kanjou/core'
-import type { Formatters } from '@kanjou/core'
+import type { Functions, Message, MessageFormatOptions } from '@kanjou/core'
 import type { ElementType, ReactNode, Context } from 'react'
 
-import { createCache, createFormatters } from '@kanjou/core'
-import { createContext, use, useMemo } from 'react'
+import { createContext, useMemo } from 'react'
 
 export interface KanjouContextValue {
   locale: string
   messages: Record<string, Message>
   options?: MessageFormatOptions
-  cache: KanjouCache
-  formatters: Formatters
   components?: Record<string, ElementType>
 }
 
@@ -33,25 +29,10 @@ export function KanjouProvider({
   messages,
   components,
 }: KanjouProviderProps): ReactNode {
-  const _options = useMemo(() => ({ ...options, functions }), [])
-  const cache = useMemo(() => createCache(), [])
-  const formatters = useMemo(() => createFormatters(cache), [])
-
   const contextValue = useMemo(
-    () => ({
-      locale,
-      messages,
-      options: _options,
-      cache,
-      formatters,
-      components,
-    }),
+    () => ({ locale, messages, components, options: { ...options, functions } }),
     [locale],
   )
 
   return <KanjouContext value={contextValue}>{children}</KanjouContext>
-}
-
-export function useKanjouContext(): KanjouContextValue {
-  return use(KanjouContext)
 }

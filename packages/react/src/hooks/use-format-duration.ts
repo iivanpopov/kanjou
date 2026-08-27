@@ -1,14 +1,17 @@
+import type { Duration } from '@kanjou/core'
+
 import { formatDuration } from '@kanjou/core'
+import { use } from 'react'
 
-import { useKanjouContext } from '../context'
+import { KanjouContext } from '../context'
 
-export type Duration = Parameters<Intl.DurationFormat['format']>[0]
-
-type UseFormatDurationReturn = (duration: Duration, options?: Intl.DurationFormatOptions) => string
+export type UseFormatDurationReturn = (
+  duration: Duration,
+  options?: Intl.DurationFormatOptions,
+) => string
 
 export function useFormatDuration(): UseFormatDurationReturn {
-  const { formatters, locale } = useKanjouContext()
+  const { locale } = use(KanjouContext)
 
-  return (duration, options) =>
-    formatDuration(formatters.getDurationFormat, locale, duration, options)
+  return (duration, options) => formatDuration(locale, duration, options)
 }

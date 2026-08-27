@@ -1,11 +1,15 @@
 import { formatNumber } from '@kanjou/core'
+import { use } from 'react'
 
-import { useKanjouContext } from '../context'
+import { KanjouContext } from '../context'
 
-type UseFormatNumberReturn = (number: number | bigint, options?: Intl.NumberFormatOptions) => string
+export type UseFormatNumberReturn = (
+  number: number | bigint,
+  options?: Intl.NumberFormatOptions,
+) => string
 
 export function useFormatNumber(): UseFormatNumberReturn {
-  const { formatters, locale } = useKanjouContext()
+  const { locale } = use(KanjouContext)
 
-  return (number, options) => formatNumber(formatters.getNumberFormat, locale, number, options)
+  return (number, options) => formatNumber(locale, number, options)
 }

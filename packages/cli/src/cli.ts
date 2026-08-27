@@ -9,7 +9,7 @@ export const context = createContext()
 const cli = cac('kanjou')
 
 cli
-  .command('compile', 'Pre-compile locale messages into AST bundles.')
+  .command('compile', 'Pre-compile locale messages into AST.')
   .option('-l, --locales-dir <dir>', 'Directory containing locale files')
   .option('-b, --base-locale <name>', 'Base locale name (e.g. en)')
   .option('-o, --out-dir <dir>', 'Output directory for compiled AST files')

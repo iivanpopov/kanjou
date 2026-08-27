@@ -1,37 +1,23 @@
-import type { MessageId, MessageValues, MessagePart, InferPartsType } from '@kanjou/core'
+import type { MessageId, MessageValues } from '@kanjou/core'
 
-import { formatMessage, formatMessageParts } from '@kanjou/core'
+import { formatMessage } from '@kanjou/core'
+import { use } from 'react'
 
-import { useKanjouContext } from '../context'
+import { KanjouContext } from '../context'
 
-interface UseFormatMessageReturn {
+export interface UseFormatMessageReturn {
   <Id extends MessageId>(id: Id, values?: MessageValues<Id>): string
   unsafe: (id: string, values?: Record<string, any>) => string
 }
 
 export function useFormatMessage(): UseFormatMessageReturn {
-  const { formatters, messages, locale, options } = useKanjouContext()
+  const { messages, locale, options } = use(KanjouContext)
 
-  const _formatMessage = Object.assign(
-    <Id extends MessageId>(id: Id, values?: MessageValues<Id>) =>
-      formatMessage(formatters.getMessageFormat, messages, locale, id, values, options),
-    {
-      unsafe: (id: string, values?: Record<string, any>) =>
-        formatMessage(formatters.getMessageFormat, messages, locale, id, values, options),
-    },
-  )
+  const _formatMessage = <Id extends MessageId>(id: Id, values?: MessageValues<Id>) =>
+    formatMessage(locale, messages, id, values, options)
+  // oxlint-disable-next-line react/immutability
+  _formatMessage.unsafe = (id: string, values?: Record<string, any>) =>
+    formatMessage(locale, messages, id, values, options)
 
   return _formatMessage
-}
-
-type UseFormatMessagePartsReturn = <Id extends MessageId>(
-  id: Id,
-  values?: MessageValues<Id>,
-) => MessagePart<InferPartsType<Id>>[]
-
-export function useFormatMessageParts(): UseFormatMessagePartsReturn {
-  const { formatters, messages, locale, options } = useKanjouContext()
-
-  return (id, values) =>
-    formatMessageParts(formatters.getMessageFormat, messages, locale, id, values, options)
 }
