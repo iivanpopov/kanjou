@@ -1,3 +1,5 @@
+import type { FormatDisplayNameOptions } from '@kanjou/core'
+
 import { formatDisplayName } from '@kanjou/core'
 import { use } from 'react'
 
@@ -5,7 +7,7 @@ import { KanjouContext } from '../context'
 
 export type UseFormatDisplayNameReturn = (
   code: string,
-  options: Intl.DisplayNamesOptions,
+  options: FormatDisplayNameOptions,
 ) => string | undefined
 
 export function useFormatDisplayName(): UseFormatDisplayNameReturn {

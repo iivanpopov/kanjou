@@ -43,69 +43,74 @@ export function formatMessageParts<Id extends MessageId>(
   return formatter.formatToParts(values) as MessagePart<InferPartsType<Id>>[]
 }
 
-export function formatDate(
+export type DateLike = number | Date | Intl.FormattableTemporalObject
+export type FormatDateTimeOptions = Intl.DateTimeFormatOptions
+
+export function formatDateTime(
   locale: Locale,
-  date: number | Date,
-  options?: Intl.DateTimeFormatOptions,
+  date: DateLike,
+  options?: FormatDateTimeOptions,
 ): string {
   return get(Intl.DateTimeFormat, locale, options).format(date)
 }
 
-export function formatTime(
-  locale: Locale,
-  date: number | Date,
-  options?: Intl.DateTimeFormatOptions,
-): string {
-  return get(Intl.DateTimeFormat, locale, options).format(date)
-}
+export type NumberLike = number | bigint | Intl.StringNumericLiteral
+export type FormatNumberOptions = Intl.NumberFormatOptions
 
 export function formatNumber(
   locale: Locale,
-  number: number | bigint | Intl.StringNumericLiteral,
-  options?: Intl.NumberFormatOptions,
+  number: NumberLike,
+  options?: FormatNumberOptions,
 ): string {
   return get(Intl.NumberFormat, locale, options).format(number)
 }
 
+export type FormatPluralOptions = Intl.PluralRulesOptions
+
 export function formatPlural(
   locale: Locale,
-  n: number,
-  options?: Intl.PluralRulesOptions,
+  number: number,
+  options?: FormatPluralOptions,
 ): Intl.LDMLPluralRule {
-  return get(Intl.PluralRules, locale, options).select(n)
+  return get(Intl.PluralRules, locale, options).select(number)
 }
 
-export function formatList(
-  locale: Locale,
-  list: Iterable<string>,
-  options?: Intl.ListFormatOptions,
-): string {
+export type ListLike = Iterable<string>
+export type FormatListOptions = Intl.ListFormatOptions
+
+export function formatList(locale: Locale, list: ListLike, options?: FormatListOptions): string {
   return get(Intl.ListFormat, locale, options).format(list)
 }
+
+export type FormatDisplayNameOptions = Intl.DisplayNamesOptions
 
 export function formatDisplayName(
   locale: Locale,
   code: string,
-  options: Intl.DisplayNamesOptions,
+  options: FormatDisplayNameOptions,
 ): string | undefined {
   return get(Intl.DisplayNames, locale, options).of(code)
 }
 
+export type Unit = Intl.RelativeTimeFormatUnit
+export type FormatRelativeTimeOptions = Intl.RelativeTimeFormatOptions
+
 export function formatRelativeTime(
   locale: Locale,
   value: number,
-  unit: Intl.RelativeTimeFormatUnit,
-  options?: Intl.RelativeTimeFormatOptions,
+  unit: Unit,
+  options?: FormatRelativeTimeOptions,
 ): string {
   return get(Intl.RelativeTimeFormat, locale, options).format(value, unit)
 }
 
 export type Duration = Parameters<Intl.DurationFormat['format']>[0]
+export type FormatDurationOptions = Intl.DurationFormatOptions
 
 export function formatDuration(
   locale: Locale,
   duration: Duration,
-  options?: Intl.DurationFormatOptions,
+  options?: FormatDurationOptions,
 ): string {
   return get(Intl.DurationFormat, locale, options).format(duration)
 }

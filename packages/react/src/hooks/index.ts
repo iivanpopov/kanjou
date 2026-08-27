@@ -1,5 +1,4 @@
-export * from './use-format-date'
-export * from './use-format-time'
+export * from './use-format-datetime'
 export * from './use-format-number'
 export * from './use-format-plural'
 export * from './use-format-list'
