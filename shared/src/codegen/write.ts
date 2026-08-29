@@ -7,7 +7,7 @@ import { compileLocalesDts, VIRTUAL_DTS } from './compile'
 export interface WriteLocalesDtsOptions {
   baseLocale: string
   localesDir: string
-  prettier?: PrettierOptions
+  prettier?: boolean | PrettierOptions
 }
 
 export async function writeLocalesDts(localesPath: string, options: WriteLocalesDtsOptions) {
@@ -26,7 +26,7 @@ export async function writeLocalesDts(localesPath: string, options: WriteLocales
 }
 
 export interface WriteVirtualDtsOptions {
-  prettier?: PrettierOptions
+  prettier?: boolean | PrettierOptions
 }
 
 export async function writeVirtualDts(virtualPath: string, options: WriteVirtualDtsOptions) {

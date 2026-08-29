@@ -1,28 +1,15 @@
-import type { UserConfig } from '@kanjou/config'
-
-import { createContext } from '#/shared/context'
+import { context } from '../cli'
 
 export interface UnusedOptions {
   localesDir?: string
   baseLocale?: string
 }
 
-export interface ResolvedUnusedOptions {
-  localesDir: string
-  baseLocale: string
-}
-
-function resolveOptions(options: UnusedOptions, config: UserConfig): ResolvedUnusedOptions {
-  return {
-    localesDir: options.localesDir ?? config.localesDir,
-    baseLocale: options.baseLocale ?? config.baseLocale,
-  }
-}
-
 export async function unused(options: UnusedOptions = {}) {
-  const ctx = createContext()
-  const config = await ctx.getConfig()
-  const _options = resolveOptions(options, config)
+  const config = await context.getConfig()
 
-  console.log(_options)
+  const localesDir = options.localesDir ?? config.localesDir ?? './src/assets/locales'
+  const baseLocale = options.baseLocale ?? config.baseLocale ?? 'en'
+
+  console.log({ localesDir, baseLocale })
 }

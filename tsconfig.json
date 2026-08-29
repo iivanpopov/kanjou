@@ -10,14 +10,16 @@
     "verbatimModuleSyntax": true,
     "allowImportingTsExtensions": true,
     "types": ["node"],
+    "jsx": "react-jsx",
     "paths": {
       "@kanjou/config": ["./packages/config/src/index.ts"],
       "@kanjou/core": ["./packages/core/src/index.ts"],
       "@kanjou/react": ["./packages/react/src/index.ts"],
-      "@kanjou/vite": ["./packages/vite/src/index.ts"],
+      "@kanjou/plugin": ["./packages/plugin/src/index.ts"],
+      "@kanjou/plugin/*": ["./packages/plugin/src/*.ts"],
       "@kanjou/cli": ["./packages/cli/src/index.ts"],
       "#/shared/*": ["./shared/src/*"]
     }
   },
-  "exclude": ["**/dist/**", "**/node_modules/**"]
+  "exclude": ["**/dist/**", "**/node_modules/**", "playground/**"]
 }

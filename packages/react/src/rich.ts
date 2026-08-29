@@ -14,11 +14,13 @@ function toNode(nodes: ReactNode[]): ReactNode {
   return createElement(Fragment, null, nodes)
 }
 
+export type Components = Record<string, ElementType>
+
 function consume(
   parts: MessagePart<string>[],
   index: number,
   nested: boolean,
-  ...components: (Record<string, ElementType> | undefined)[]
+  ...components: (Components | undefined)[]
 ): [ReactNode[], number] {
   const nodes: ReactNode[] = []
 
@@ -40,8 +42,10 @@ function consume(
         continue
       }
 
+      const _options = { ...part.options, key: index }
+
       if (kind === 'standalone') {
-        if (render) nodes.push(createElement(render, { ...part.options, key: index }))
+        if (render) nodes.push(createElement(render, _options))
         index++
         continue
       }
@@ -49,7 +53,7 @@ function consume(
       const [children, next] = consume(parts, index + 1, true, ...components)
 
       const _children = toNode(children)
-      nodes.push(createElement(render ?? Fragment, { ...part.options, key: index }, _children))
+      nodes.push(createElement(render ?? Fragment, _options, _children))
 
       index = next
       continue
@@ -64,7 +68,7 @@ function consume(
 
 export function formatRich(
   parts: MessagePart<string>[],
-  ...components: (Record<string, ElementType> | undefined)[]
+  ...components: (Components | undefined)[]
 ): ReactNode {
   const [nodes] = consume(parts, 0, false, ...components)
   return toNode(nodes)

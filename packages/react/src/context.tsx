@@ -1,24 +1,26 @@
-import type { Functions, Message, MessageFormatOptions } from '@kanjou/core'
-import type { ElementType, ReactNode, Context } from 'react'
+import type { Functions, Locale, Message, MessageFormatOptions } from '@kanjou/core'
+import type { ReactNode, Context } from 'react'
 
 import { createContext, useMemo } from 'react'
 
+import type { Components } from './rich'
+
 export interface KanjouContextValue {
-  locale: string
+  locale: Locale
   messages: Record<string, Message>
   options?: MessageFormatOptions
-  components?: Record<string, ElementType>
+  components?: Components
 }
 
 export const KanjouContext: Context<KanjouContextValue> = createContext({} as KanjouContextValue)
 
 export interface KanjouProviderProps {
   children: ReactNode
-  locale: string
+  locale: Locale
   messages: Record<string, Message>
   options?: Omit<MessageFormatOptions, 'functions'>
   functions?: Functions
-  components?: Record<string, ElementType>
+  components?: Components
 }
 
 export function KanjouProvider({

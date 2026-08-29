@@ -1,5 +1,5 @@
 {
-  "name": "@kanjou/vite",
+  "name": "@kanjou/plugin",
   "version": "0.2.0",
   "private": false,
   "license": "ISC",
@@ -15,6 +15,22 @@
     ".": {
       "types": "./dist/index.d.mts",
       "import": "./dist/index.mjs"
+    },
+    "./vite": {
+      "types": "./dist/vite.d.mts",
+      "import": "./dist/vite.mjs"
+    },
+    "./webpack": {
+      "types": "./dist/webpack.d.mts",
+      "import": "./dist/webpack.mjs"
+    },
+    "./rspack": {
+      "types": "./dist/rspack.d.mts",
+      "import": "./dist/rspack.mjs"
+    },
+    "./esbuild": {
+      "types": "./dist/esbuild.d.mts",
+      "import": "./dist/esbuild.mjs"
     }
   },
   "scripts": {
@@ -26,15 +42,16 @@
     "jiti": "^2.7.0",
     "messageformat": "catalog:",
     "prettier": "catalog:",
-    "ts-morph": "^28.0.0"
+    "ts-morph": "^28.0.0",
+    "unplugin": "^1.14.1"
   },
   "devDependencies": {
+    "@rspack/core": "^1.0.0",
     "@types/node": "catalog:",
+    "esbuild": "^0.23.0",
     "tsdown": "catalog:tooling",
     "typescript": "catalog:tooling",
-    "vite": "catalog:tooling"
-  },
-  "peerDependencies": {
-    "vite": "catalog:tooling"
+    "vite": "catalog:tooling",
+    "webpack": "^5.94.0"
   }
 }

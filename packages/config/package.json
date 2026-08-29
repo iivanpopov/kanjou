@@ -23,6 +23,7 @@
   },
   "dependencies": {
     "consola": "catalog:",
+    "es-toolkit": "^1.52.0",
     "unconfig": "^7.5.0"
   },
   "devDependencies": {

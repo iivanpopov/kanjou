@@ -5,9 +5,9 @@ import { use } from 'react'
 
 import { KanjouContext } from '../context'
 
-export type FormatDateTime = (date: DateLike, options?: FormatDateTimeOptions) => string
+export type UseFormatDateTimeReturn = (date: DateLike, options?: FormatDateTimeOptions) => string
 
-export function useFormatDateTime(): FormatDateTime {
+export function useFormatDateTime(): UseFormatDateTimeReturn {
   const { locale } = use(KanjouContext)
 
   return (date, options) => formatDateTime(locale, date, options)

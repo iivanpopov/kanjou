@@ -1,28 +1,23 @@
-import type { LoadUserConfigResult, UserConfig } from '@kanjou/config'
+import type { LoadConfigResult, UserConfig } from '@kanjou/config'
 
 import { createRecoveryConfigLoader } from '@kanjou/config'
 
-export interface KanjouPluginContext<Config extends UserConfig = UserConfig> {
-  ready: Promise<LoadUserConfigResult<Config>>
-  reloadConfig: (inlineConfig?: Partial<UserConfig>) => Promise<LoadUserConfigResult<Config>>
-  getConfig: () => Promise<Config>
+export interface KanjouPluginContext {
+  ready: Promise<LoadConfigResult<UserConfig>>
+  reloadConfig: (inlineConfig?: UserConfig) => Promise<LoadConfigResult<UserConfig>>
+  getConfig: () => Promise<UserConfig>
 }
 
-export function createContext<Config extends UserConfig = UserConfig>(
-  inlineConfig: Partial<UserConfig> = {},
-  defaults?: Partial<UserConfig>,
-): KanjouPluginContext<Config> {
-  const root = process.cwd()
+export function createContext(inlineConfig?: UserConfig): KanjouPluginContext {
+  const loadConfig = createRecoveryConfigLoader()
 
-  const loadConfig = createRecoveryConfigLoader<Config>()
-
-  let _config = {} as Config
+  let _config = {} as UserConfig
   const _ready = reloadConfig()
 
   async function reloadConfig() {
-    const result = await loadConfig(root, inlineConfig, defaults)
+    const result = await loadConfig(inlineConfig)
     _config = result.config
-    return result
+    return { ...result, config: _config }
   }
 
   async function getConfig() {

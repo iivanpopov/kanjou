@@ -1,5 +1,0 @@
----
-title: 'Vite Plugin'
----
-
-# Vite Plugin

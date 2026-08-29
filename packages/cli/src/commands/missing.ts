@@ -1,28 +1,15 @@
-import type { UserConfig } from '@kanjou/config'
-
-import { createContext } from '#/shared/context'
+import { context } from '../cli'
 
 export interface MissingOptions {
   localesDir?: string
   baseLocale?: string
 }
 
-export interface ResolvedMissingOptions {
-  localesDir: string
-  baseLocale: string
-}
+export async function missing(options: MissingOptions = {}) {
+  const config = await context.getConfig()
 
-function resolveOptions(options: MissingOptions, config: UserConfig): ResolvedMissingOptions {
-  return {
-    localesDir: options.localesDir ?? config.localesDir,
-    baseLocale: options.baseLocale ?? config.baseLocale,
-  }
-}
+  const localesDir = options.localesDir ?? config.localesDir ?? './src/assets/locales'
+  const baseLocale = options.baseLocale ?? config.baseLocale ?? 'en'
 
-export async function missing(options: MissingOptions) {
-  const ctx = createContext()
-  const config = await ctx.getConfig()
-  const _options = resolveOptions(options, config)
-
-  console.log(_options)
+  console.log({ localesDir, baseLocale })
 }

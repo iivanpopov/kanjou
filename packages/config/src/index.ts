@@ -1,69 +1,51 @@
-import type { Options as PrettierOptions } from 'prettier'
 import type { LoadConfigResult } from 'unconfig'
 
 import consola from 'consola'
-import { createConfigLoader as createLoader } from 'unconfig'
+import { toMerged } from 'es-toolkit'
+import { createConfigLoader } from 'unconfig'
 
 export interface DtsOptions {
-  locales?: boolean
-  virtual?: boolean
   outDir?: string
-  localesPath?: string
-  virtualPath?: string
 }
 
 export interface CompileOptions {
   outDir?: string
-  extension?: 'js' | 'json'
 }
 
 export interface UserConfig {
-  localesDir: string
-  baseLocale: string
-  prettier?: PrettierOptions
-  dts?: DtsOptions
+  baseLocale?: string
+  localesDir?: string
   compile?: CompileOptions
+  dts?: boolean | DtsOptions
+  prettier?: boolean | Record<string, any>
+}
+
+export type { LoadConfigResult }
+
+export async function loadConfig(inlineConfig?: UserConfig): Promise<LoadConfigResult<UserConfig>> {
+  const loader = createConfigLoader<UserConfig>({
+    sources: [{ files: ['kanjou.config'] }],
+  })
+
+  const result = await loader.load()
+
+  result.config = toMerged(result.config ?? {}, inlineConfig ?? {})
+
+  return result
 }
 
 export function defineConfig(config: UserConfig): UserConfig {
   return config
 }
 
-export type LoadUserConfigResult<Config = UserConfig> = LoadConfigResult<Config>
+export function createRecoveryConfigLoader(): (
+  inlineConfig?: UserConfig,
+) => Promise<LoadConfigResult<UserConfig>> {
+  let lastResolved: LoadConfigResult<UserConfig>
 
-export async function loadConfig<Config = UserConfig>(
-  cwd: string = process.cwd(),
-  inlineConfig?: Partial<UserConfig>,
-  defaults?: Partial<UserConfig>,
-): Promise<LoadConfigResult<Config>> {
-  const loader = createLoader<Config>({
-    cwd,
-    sources: [{ files: ['kanjou.config'] }],
-  })
-
-  const result = await loader.load()
-
-  if (!result.config && !inlineConfig) consola.error('[@kanjou/config] Config file not found')
-
-  result.config = Object.assign({}, defaults, result.config, inlineConfig)
-
-  return result
-}
-
-export function createRecoveryConfigLoader<Config extends UserConfig = UserConfig>(): (
-  cwd: string | undefined,
-  inlineConfig?: Partial<UserConfig>,
-  defaults?: Partial<UserConfig>,
-) => Promise<LoadConfigResult<Config>> {
-  let lastResolved: LoadConfigResult<Config>
-
-  return async (
-    cwd: string = process.cwd(),
-    inlineConfig?: Partial<UserConfig>,
-    defaults?: Partial<UserConfig>,
-  ): Promise<LoadConfigResult<Config>> => {
+  return async (inlineConfig?: UserConfig) => {
     try {
-      const config = await loadConfig<Config>(cwd, inlineConfig, defaults)
+      const config = await loadConfig(inlineConfig)
       lastResolved = config
       return config
     } catch (error) {

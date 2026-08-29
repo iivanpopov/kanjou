@@ -38,9 +38,9 @@ export function formatMessageParts<Id extends MessageId>(
   const message = messages[id]
   if (!message) return []
 
-  const formatter = get(MessageFormat, locale, message, options as any)
+  const formatter = get(MessageFormat<InferPartsType<Id>>, locale, message, options as any)
 
-  return formatter.formatToParts(values) as MessagePart<InferPartsType<Id>>[]
+  return formatter.formatToParts(values)
 }
 
 export type DateLike = number | Date | Intl.FormattableTemporalObject
@@ -65,13 +65,14 @@ export function formatNumber(
   return get(Intl.NumberFormat, locale, options).format(number)
 }
 
+export type PluralRule = Intl.LDMLPluralRule
 export type FormatPluralOptions = Intl.PluralRulesOptions
 
 export function formatPlural(
   locale: Locale,
   number: number,
   options?: FormatPluralOptions,
-): Intl.LDMLPluralRule {
+): PluralRule {
   return get(Intl.PluralRules, locale, options).select(number)
 }
 

@@ -13,13 +13,13 @@ cli
   .option('-l, --locales-dir <dir>', 'Directory containing locale files')
   .option('-b, --base-locale <name>', 'Base locale name (e.g. en)')
   .option('-o, --out-dir <dir>', 'Output directory for compiled AST files')
-  .option('-e, --extension <format>', 'Output extension (js or json)')
   .action(compile)
 
 cli
   .command('generate', 'Generate locale .d.ts type declarations.')
   .option('-l, --locales-dir <dir>', 'Directory containing locale files')
   .option('-b, --base-locale <name>', 'Base locale name (e.g. en)')
+  .option('-o, --out-dir <dir>', 'Output directory for generated .d.ts files')
   .option('--locales', 'Generate locale .d.ts declarations')
   .option('--no-locales', 'Disable locale .d.ts generation')
   .option('--virtual', 'Generate virtual .d.ts declarations')

@@ -1,5 +1,3 @@
-import type { UserConfig } from '@kanjou/config'
-
 import consola from 'consola'
 
 import { filterLocaleFiles, loadFile, readdir } from '#/shared/io'
@@ -11,23 +9,12 @@ export interface CompareOptions {
   baseLocale?: string
 }
 
-export interface ResolvedCompareOptions {
-  localesDir: string
-  baseLocale: string
-}
-
-function resolveOptions(options: CompareOptions, config: UserConfig): ResolvedCompareOptions {
-  return {
-    localesDir: options.localesDir ?? config.localesDir,
-    baseLocale: options.baseLocale ?? config.baseLocale,
-  }
-}
-
-export async function compare(_options: CompareOptions) {
+export async function compare(options: CompareOptions = {}) {
   const config = await context.getConfig()
-  const options = resolveOptions(_options, config)
 
-  const localeFiles = filterLocaleFiles(await readdir(options.localesDir))
+  const localesDir = options.localesDir ?? config.localesDir ?? './src/assets/locales'
+  const baseLocale = options.baseLocale ?? config.baseLocale ?? 'en'
+  const localeFiles = filterLocaleFiles(await readdir(localesDir))
   const locales = localeFiles.map((file) => file.name)
 
   const keysByLocale = new Map(

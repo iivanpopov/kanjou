@@ -31,7 +31,8 @@
     "jiti": "^2.7.0",
     "messageformat": "catalog:",
     "prettier": "catalog:",
-    "ts-morph": "^28.0.0"
+    "ts-morph": "^28.0.0",
+    "valibot": "^1.4.2"
   },
   "devDependencies": {
     "tsdown": "catalog:tooling",

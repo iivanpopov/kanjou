@@ -10,7 +10,10 @@ hero:
     alt: Project Logo
   actions:
     - theme: brand
-      text: Get Started
+      text: Introduction
+      link: /guide/introduction
+    - theme: alt
+      text: Quick Start
       link: /guide/getting-started
     - theme: alt
       text: View on GitHub
