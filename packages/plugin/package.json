@@ -23,14 +23,6 @@
     "./webpack": {
       "types": "./dist/webpack.d.mts",
       "import": "./dist/webpack.mjs"
-    },
-    "./rspack": {
-      "types": "./dist/rspack.d.mts",
-      "import": "./dist/rspack.mjs"
-    },
-    "./esbuild": {
-      "types": "./dist/esbuild.d.mts",
-      "import": "./dist/esbuild.mjs"
     }
   },
   "scripts": {
@@ -38,20 +30,12 @@
     "prepublishOnly": "pnpm build"
   },
   "dependencies": {
-    "@kanjou/config": "workspace:*",
-    "jiti": "^2.7.0",
-    "messageformat": "catalog:",
-    "prettier": "catalog:",
-    "ts-morph": "^28.0.0",
+    "@kanjou/generator": "workspace:*",
     "unplugin": "^1.14.1"
   },
   "devDependencies": {
-    "@rspack/core": "^1.0.0",
     "@types/node": "catalog:",
-    "esbuild": "^0.23.0",
     "tsdown": "catalog:tooling",
-    "typescript": "catalog:tooling",
-    "vite": "catalog:tooling",
-    "webpack": "^5.94.0"
+    "typescript": "catalog:tooling"
   }
 }

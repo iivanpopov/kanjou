@@ -1,30 +1,23 @@
+import { getConfig, readLocaleFiles } from '@kanjou/generator'
 import consola from 'consola'
 
-import { filterLocaleFiles, loadFile, readdir } from '#/shared/io'
+import { load } from '#/shared/load'
 
-import { context } from '../cli'
+export async function compare() {
+  const config = getConfig()
 
-export interface CompareOptions {
-  localesDir?: string
-  baseLocale?: string
-}
-
-export async function compare(options: CompareOptions = {}) {
-  const config = await context.getConfig()
-
-  const localesDir = options.localesDir ?? config.localesDir ?? './src/assets/locales'
-  const baseLocale = options.baseLocale ?? config.baseLocale ?? 'en'
-  const localeFiles = filterLocaleFiles(await readdir(localesDir))
-  const locales = localeFiles.map((file) => file.name)
+  const localeFiles = await readLocaleFiles(config.localesDir)
 
   const keysByLocale = new Map(
     await Promise.all(
       localeFiles.map(async (file) => {
-        const messages = await loadFile<Record<string, string>>(file)
-        return [file.name, new Set(Object.keys(messages!))] as const
+        const messages = await load(file)
+        return [file.name, new Set(Object.keys(messages))] as const
       }),
     ),
   )
+
+  const locales = localeFiles.map((file) => file.name)
 
   for (const locale of locales) {
     const ownKeys = keysByLocale.get(locale)!

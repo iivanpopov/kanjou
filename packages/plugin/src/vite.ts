@@ -1,7 +1,7 @@
-import type { UserConfig } from '@kanjou/config'
-import type { Plugin } from 'vite'
+import type { ConfigInput } from '@kanjou/generator'
+import type { VitePlugin } from 'unplugin'
 
 import { kanjou } from './index'
 
-const plugin = kanjou.vite as (options?: UserConfig) => Plugin
+const plugin: (options?: ConfigInput) => VitePlugin = kanjou.vite
 export default plugin

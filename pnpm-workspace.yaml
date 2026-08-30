@@ -15,9 +15,9 @@ overrides:
 
 catalog:
   '@types/node': ^26.2.0
-  consola: ^3.4.2
   messageformat: ^4.0.0
   prettier: ^3.9.6
+  jiti: ^2.7.0
 
 catalogs:
   react:

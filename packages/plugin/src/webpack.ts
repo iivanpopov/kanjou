@@ -1,7 +1,7 @@
-import type { UserConfig } from '@kanjou/config'
+import type { ConfigInput } from '@kanjou/generator'
 import type { WebpackPluginInstance } from 'unplugin'
 
 import { kanjou } from './index'
 
-const plugin: (options?: UserConfig) => WebpackPluginInstance = kanjou.webpack
+const plugin: (options?: ConfigInput) => WebpackPluginInstance = kanjou.webpack
 export default plugin

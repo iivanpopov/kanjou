@@ -5,16 +5,12 @@ export function basename(file: string | path.ParsedPath): string {
   return file.name
 }
 
-export function basenames(files: (string | path.ParsedPath)[]): string[] {
-  return files.map(basename)
-}
-
-export interface ParsedPath extends path.ParsedPath {
+export interface ParsedFile extends path.ParsedPath {
   absolute: string
   relative: string
 }
 
-export function parse(file: string) {
+export function parse(file: string): ParsedFile {
   const parsed = path.parse(file)
   return {
     ...parsed,

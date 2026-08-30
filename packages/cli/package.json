@@ -25,20 +25,13 @@
     "prepublishOnly": "pnpm build"
   },
   "dependencies": {
-    "@kanjou/config": "workspace:*",
+    "@kanjou/generator": "workspace:*",
     "cac": "^7.0.0",
-    "consola": "catalog:",
-    "jiti": "^2.7.0",
-    "messageformat": "catalog:",
-    "prettier": "catalog:",
-    "ts-morph": "^28.0.0",
-    "valibot": "^1.4.2"
+    "consola": " ^3.4.2",
+    "jiti": "catalog:"
   },
   "devDependencies": {
     "tsdown": "catalog:tooling",
-    "typescript": "catalog:tooling"
-  },
-  "peerDependencies": {
     "typescript": "catalog:tooling"
   }
 }

@@ -1,39 +1,29 @@
-import type { UserConfig } from '@kanjou/config'
+import type { ConfigInput } from '@kanjou/generator'
 import type { UnpluginFactory, UnpluginInstance } from 'unplugin'
 
+import { CONFIG_FILENAME, Generator, getConfig, readLocaleFiles } from '@kanjou/generator'
 import path from 'node:path'
 import { createUnplugin } from 'unplugin'
-import { normalizePath } from 'vite'
 
-import { compileLocales, compileMessages, writeLocalesDts, writeVirtualDts } from '#/shared/codegen'
-import { createContext } from '#/shared/context'
-import { basename, basenames, filterLocaleFiles, loadFile, readdir } from '#/shared/io'
+import { load } from '#/shared/load'
+import { basename } from '#/shared/path'
 
-export const kanjouPluginFactory: UnpluginFactory<UserConfig | undefined> = (options) => {
-  const ctx = createContext(options)
+export const kanjouPluginFactory: UnpluginFactory<ConfigInput | undefined> = (options) => {
+  let config = getConfig(options)
+
+  let generator = new Generator(config)
 
   return {
     name: 'kanjou',
 
     async buildStart() {
-      const config = await ctx.getConfig()
-      const localesDir = config.localesDir ?? './src/assets/locales'
-      const baseLocale = config.baseLocale ?? 'en'
+      const configFilePath = path.resolve(CONFIG_FILENAME)
+      this.addWatchFile(configFilePath)
 
-      const localeFiles = filterLocaleFiles(await readdir(localesDir))
-
+      const localeFiles = await readLocaleFiles(config.localesDir)
       localeFiles.forEach((file) => this.addWatchFile(file.absolute))
 
-      if (config.dts !== false) {
-        const outDir =
-          typeof config.dts === 'object' && config.dts.outDir ? config.dts.outDir : './generated'
-        await writeLocalesDts(path.join(outDir, 'locales.kanjou.d.ts'), {
-          ...config,
-          localesDir,
-          baseLocale,
-        })
-        await writeVirtualDts(path.join(outDir, 'virtual.kanjou.d.ts'), config)
-      }
+      await generator.generate()
     },
 
     resolveId(id) {
@@ -43,53 +33,40 @@ export const kanjouPluginFactory: UnpluginFactory<UserConfig | undefined> = (opt
     async load(id) {
       if (!id.startsWith('\0virtual:kanjou/')) return
 
-      const config = await ctx.getConfig()
-      const localesDir = config.localesDir ?? './src/assets/locales'
+      const localeFiles = await readLocaleFiles(config.localesDir)
 
-      const localeFiles = filterLocaleFiles(await readdir(localesDir))
+      if (id === '\0virtual:kanjou/locales') {
+        return generator.virtualLocalesToString(localeFiles.map((file) => file.name))
+      }
 
-      if (id === '\0virtual:kanjou/locales') return compileLocales(basenames(localeFiles))
+      const [, locale] = id.split('/')
+      const localeFile = localeFiles.find((file) => file.name === locale)
 
-      const locale = id.replace('\0virtual:kanjou/', '')
-      const localeFile = localeFiles.find((localeFile) => localeFile.name === locale)
-
-      if (!localeFile) return
+      if (!localeFile) return this.error(`file for locale "${locale}" not found.`)
 
       this.addWatchFile(localeFile.absolute)
 
-      const messages = await loadFile<Record<string, string>>(localeFile)
-
-      return compileMessages(messages ?? {})
+      const messages = await load(localeFile)
+      const ast = generator.ast(messages)
+      return generator.astToString(ast)
     },
 
     async watchChange(id, change) {
-      const config = await ctx.getConfig()
-      const localesDir = config.localesDir ?? './src/assets/locales'
-      const baseLocale = config.baseLocale ?? 'en'
+      if (config.dts === false) return
 
-      const fileDir = normalizePath(path.dirname(id))
-      const absoluteLocalesDir = normalizePath(path.resolve(localesDir))
-
-      if (fileDir !== absoluteLocalesDir) return
-
-      if (change.event === 'update' && basename(id) === baseLocale && config.dts !== false) {
-        const outDir =
-          typeof config.dts === 'object' && config.dts.outDir ? config.dts.outDir : './generated'
-        await writeLocalesDts(path.join(outDir, 'locales.kanjou.d.ts'), {
-          ...config,
-          localesDir,
-          baseLocale,
-        })
+      if (id.includes(CONFIG_FILENAME)) {
+        config = getConfig(options)
+        generator = new Generator(config)
+        await generator.generate()
+        return
       }
 
-      if ((change.event === 'create' || change.event === 'delete') && config.dts !== false) {
-        const outDir =
-          typeof config.dts === 'object' && config.dts.outDir ? config.dts.outDir : './generated'
-        await writeVirtualDts(path.join(outDir, 'virtual.kanjou.d.ts'), config)
+      if (change.event === 'update' && basename(id) === config.baseLocale) {
+        await generator.generate()
       }
     },
   }
 }
 
-export const kanjou: UnpluginInstance<UserConfig | undefined, false> =
+export const kanjou: UnpluginInstance<ConfigInput | undefined, false> =
   createUnplugin(kanjouPluginFactory)

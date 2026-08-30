@@ -24,11 +24,9 @@
     "prepublishOnly": "pnpm build"
   },
   "dependencies": {
-    "@kanjou/config": "workspace:*",
     "@kanjou/core": "workspace:*"
   },
   "devDependencies": {
-    "@types/node": "catalog:",
     "@types/react": "catalog:react",
     "tsdown": "catalog:tooling",
     "typescript": "catalog:tooling"

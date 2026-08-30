@@ -1,7 +1,7 @@
-import type { UserConfig } from '@kanjou/config'
-import type { Plugin } from 'esbuild'
+import type { ConfigInput } from '@kanjou/generator'
+import type { UnpluginInstance } from 'unplugin'
 
 import { kanjou } from './index'
 
-const plugin: (options?: UserConfig) => Plugin = kanjou.esbuild
+const plugin: UnpluginInstance<ConfigInput | undefined, false>['esbuild'] = kanjou.esbuild
 export default plugin
