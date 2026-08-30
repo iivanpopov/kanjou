@@ -142,6 +142,9 @@ importers:
       '@kanjou/generator':
         specifier: workspace:*
         version: link:../generator
+      jiti:
+        specifier: 'catalog:'
+        version: 2.7.0
       unplugin:
         specifier: ^1.14.1
         version: 1.16.1
