@@ -1,0 +1,75 @@
+import type { MessagePart } from '@kanjou/core'
+import type { ElementType, ReactNode } from 'react'
+
+import { createElement, Fragment } from 'react'
+
+function toText(part: MessagePart<string>): string {
+  if ('value' in part && part.value !== null) return String(part.value as any)
+  return ''
+}
+
+function toNode(nodes: ReactNode[]): ReactNode {
+  if (nodes.length === 0) return null
+  if (nodes.length === 1) return nodes[0]
+  return createElement(Fragment, null, nodes)
+}
+
+export type Components = Record<string, ElementType>
+
+function consume(
+  parts: MessagePart<string>[],
+  index: number,
+  nested: boolean,
+  ...components: (Components | undefined)[]
+): [ReactNode[], number] {
+  const nodes: ReactNode[] = []
+
+  while (index < parts.length) {
+    const part = parts[index]
+
+    if (part.type === 'bidiIsolation') {
+      index++
+      continue
+    }
+
+    if (part.type === 'markup' && 'kind' in part) {
+      const { kind, name } = part
+      const render = components[0]?.[name] ?? components[1]?.[name] ?? components[2]?.[name]
+
+      if (kind === 'close') {
+        if (nested) return [nodes, index + 1]
+        index++
+        continue
+      }
+
+      const _options = { ...part.options, key: index }
+
+      if (kind === 'standalone') {
+        if (render) nodes.push(createElement(render, _options))
+        index++
+        continue
+      }
+
+      const [children, next] = consume(parts, index + 1, true, ...components)
+
+      const _children = toNode(children)
+      nodes.push(createElement(render ?? Fragment, _options, _children))
+
+      index = next
+      continue
+    }
+
+    nodes.push(toText(part))
+    index++
+  }
+
+  return [nodes, index]
+}
+
+export function formatRich(
+  parts: MessagePart<string>[],
+  ...components: (Components | undefined)[]
+): ReactNode {
+  const [nodes] = consume(parts, 0, false, ...components)
+  return toNode(nodes)
+}

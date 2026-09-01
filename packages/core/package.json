@@ -1,13 +1,10 @@
 {
-  "name": "@kanjou/cli",
+  "name": "@kanjou/core",
   "version": "0.2.1",
   "private": false,
   "license": "ISC",
   "author": "Ivan Popov <iivanpopov@proton.me>",
   "repository": "https://github.com/iivanpopov/kanjou.git",
-  "bin": {
-    "kanjou": "./dist/cli.mjs"
-  },
   "files": [
     "dist",
     "README.md",
@@ -25,10 +22,7 @@
     "prepublishOnly": "pnpm build"
   },
   "dependencies": {
-    "@kanjou/generator": "workspace:*",
-    "cac": "^7.0.0",
-    "consola": " ^3.4.2",
-    "jiti": "catalog:"
+    "messageformat": "catalog:"
   },
   "devDependencies": {
     "tsdown": "catalog:tooling",

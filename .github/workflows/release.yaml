@@ -30,5 +30,6 @@ jobs:
         with:
           version-script: pnpm changeset version
           publish-script: pnpm release
+          create-github-releases: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

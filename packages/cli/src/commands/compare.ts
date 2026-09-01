@@ -1,43 +1,23 @@
-import type { UserConfig } from '@kanjou/config'
-
+import { getConfig, readLocaleFiles } from '@kanjou/generator'
 import consola from 'consola'
 
-import { filterLocaleFiles, loadFile, readdir } from '#/shared/io'
+import { load } from '#/shared/load'
 
-import { context } from '../cli'
+export async function compare() {
+  const config = getConfig()
 
-export interface CompareOptions {
-  localesDir?: string
-  baseLocale?: string
-}
-
-export interface ResolvedCompareOptions {
-  localesDir: string
-  baseLocale: string
-}
-
-function resolveOptions(options: CompareOptions, config: UserConfig): ResolvedCompareOptions {
-  return {
-    localesDir: options.localesDir ?? config.localesDir,
-    baseLocale: options.baseLocale ?? config.baseLocale,
-  }
-}
-
-export async function compare(_options: CompareOptions) {
-  const config = await context.getConfig()
-  const options = resolveOptions(_options, config)
-
-  const localeFiles = filterLocaleFiles(await readdir(options.localesDir))
-  const locales = localeFiles.map((file) => file.name)
+  const localeFiles = await readLocaleFiles(config.localesDir)
 
   const keysByLocale = new Map(
     await Promise.all(
       localeFiles.map(async (file) => {
-        const messages = await loadFile<Record<string, string>>(file)
-        return [file.name, new Set(Object.keys(messages!))] as const
+        const messages = await load(file)
+        return [file.name, new Set(Object.keys(messages))] as const
       }),
     ),
   )
+
+  const locales = localeFiles.map((file) => file.name)
 
   for (const locale of locales) {
     const ownKeys = keysByLocale.get(locale)!
