@@ -1,4 +1,4 @@
-import type { MessageId, MessageValues } from '@kanjou/core'
+import type { MessageFormatOptions, MessageId, MessageValues } from '@kanjou/core'
 
 import { formatMessage } from '@kanjou/core'
 import { use } from 'react'
@@ -6,18 +6,24 @@ import { use } from 'react'
 import { KanjouContext } from '../context'
 
 export interface UseFormatMessageReturn {
-  <Id extends MessageId>(id: Id, values?: MessageValues<Id>): string
-  unsafe: (id: string, values?: Record<string, any>) => string
+  <Id extends MessageId>(id: Id, values?: MessageValues<Id>, options?: MessageFormatOptions): string
+  unsafe: (id: string, values?: Record<string, any>, options?: MessageFormatOptions) => string
 }
 
 export function useFormatMessage(): UseFormatMessageReturn {
-  const { messages, locale, options } = use(KanjouContext)
+  const context = use(KanjouContext)
 
-  const _formatMessage = <Id extends MessageId>(id: Id, values?: MessageValues<Id>) =>
-    formatMessage(locale, messages, id, values, options)
-  // oxlint-disable-next-line react/immutability
-  _formatMessage.unsafe = (id: string, values?: Record<string, any>) =>
-    formatMessage(locale, messages, id, values, options)
+  const _formatMessage = <Id extends MessageId>(
+    id: Id,
+    values?: MessageValues<Id>,
+    options?: MessageFormatOptions,
+  ) =>
+    formatMessage(context.locale, context.messages, id, values, {
+      ...context.options,
+      ...options,
+    })
+
+  _formatMessage.unsafe = _formatMessage
 
   return _formatMessage
 }
