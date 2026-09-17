@@ -15,7 +15,7 @@ export interface FormatRichOptions {
 
 export interface FormatRich {
   (id: MessageId, values?: MessageValues, options?: FormatRichOptions): ReactNode
-  unsafe: (id: string, values?: Record<string, any>, options?: FormatRichOptions) => ReactNode
+  unsafe: (id?: string, values?: Record<string, any>, options?: FormatRichOptions) => ReactNode
 }
 
 export function enrich(t: Translate, components?: Components): ReactTranslate {

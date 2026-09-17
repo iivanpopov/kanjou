@@ -43,12 +43,12 @@ export interface CreateTranslateOptions {
 
 export interface TranslateParts {
   (id: MessageId, values?: MessageValues): MessagePart<InferPartsType<MessageId>>[]
-  unsafe: (id: string, values?: Record<string, any>) => MessagePart<any>[]
+  unsafe: (id?: string, values?: Record<string, any>) => MessagePart<any>[]
 }
 
 export interface Translate {
   (id: MessageId, values?: MessageValues): string
-  unsafe: (id: string, values?: Record<string, any>) => string
+  unsafe: (id?: string, values?: Record<string, any>) => string
   parts: TranslateParts
   number: (number: NumberLike, options?: FormatNumberOptions) => string
   date: (date: DateLike, options?: FormatDateTimeOptions) => string
@@ -71,8 +71,8 @@ export function createTranslate({
     (id: MessageId, values?: MessageValues) =>
       formatMessageParts(cache.message, locale, messages, id, values, options),
     {
-      unsafe: (id: string, values?: Record<string, any>) =>
-        formatMessageParts(cache.message, locale, messages, id, values, options),
+      unsafe: (id?: string, values?: Record<string, any>) =>
+        formatMessageParts(cache.message, locale, messages, id ?? '', values, options),
     },
   )
 
@@ -80,8 +80,8 @@ export function createTranslate({
     (id: MessageId, values?: MessageValues) =>
       formatMessage(cache.message, locale, messages, id, values, options),
     {
-      unsafe: (id: string, values?: Record<string, any>) =>
-        formatMessage(cache.message, locale, messages, id, values, options),
+      unsafe: (id?: string, values?: Record<string, any>) =>
+        formatMessage(cache.message, locale, messages, id ?? '', values, options),
       parts,
       number: (number: NumberLike, options?: FormatNumberOptions) =>
         formatNumber(cache.number, locale, number, options),
