@@ -1,6 +1,6 @@
 {
   "name": "@kanjou/cli",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "private": false,
   "license": "ISC",
   "author": "Ivan Popov <iivanpopov@proton.me>",
