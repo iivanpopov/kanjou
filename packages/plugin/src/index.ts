@@ -1,68 +1,60 @@
 import type { ConfigInput } from '@kanjou/generator'
 import type { UnpluginFactory, UnpluginInstance } from 'unplugin'
 
-import { CONFIG_FILENAME, Generator, getConfig, readLocaleFiles } from '@kanjou/generator'
+import { CONFIG_FILENAME, Generator, getConfig } from '@kanjou/generator'
 import path from 'node:path'
 import { createUnplugin } from 'unplugin'
 
-import { load } from '#/shared/load'
-import { basename } from '#/shared/path'
+const VIRTUAL_PREFIX = 'virtual:kanjou/'
+const RESOLVED_PREFIX = '\0' + VIRTUAL_PREFIX
 
 export const kanjouPluginFactory: UnpluginFactory<ConfigInput | undefined> = (options) => {
   let config = getConfig(options)
-
   let generator = new Generator(config)
 
   return {
     name: 'kanjou',
 
     async buildStart() {
-      const configFilePath = path.resolve(CONFIG_FILENAME)
-      this.addWatchFile(configFilePath)
-
-      const localeFiles = await readLocaleFiles(config.localesDir)
-      localeFiles.forEach((file) => this.addWatchFile(file.absolute))
-
-      await generator.generate()
+      if (config.dts !== false) {
+        await generator.emitDts()
+      }
     },
 
     resolveId(id) {
-      if (id.startsWith('virtual:kanjou/')) return '\0' + id
+      if (id.startsWith(VIRTUAL_PREFIX)) {
+        return '\0' + id
+      }
     },
 
     async load(id) {
-      if (!id.startsWith('\0virtual:kanjou/')) return
+      if (!id.startsWith(RESOLVED_PREFIX)) return
 
-      const localeFiles = await readLocaleFiles(config.localesDir)
+      const target = id.slice(RESOLVED_PREFIX.length)
+      const module = await generator.virtual(target)
 
-      if (id === '\0virtual:kanjou/locales') {
-        return generator.virtualLocalesToString(localeFiles.map((file) => file.name))
+      if (!module) {
+        return this.error(`file for locale "${target}" not found.`)
       }
 
-      const [, locale] = id.split('/')
-      const localeFile = localeFiles.find((file) => file.name === locale)
-
-      if (!localeFile) return this.error(`file for locale "${locale}" not found.`)
-
-      this.addWatchFile(localeFile.absolute)
-
-      const messages = await load(localeFile)
-      const ast = generator.ast(messages)
-      return generator.astToString(ast)
+      module.watchFiles.forEach((file) => this.addWatchFile(file))
+      return module.code
     },
 
-    async watchChange(id, change) {
+    async watchChange(id) {
       if (config.dts === false) return
+      if (id.endsWith('.d.ts')) return
 
-      if (id.includes(CONFIG_FILENAME)) {
+      if (id.endsWith(CONFIG_FILENAME)) {
         config = getConfig(options)
         generator = new Generator(config)
-        await generator.generate()
+        await generator.emitDts()
         return
       }
 
-      if (change.event === 'update' && basename(id) === config.baseLocale) {
-        await generator.generate()
+      const localesDir = path.resolve(config.localesDir)
+      if (id.startsWith(localesDir)) {
+        await generator.emitDts()
       }
     },
   }

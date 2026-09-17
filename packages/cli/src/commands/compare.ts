@@ -1,44 +1,42 @@
-import { getConfig, readLocaleFiles } from '@kanjou/generator'
+import { getConfig, loadMessages } from '@kanjou/generator'
 import consola from 'consola'
-
-import { load } from '#/shared/load'
 
 export async function compare() {
   const config = getConfig()
+  const messagesByLocale = await loadMessages(config)
 
-  const localeFiles = await readLocaleFiles(config.localesDir)
+  const locales = Object.keys(messagesByLocale)
+  const keysByLocale = new Map<string, Set<string>>()
 
-  const keysByLocale = new Map(
-    await Promise.all(
-      localeFiles.map(async (file) => {
-        const messages = await load(file)
-        return [file.name, new Set(Object.keys(messages))] as const
-      }),
-    ),
-  )
-
-  const locales = localeFiles.map((file) => file.name)
+  for (const locale of locales) {
+    keysByLocale.set(locale, new Set(Object.keys(messagesByLocale[locale] ?? {})))
+  }
 
   for (const locale of locales) {
     const ownKeys = keysByLocale.get(locale)!
-
-    const missingKeyOrigins = new Map<string, Set<string>>()
+    const missingKeyOrigins = new Map<string, string[]>()
 
     for (const other of locales) {
       if (other === locale) continue
 
-      const missingKeys = keysByLocale.get(other)!.difference(ownKeys)
-
-      for (const key of missingKeys) missingKeyOrigins.getOrInsert(key, new Set()).add(other)
+      const otherKeys = keysByLocale.get(other)!
+      for (const key of otherKeys) {
+        if (!ownKeys.has(key)) {
+          let origins = missingKeyOrigins.get(key)
+          if (!origins) {
+            origins = []
+            missingKeyOrigins.set(key, origins)
+          }
+          origins.push(other)
+        }
+      }
     }
 
-    if (!missingKeyOrigins.size) continue
-
-    const lines = missingKeyOrigins
-      .entries()
-      .map(([key, origins]) => `  missing "${key}" from ${[...origins].join(', ')}`)
-      .toArray()
-
-    consola.log(`${locale}\n${lines.join('\n')}`)
+    if (missingKeyOrigins.size > 0) {
+      const lines = Array.from(missingKeyOrigins.entries()).map(
+        ([key, presentIn]) => `  missing "${key}" from ${presentIn.join(', ')}`,
+      )
+      consola.log(`${locale}\n${lines.join('\n')}`)
+    }
   }
 }

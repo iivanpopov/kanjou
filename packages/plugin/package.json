@@ -7,11 +7,13 @@
   "repository": "https://github.com/iivanpopov/kanjou.git",
   "files": [
     "dist",
+    "client.d.ts",
     "README.md",
     "LICENSE"
   ],
   "type": "module",
   "exports": {
+    "./client": "./client.d.ts",
     ".": {
       "types": "./dist/index.d.mts",
       "import": "./dist/index.mjs"
@@ -31,7 +33,6 @@
   },
   "dependencies": {
     "@kanjou/generator": "workspace:*",
-    "jiti": "catalog:",
     "unplugin": "^1.14.1"
   },
   "devDependencies": {

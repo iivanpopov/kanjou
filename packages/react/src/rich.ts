@@ -34,7 +34,7 @@ function consume(
 
     if (part.type === 'markup' && 'kind' in part) {
       const { kind, name } = part
-      const render = components[0]?.[name] ?? components[1]?.[name] ?? components[2]?.[name]
+      const render = components.find((c) => c && name in c)?.[name]
 
       if (kind === 'close') {
         if (nested) return [nodes, index + 1]

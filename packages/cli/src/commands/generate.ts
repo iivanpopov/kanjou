@@ -1,6 +1,5 @@
 import { Generator, getConfig } from '@kanjou/generator'
 import consola from 'consola'
-import path from 'node:path'
 
 export async function generate() {
   const config = getConfig()
@@ -8,8 +7,9 @@ export async function generate() {
   if (config.dts === false) return
 
   const generator = new Generator(config)
-  await generator.generate()
+  const emittedFiles = await generator.emitDts()
 
-  consola.success(`generated ${path.join(config.dts.outDir, 'locales.kanjou.d.ts')}`)
-  consola.success(`generated ${path.join(config.dts.outDir, 'virtual.kanjou.d.ts')}`)
+  emittedFiles.forEach((file) => {
+    consola.success(`generated ${file}`)
+  })
 }

@@ -18,8 +18,8 @@
       "@kanjou/plugin/*": ["./packages/plugin/src/*.ts"],
       "@kanjou/cli": ["./packages/cli/src/index.ts"],
       "@kanjou/generator": ["./packages/generator/src/index.ts"],
-      "#/shared/*": ["./shared/src/*"]
+      "virtual:kanjou/*": ["./packages/plugin/client.d.ts"]
     }
   },
-  "exclude": ["**/dist/**", "**/node_modules/**", "playground/**"]
+  "exclude": ["**/dist/**", "**/node_modules/**", "playground/**", "examples/**"]
 }

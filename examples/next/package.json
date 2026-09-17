@@ -1,0 +1,27 @@
+{
+  "name": "next-example",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "kanjou compile && kanjou generate && next dev",
+    "build": "kanjou compile && kanjou generate && next build",
+    "start": "next start",
+    "compile": "kanjou compile",
+    "generate": "kanjou generate"
+  },
+  "dependencies": {
+    "@kanjou/react": "workspace:*",
+    "next": "16.3.5",
+    "react": "catalog:react",
+    "react-dom": "catalog:react"
+  },
+  "devDependencies": {
+    "@kanjou/cli": "workspace:*",
+    "@kanjou/plugin": "workspace:*",
+    "@types/node": "catalog:",
+    "@types/react": "catalog:react",
+    "@types/react-dom": "catalog:react",
+    "typescript": "catalog:tooling"
+  }
+}

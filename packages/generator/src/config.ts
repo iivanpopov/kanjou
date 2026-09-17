@@ -54,11 +54,6 @@ export function getConfig(inlineConfig: ConfigInput = {}): Config {
   const configFilePath = path.resolve(CONFIG_FILENAME)
   const exists = existsSync(configFilePath)
 
-  if (exists) {
-    const fileConfig = JSON.parse(readFileSync(configFilePath, 'utf-8'))
-    const merged = { ...fileConfig, ...inlineConfig }
-    return ConfigSchema.parse(merged)
-  }
-
-  return ConfigSchema.parse(inlineConfig)
+  const base = exists ? JSON.parse(readFileSync(configFilePath, 'utf-8')) : {}
+  return ConfigSchema.parse({ ...base, ...inlineConfig })
 }

@@ -122,12 +122,34 @@ export type MessageId = keyof Messages
 export type InferFunctionInput<FunctionName extends keyof Functions> =
   Functions[FunctionName] extends MessageFunction<any, infer Input> ? Input : undefined
 
-export type MessageValues<Id extends MessageId> = {
-  [Value in keyof Messages[Id]]: Messages[Id][Value] extends {
-    __fn: infer FunctionName extends keyof Functions
-  }
-    ? InferFunctionInput<FunctionName>
-    : Messages[Id][Value] extends string
-      ? Messages[Id][Value]
-      : DefaultMessageValue
-}
+export type MessageValues<Id extends string = MessageId> = Id extends keyof Messages
+  ? {
+      [Value in keyof Messages[Id]]: Messages[Id][Value] extends {
+        __fn: infer FunctionName extends keyof Functions
+      }
+        ? InferFunctionInput<FunctionName>
+        : Messages[Id][Value] extends string
+          ? Messages[Id][Value]
+          : DefaultMessageValue
+    }
+  : Record<string, any>
+
+export type DateLike = number | Date | Intl.FormattableTemporalObject
+export type FormatDateTimeOptions = Intl.DateTimeFormatOptions
+
+export type NumberLike = number | bigint | Intl.StringNumericLiteral
+export type FormatNumberOptions = Intl.NumberFormatOptions
+
+export type PluralRule = Intl.LDMLPluralRule
+export type FormatPluralOptions = Intl.PluralRulesOptions
+
+export type ListLike = Iterable<string>
+export type FormatListOptions = Intl.ListFormatOptions
+
+export type FormatDisplayNameOptions = Intl.DisplayNamesOptions
+
+export type Unit = Intl.RelativeTimeFormatUnit
+export type FormatRelativeTimeOptions = Intl.RelativeTimeFormatOptions
+
+export type Duration = Parameters<Intl.DurationFormat['format']>[0]
+export type FormatDurationOptions = Intl.DurationFormatOptions

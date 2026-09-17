@@ -27,8 +27,7 @@
   "dependencies": {
     "@kanjou/generator": "workspace:*",
     "cac": "^7.0.0",
-    "consola": " ^3.4.2",
-    "jiti": "catalog:"
+    "consola": " ^3.4.2"
   },
   "devDependencies": {
     "tsdown": "catalog:tooling",

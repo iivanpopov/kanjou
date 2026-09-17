@@ -18,18 +18,21 @@ Define your translation using [MF2 syntax](https://messageformat.unicode.org):
 // locales/en.ts
 export default {
   apples: `
-.match $count
-one  {{You have {$count} apple.}}
-*    {{You have {$count} apples.}}`,
+    .input {$count :number}
+    .match $count
+    one  {{You have {$count} apple.}}
+    *    {{You have {$count} apples.}}`,
 } as const
 ```
 
-Wrap your app with `KanjouProvider`.
+Wrap your app with `KanjouProvider`:
 
 ```tsx
 // main.tsx
 import { KanjouProvider } from '@kanjou/react'
+import { createRoot } from 'react-dom/client'
 
+import App from './app'
 import en from './locales/en'
 
 createRoot(document.getElementById('root')!).render(
@@ -37,8 +40,18 @@ createRoot(document.getElementById('root')!).render(
     <App />
   </KanjouProvider>,
 )
-use(KanjouContext)
-  //                       ^ fully typed values
+```
+
+Use the `useKanjou` hook:
+
+```tsx
+// app.tsx
+import { useKanjou } from '@kanjou/react'
+
+function App() {
+  const t = useKanjou()
+
+  return <p>{t('apples', { count: 3 })}</p>
 }
 ```
 

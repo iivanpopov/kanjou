@@ -1,12 +1,29 @@
-import type { AnyClass } from '#/shared/types'
+export interface Cache<Key = string, Value = any> {
+  getOrInsertComputed(key: Key, value: () => Value): Value
+}
 
-const constructors = new WeakMap<AnyClass, Map<string, any>>()
+export interface TranslateCache {
+  translate: Cache
+  dateTime: Cache
+  number: Cache
+  plural: Cache
+  list: Cache
+  display: Cache
+  relative: Cache
+  duration: Cache
+  message: Cache
+}
 
-export function get<Class extends AnyClass>(
-  Class: Class,
-  ...args: ConstructorParameters<Class>
-): InstanceType<Class> {
-  const instances = constructors.getOrInsertComputed(Class, () => new Map())
-  const key = args.length === 1 && typeof args[0] === 'string' ? args[0] : JSON.stringify(args)
-  return instances.getOrInsertComputed(key, () => new Class(...args))
+export function createTranslateCache(): TranslateCache {
+  return {
+    translate: new Map(),
+    dateTime: new Map(),
+    number: new Map(),
+    plural: new Map(),
+    list: new Map(),
+    display: new Map(),
+    relative: new Map(),
+    duration: new Map(),
+    message: new Map(),
+  }
 }

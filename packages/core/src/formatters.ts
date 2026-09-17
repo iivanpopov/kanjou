@@ -2,18 +2,35 @@ import type { MessagePart } from 'messageformat'
 
 import { MessageFormat } from 'messageformat'
 
+import type { Cache } from './cache'
 import type {
+  DateLike,
+  Duration,
+  FormatDateTimeOptions,
+  FormatDisplayNameOptions,
+  FormatDurationOptions,
+  FormatListOptions,
+  FormatNumberOptions,
+  FormatPluralOptions,
+  FormatRelativeTimeOptions,
   InferPartsType,
+  ListLike,
   Locale,
   Message,
   MessageFormatOptions,
   MessageId,
   MessageValues,
+  NumberLike,
+  PluralRule,
+  Unit,
 } from './types'
 
-import { get } from './cache'
+function getKey(locale: string, options?: unknown): string {
+  return options ? `${locale}:${JSON.stringify(options)}` : locale
+}
 
-export function formatMessage<Id extends MessageId>(
+export function formatMessage<Id extends string = MessageId>(
+  cache: Cache,
   locale: Locale,
   messages: Record<string, Message>,
   id: Id,
@@ -23,95 +40,110 @@ export function formatMessage<Id extends MessageId>(
   const message = messages[id]
   if (!message) return id
 
-  const formatter = get(MessageFormat, locale, message, options as any)
+  const formatter = cache.getOrInsertComputed(
+    `${locale}:${id}`,
+    () => new MessageFormat(locale, message, options as any),
+  )
 
   return formatter.format(values)
 }
 
-export function formatMessageParts<Id extends MessageId>(
+export function formatMessageParts<Id extends string = MessageId>(
+  cache: Cache,
   locale: Locale,
   messages: Record<string, Message>,
   id: Id,
   values?: MessageValues<Id>,
   options?: MessageFormatOptions,
-): MessagePart<InferPartsType<Id>>[] {
+): MessagePart<InferPartsType<Id extends MessageId ? Id : never>>[] {
   const message = messages[id]
   if (!message) return []
 
-  const formatter = get(MessageFormat<InferPartsType<Id>>, locale, message, options as any)
+  const formatter = cache.getOrInsertComputed(
+    `${locale}:${id}`,
+    () => new MessageFormat(locale, message, options as any),
+  )
 
   return formatter.formatToParts(values)
 }
 
-export type DateLike = number | Date | Intl.FormattableTemporalObject
-export type FormatDateTimeOptions = Intl.DateTimeFormatOptions
-
 export function formatDateTime(
+  cache: Cache,
   locale: Locale,
   date: DateLike,
   options?: FormatDateTimeOptions,
 ): string {
-  return get(Intl.DateTimeFormat, locale, options).format(date)
+  const key = getKey(locale, options)
+  const formatter = cache.getOrInsertComputed(key, () => new Intl.DateTimeFormat(locale, options))
+  return formatter.format(date)
 }
 
-export type NumberLike = number | bigint | Intl.StringNumericLiteral
-export type FormatNumberOptions = Intl.NumberFormatOptions
-
 export function formatNumber(
+  cache: Cache,
   locale: Locale,
   number: NumberLike,
   options?: FormatNumberOptions,
 ): string {
-  return get(Intl.NumberFormat, locale, options).format(number)
+  const key = getKey(locale, options)
+  const formatter = cache.getOrInsertComputed(key, () => new Intl.NumberFormat(locale, options))
+  return formatter.format(number)
 }
 
-export type PluralRule = Intl.LDMLPluralRule
-export type FormatPluralOptions = Intl.PluralRulesOptions
-
 export function formatPlural(
+  cache: Cache,
   locale: Locale,
   number: number,
   options?: FormatPluralOptions,
 ): PluralRule {
-  return get(Intl.PluralRules, locale, options).select(number)
+  const key = getKey(locale, options)
+  const formatter = cache.getOrInsertComputed(key, () => new Intl.PluralRules(locale, options))
+  return formatter.select(number)
 }
 
-export type ListLike = Iterable<string>
-export type FormatListOptions = Intl.ListFormatOptions
-
-export function formatList(locale: Locale, list: ListLike, options?: FormatListOptions): string {
-  return get(Intl.ListFormat, locale, options).format(list)
+export function formatList(
+  cache: Cache,
+  locale: Locale,
+  list: ListLike,
+  options?: FormatListOptions,
+): string {
+  const key = getKey(locale, options)
+  const formatter = cache.getOrInsertComputed(key, () => new Intl.ListFormat(locale, options))
+  return formatter.format(list)
 }
-
-export type FormatDisplayNameOptions = Intl.DisplayNamesOptions
 
 export function formatDisplayName(
+  cache: Cache,
   locale: Locale,
   code: string,
   options: FormatDisplayNameOptions,
 ): string | undefined {
-  return get(Intl.DisplayNames, locale, options).of(code)
+  const key = getKey(locale, options)
+  const formatter = cache.getOrInsertComputed(key, () => new Intl.DisplayNames(locale, options))
+  return formatter.of(code)
 }
 
-export type Unit = Intl.RelativeTimeFormatUnit
-export type FormatRelativeTimeOptions = Intl.RelativeTimeFormatOptions
-
 export function formatRelativeTime(
+  cache: Cache,
   locale: Locale,
   value: number,
   unit: Unit,
   options?: FormatRelativeTimeOptions,
 ): string {
-  return get(Intl.RelativeTimeFormat, locale, options).format(value, unit)
+  const key = getKey(locale, options)
+  const formatter = cache.getOrInsertComputed(
+    key,
+    () => new Intl.RelativeTimeFormat(locale, options),
+  )
+  return formatter.format(value, unit)
 }
 
-export type Duration = Parameters<Intl.DurationFormat['format']>[0]
-export type FormatDurationOptions = Intl.DurationFormatOptions
-
 export function formatDuration(
+  cache: Cache,
   locale: Locale,
   duration: Duration,
   options?: FormatDurationOptions,
 ): string {
-  return get(Intl.DurationFormat, locale, options).format(duration)
+  const key = getKey(locale, options)
+  const formatter = cache.getOrInsertComputed(key, () => new Intl.DurationFormat(locale, options))
+  return formatter.format(duration)
 }

@@ -9,6 +9,7 @@
     "release": "pnpm build && changeset publish",
     "fmt": "oxfmt",
     "lint": "oxlint",
+    "test": "pnpm -r --if-present test",
     "prepare": "lefthook install"
   },
   "devDependencies": {

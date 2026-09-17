@@ -17,6 +17,12 @@
         "types": "./dist/index.d.mts",
         "import": "./dist/index.mjs"
       }
+    },
+    "./server": {
+      "default": {
+        "types": "./dist/server.d.mts",
+        "import": "./dist/server.mjs"
+      }
     }
   },
   "scripts": {
@@ -27,7 +33,12 @@
     "@kanjou/core": "workspace:*"
   },
   "devDependencies": {
+    "@testing-library/react": "^16.3.3",
     "@types/react": "catalog:react",
+    "@types/react-dom": "catalog:react",
+    "jsdom": "^30.0.1",
+    "react": "catalog:react",
+    "react-dom": "catalog:react",
     "tsdown": "catalog:tooling",
     "typescript": "catalog:tooling"
   },
