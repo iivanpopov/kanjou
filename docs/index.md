@@ -10,11 +10,8 @@ hero:
     alt: Project Logo
   actions:
     - theme: brand
-      text: Introduction
-      link: /guide/introduction
-    - theme: alt
       text: Quick Start
-      link: /guide/getting-started
+      link: /getting-started/react
     - theme: alt
       text: View on GitHub
       link: https://github.com/iivanpopov/kanjou

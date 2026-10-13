@@ -13,11 +13,10 @@ export default defineConfig({
       description: 'Internationalization for React powered by MessageFormat 2',
       themeConfig: {
         nav: [
-          { text: 'Guide', link: '/guide/introduction', activeMatch: '/guide/' },
+          { text: 'Docs', link: '/getting-started/react' },
           {
-            text: 'Reference',
-            link: '/reference/react/KanjouProvider',
-            activeMatch: '/reference/',
+            text: 'Examples',
+            link: 'https://github.com/iivanpopov/kanjou/tree/main/examples',
           },
           {
             text: 'v0',
@@ -34,38 +33,24 @@ export default defineConfig({
         sidebar: {
           '/': [
             {
-              text: 'Guide',
+              text: 'Getting Started',
               items: [
-                { text: 'Introduction', link: '/guide/introduction' },
-                { text: 'TypeScript', link: '/guide/typescript' },
+                { text: 'React', link: '/getting-started/react' },
+                { text: 'TanStack Start', link: '/getting-started/tanstack-start' },
+                { text: 'Next.js', link: '/getting-started/nextjs' },
               ],
             },
             {
-              text: 'Quick Start',
+              text: 'Guides',
               items: [
-                { text: 'React', link: '/guide/react' },
-                { text: 'Svelte', link: '/guide/svelte' },
+                { text: 'TypeScript', link: '/guides/typescript' },
+                { text: 'Pluralization', link: '/guides/pluralization' },
+                { text: 'Agent Skills', link: '/guides/skills' },
               ],
             },
             {
-              text: 'API Reference',
-              items: [
-                {
-                  text: 'React',
-                  items: [
-                    { text: 'KanjouProvider', link: '/reference/react/kanjou-provider' },
-                    { text: 'useFormatMessage', link: '/reference/react/use-format-message' },
-                  ],
-                  collapsed: true,
-                },
-                {
-                  text: 'Svelte',
-                  items: [],
-                  collapsed: true,
-                },
-                { text: 'Vite Plugin', link: '/reference/vite-plugin' },
-                { text: 'CLI', link: '/reference/cli' },
-              ],
+              text: 'API',
+              items: [{ text: 'Syntax', link: '/api/syntax' }],
             },
           ],
         },
@@ -75,73 +60,6 @@ export default defineConfig({
         },
       },
     },
-    //   uk: {
-    //     label: 'Українська',
-    //     lang: 'uk',
-    //     title: 'Kanjou',
-    //     description: 'Інтернаціоналізація для React на базі MessageFormat 2',
-    //     themeConfig: {
-    //       nav: [
-    //         { text: 'Гайд', link: '/uk/guide/getting-started', activeMatch: '/uk/guide/' },
-    //         { text: 'Референс', link: '/uk/reference/react', activeMatch: '/uk/reference/' },
-    //         {
-    //           text: 'v0',
-    //           items: [
-    //             { text: 'v0', link: 'https://github.com/iivanpopov/kanjou/tree/main' },
-    //             {
-    //               text: 'Зміни',
-    //               link: 'https://github.com/iivanpopov/kanjou/blob/main/packages/react/CHANGELOG.md',
-    //             },
-    //             { text: 'Релізи', link: 'https://github.com/iivanpopov/kanjou/releases' },
-    //           ],
-    //         },
-    //       ],
-    //       sidebar: {
-    //         '/uk/guide/': [
-    //           {
-    //             text: 'Гайд',
-    //             items: [
-    //               { text: 'Початок роботи', link: '/uk/guide/getting-started' },
-    //               { text: 'TypeScript', link: '/uk/guide/typescript' },
-    //               { text: 'Форматери', link: '/uk/guide/formatters' },
-    //               { text: 'Rich Text', link: '/uk/guide/rich-text' },
-    //               { text: 'Vite Plugin', link: '/uk/guide/vite-plugin' },
-    //               { text: 'CLI', link: '/uk/guide/cli' },
-    //             ],
-    //           },
-    //           { text: 'API Референс', link: '/uk/reference/react' },
-    //         ],
-    //         '/uk/reference/': [
-    //           {
-    //             text: 'Референс',
-    //             items: [
-    //               { text: 'React', link: '/uk/reference/react' },
-    //               { text: 'Vite Plugin', link: '/uk/reference/vite-plugin' },
-    //               { text: 'CLI', link: '/uk/reference/cli' },
-    //             ],
-    //           },
-    //         ],
-    //       },
-    //       editLink: {
-    //         pattern: 'https://github.com/iivanpopov/kanjou/edit/main/docs/:path',
-    //         text: 'Редагувати на GitHub',
-    //       },
-    //       outline: {
-    //         label: 'На цій сторінці',
-    //       },
-    //       lastUpdated: {
-    //         text: 'Оновлено',
-    //       },
-    //       docFooter: {
-    //         prev: 'Попередня',
-    //         next: 'Наступна',
-    //       },
-    //       footer: {
-    //         message: 'Розповсюджується під ліцензією ISC.',
-    //         copyright: 'Авторські права © 2026-PRESENT Іван Попов.',
-    //       },
-    //     },
-    //   },
   },
   themeConfig: {
     logo: '/logo.svg',

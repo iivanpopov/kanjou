@@ -14,12 +14,12 @@ export * from './enrich'
 export const TranslateContext: Context<ReactTranslate> = createContext({} as ReactTranslate)
 
 export interface TranslateProviderProps {
-  children: ReactNode
   locale: Locale
   messages: Record<string, Message>
   options?: Omit<MessageFormatOptions, 'functions'>
   functions?: Functions
   components?: Components
+  children: ReactNode
 }
 
 export function TranslateProvider({
