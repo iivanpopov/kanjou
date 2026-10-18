@@ -1,5 +1,11 @@
 # @kanjou/generator
 
+## 0.3.2
+
+### Patch Changes
+
+- [`d518051`](https://github.com/iivanpopov/kanjou/commit/d5180511711f8fbf6259ea19e7e52ac098b4b5b5) Thanks [@iivanpopov](https://github.com/iivanpopov)! - fix format config types
+
 ## 0.3.1
 
 ## 0.3.0
