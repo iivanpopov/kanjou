@@ -1,3 +1,5 @@
+import type { Options as PrettierOptions } from 'prettier'
+
 import { existsSync, readFileSync } from 'node:fs'
 import path from 'node:path'
 import { z } from 'zod'
@@ -15,7 +17,7 @@ export interface Config {
   localesDir: string
   compile: { outDir: string }
   dts: false | { outDir: string }
-  prettier: boolean | Record<string, any>
+  prettier: boolean | Partial<PrettierOptions>
 }
 
 export interface ConfigInput {
@@ -23,7 +25,7 @@ export interface ConfigInput {
   localesDir?: string
   compile?: CompileOptions
   dts?: false | DtsOptions
-  prettier?: boolean | Record<string, any>
+  prettier?: boolean | Partial<PrettierOptions>
 }
 
 const DtsOptionsSchema = z.object({
