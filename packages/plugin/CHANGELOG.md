@@ -1,5 +1,12 @@
 # @kanjou/plugin
 
+## 0.3.2
+
+### Patch Changes
+
+- Updated dependencies [[`d518051`](https://github.com/iivanpopov/kanjou/commit/d5180511711f8fbf6259ea19e7e52ac098b4b5b5)]:
+  - @kanjou/generator@0.3.2
+
 ## 0.3.1
 
 ### Patch Changes
