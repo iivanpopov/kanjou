@@ -1,5 +1,6 @@
 export interface Cache<Key = string, Value = any> {
-  getOrInsertComputed(key: Key, value: () => Value): Value
+  get(key: Key): Value | undefined
+  set(key: Key, value: Value): void
 }
 
 export interface TranslateCache {

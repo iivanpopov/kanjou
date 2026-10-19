@@ -29,11 +29,14 @@ export function defineTranslate(
   return (locale: Locale): ReactTranslate => {
     const messages = config.resources[locale]
 
-    return cache.translate.getOrInsertComputed(locale, () =>
-      enrich(
+    let translate = cache.translate.get(locale)
+    if (!translate) {
+      translate = enrich(
         createTranslate({ locale, messages, cache, options: config.options }),
         config.components,
-      ),
-    )
+      )
+      cache.translate.set(locale, translate)
+    }
+    return translate
   }
 }

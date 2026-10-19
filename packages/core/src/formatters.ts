@@ -40,10 +40,12 @@ export function formatMessage<Id extends string = MessageId>(
   const message = messages[id]
   if (!message) return id
 
-  const formatter = cache.getOrInsertComputed(
-    `${locale}:${id}`,
-    () => new MessageFormat(locale, message, options as any),
-  )
+  const key = `${locale}:${id}`
+  let formatter = cache.get(key)
+  if (!formatter) {
+    formatter = new MessageFormat(locale, message, options as any)
+    cache.set(key, formatter)
+  }
 
   return formatter.format(values)
 }
@@ -59,10 +61,12 @@ export function formatMessageParts<Id extends string = MessageId>(
   const message = messages[id]
   if (!message) return []
 
-  const formatter = cache.getOrInsertComputed(
-    `${locale}:${id}`,
-    () => new MessageFormat(locale, message, options as any),
-  )
+  const key = `${locale}:${id}`
+  let formatter = cache.get(key)
+  if (!formatter) {
+    formatter = new MessageFormat(locale, message, options as any)
+    cache.set(key, formatter)
+  }
 
   return formatter.formatToParts(values)
 }
@@ -74,7 +78,11 @@ export function formatDateTime(
   options?: FormatDateTimeOptions,
 ): string {
   const key = getKey(locale, options)
-  const formatter = cache.getOrInsertComputed(key, () => new Intl.DateTimeFormat(locale, options))
+  let formatter = cache.get(key)
+  if (!formatter) {
+    formatter = new Intl.DateTimeFormat(locale, options)
+    cache.set(key, formatter)
+  }
   return formatter.format(date)
 }
 
@@ -85,7 +93,11 @@ export function formatNumber(
   options?: FormatNumberOptions,
 ): string {
   const key = getKey(locale, options)
-  const formatter = cache.getOrInsertComputed(key, () => new Intl.NumberFormat(locale, options))
+  let formatter = cache.get(key)
+  if (!formatter) {
+    formatter = new Intl.NumberFormat(locale, options)
+    cache.set(key, formatter)
+  }
   return formatter.format(number)
 }
 
@@ -96,7 +108,11 @@ export function formatPlural(
   options?: FormatPluralOptions,
 ): PluralRule {
   const key = getKey(locale, options)
-  const formatter = cache.getOrInsertComputed(key, () => new Intl.PluralRules(locale, options))
+  let formatter = cache.get(key)
+  if (!formatter) {
+    formatter = new Intl.PluralRules(locale, options)
+    cache.set(key, formatter)
+  }
   return formatter.select(number)
 }
 
@@ -107,7 +123,11 @@ export function formatList(
   options?: FormatListOptions,
 ): string {
   const key = getKey(locale, options)
-  const formatter = cache.getOrInsertComputed(key, () => new Intl.ListFormat(locale, options))
+  let formatter = cache.get(key)
+  if (!formatter) {
+    formatter = new Intl.ListFormat(locale, options)
+    cache.set(key, formatter)
+  }
   return formatter.format(list)
 }
 
@@ -118,7 +138,11 @@ export function formatDisplayName(
   options: FormatDisplayNameOptions,
 ): string | undefined {
   const key = getKey(locale, options)
-  const formatter = cache.getOrInsertComputed(key, () => new Intl.DisplayNames(locale, options))
+  let formatter = cache.get(key)
+  if (!formatter) {
+    formatter = new Intl.DisplayNames(locale, options)
+    cache.set(key, formatter)
+  }
   return formatter.of(code)
 }
 
@@ -130,10 +154,11 @@ export function formatRelativeTime(
   options?: FormatRelativeTimeOptions,
 ): string {
   const key = getKey(locale, options)
-  const formatter = cache.getOrInsertComputed(
-    key,
-    () => new Intl.RelativeTimeFormat(locale, options),
-  )
+  let formatter = cache.get(key)
+  if (!formatter) {
+    formatter = new Intl.RelativeTimeFormat(locale, options)
+    cache.set(key, formatter)
+  }
   return formatter.format(value, unit)
 }
 
@@ -144,6 +169,10 @@ export function formatDuration(
   options?: FormatDurationOptions,
 ): string {
   const key = getKey(locale, options)
-  const formatter = cache.getOrInsertComputed(key, () => new Intl.DurationFormat(locale, options))
+  let formatter = cache.get(key)
+  if (!formatter) {
+    formatter = new Intl.DurationFormat(locale, options)
+    cache.set(key, formatter)
+  }
   return formatter.format(duration)
 }
