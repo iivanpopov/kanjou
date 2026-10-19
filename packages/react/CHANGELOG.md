@@ -1,5 +1,13 @@
 # @kanjou/react
 
+## 0.4.3
+
+### Patch Changes
+
+- [`5eaf589`](https://github.com/iivanpopov/kanjou/commit/5eaf589cca960585f2155a63d55263397416e4ec) Thanks [@iivanpopov](https://github.com/iivanpopov)! - fix: use common api
+- Updated dependencies [[`5eaf589`](https://github.com/iivanpopov/kanjou/commit/5eaf589cca960585f2155a63d55263397416e4ec)]:
+  - @kanjou/core@0.4.3
+
 ## 0.4.2
 
 ### Patch Changes
