@@ -1,5 +1,12 @@
 # @kanjou/plugin
 
+## 0.4.1
+
+### Patch Changes
+
+- Updated dependencies []:
+  - @kanjou/generator@0.4.1
+
 ## 0.4.0
 
 ### Patch Changes

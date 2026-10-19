@@ -1,5 +1,13 @@
 # @kanjou/cli
 
+## 0.4.1
+
+### Patch Changes
+
+- [`b1c27c1`](https://github.com/iivanpopov/kanjou/commit/b1c27c1be322179d36fd9bc8fabac9d36d066390) Thanks [@iivanpopov](https://github.com/iivanpopov)! - fix cli
+- Updated dependencies []:
+  - @kanjou/generator@0.4.1
+
 ## 0.4.0
 
 ### Minor Changes
