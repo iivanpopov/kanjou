@@ -165,13 +165,16 @@ importers:
       consola:
         specifier: ' ^3.4.2'
         version: 3.4.2
+      jsonc-parser:
+        specifier: ^3.3.1
+        version: 3.3.1
+      typescript:
+        specifier: catalog:tooling
+        version: 7.0.2
     devDependencies:
       tsdown:
         specifier: catalog:tooling
         version: 0.22.14(typescript@7.0.2)
-      typescript:
-        specifier: catalog:tooling
-        version: 7.0.2
 
   packages/core:
     dependencies:

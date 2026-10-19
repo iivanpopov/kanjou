@@ -1,6 +1,6 @@
 import { cac } from 'cac'
 
-import { compare, compile, generate } from './commands'
+import { compare, compile, generate, unused } from './commands'
 
 const cli = cac('kanjou')
 
@@ -9,6 +9,7 @@ cli.command('generate', 'Generate locale .d.ts type declarations.').action(gener
 cli
   .command('compare', 'Cross-compare locale files and output missing keys for each.')
   .action(compare)
+cli.command('unused', 'Output unused keys from the base locale.').action(unused)
 
 cli.help()
 cli.parse()
