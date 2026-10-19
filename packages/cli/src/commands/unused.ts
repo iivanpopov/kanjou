@@ -9,6 +9,7 @@ import {
   isCallExpression,
   isIdentifier,
   isNoSubstitutionTemplateLiteral,
+  isPropertyAccessExpression,
   isStringLiteral,
   isVariableDeclaration,
 } from 'typescript/unstable/ast'
@@ -62,10 +63,19 @@ export async function unused() {
       }
 
       function findKeys(node: Node) {
-        if (isCallExpression(node) && isIdentifier(node.expression)) {
+        if (isCallExpression(node)) {
+          const expression = node.expression
+          const translator =
+            isPropertyAccessExpression(expression) && expression.name.text === 'rich'
+              ? expression.expression
+              : expression
           const key = node.arguments[0]
-          if (key && (isStringLiteral(key) || isNoSubstitutionTemplateLiteral(key))) {
-            const symbol = checker.getSymbolAtLocation(node.expression)
+          if (
+            isIdentifier(translator) &&
+            key &&
+            (isStringLiteral(key) || isNoSubstitutionTemplateLiteral(key))
+          ) {
+            const symbol = checker.getSymbolAtLocation(translator)
             if (symbol && translators.has(symbol.id)) unusedKeys.delete(key.text)
           }
         }
