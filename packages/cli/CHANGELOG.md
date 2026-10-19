@@ -1,5 +1,16 @@
 # @kanjou/cli
 
+## 0.4.0
+
+### Minor Changes
+
+- [`4bab02a`](https://github.com/iivanpopov/kanjou/commit/4bab02ac0ab3a519fac326f1e5f75b03df95d9be) Thanks [@iivanpopov](https://github.com/iivanpopov)! - feat: add unused cli command
+
+### Patch Changes
+
+- Updated dependencies []:
+  - @kanjou/generator@0.4.0
+
 ## 0.3.2
 
 ### Patch Changes
