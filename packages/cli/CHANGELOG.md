@@ -1,5 +1,13 @@
 # @kanjou/cli
 
+## 0.4.2
+
+### Patch Changes
+
+- [`ab843a7`](https://github.com/iivanpopov/kanjou/commit/ab843a7092b765c4adbfb80ca8b82901d435836e) Thanks [@iivanpopov](https://github.com/iivanpopov)! - support .rich for unused
+- Updated dependencies []:
+  - @kanjou/generator@0.4.2
+
 ## 0.4.1
 
 ### Patch Changes
