@@ -1,5 +1,5 @@
 declare module 'virtual:kanjou/*' {
-  const messages: Partial<import('@kanjou/react').Messages>
+  const messages: import('@kanjou/react').Messages
   export default messages
 }
 
