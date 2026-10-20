@@ -1,5 +1,0 @@
----
-'@kanjou/plugin': patch
----
-
-fix

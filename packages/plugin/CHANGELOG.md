@@ -1,5 +1,13 @@
 # @kanjou/plugin
 
+## 0.4.4
+
+### Patch Changes
+
+- [`624bf5c`](https://github.com/iivanpopov/kanjou/commit/624bf5cef2d0cf6150540d484d0b69ae64182211) Thanks [@iivanpopov](https://github.com/iivanpopov)! - fix
+- Updated dependencies []:
+  - @kanjou/generator@0.4.4
+
 ## 0.4.3
 
 ### Patch Changes

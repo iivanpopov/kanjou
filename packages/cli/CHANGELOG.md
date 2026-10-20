@@ -1,5 +1,12 @@
 # @kanjou/cli
 
+## 0.4.4
+
+### Patch Changes
+
+- Updated dependencies []:
+  - @kanjou/generator@0.4.4
+
 ## 0.4.3
 
 ### Patch Changes
