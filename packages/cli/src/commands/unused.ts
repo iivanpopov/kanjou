@@ -64,18 +64,22 @@ export async function unused() {
 
       function findKeys(node: Node) {
         if (isCallExpression(node)) {
-          const expression = node.expression
-          const translator =
-            isPropertyAccessExpression(expression) && expression.name.text === 'rich'
-              ? expression.expression
-              : expression
+          let expression = node.expression
+          while (
+            isPropertyAccessExpression(expression) &&
+            (expression.name.text === 'rich' ||
+              expression.name.text === 'unsafe' ||
+              expression.name.text === 'parts')
+          ) {
+            expression = expression.expression
+          }
           const key = node.arguments[0]
           if (
-            isIdentifier(translator) &&
+            isIdentifier(expression) &&
             key &&
             (isStringLiteral(key) || isNoSubstitutionTemplateLiteral(key))
           ) {
-            const symbol = checker.getSymbolAtLocation(translator)
+            const symbol = checker.getSymbolAtLocation(expression)
             if (symbol && translators.has(symbol.id)) unusedKeys.delete(key.text)
           }
         }
