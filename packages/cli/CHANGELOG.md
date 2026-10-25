@@ -1,5 +1,16 @@
 # @kanjou/cli
 
+## 0.5.0
+
+### Minor Changes
+
+- [#11](https://github.com/iivanpopov/kanjou/pull/11) [`537a354`](https://github.com/iivanpopov/kanjou/commit/537a35423cdf4177b3c01585a657745d7dbe46db) Thanks [@iivanpopov](https://github.com/iivanpopov)! - support t.unsafe, t.rich.unsafe
+
+### Patch Changes
+
+- Updated dependencies []:
+  - @kanjou/generator@0.5.0
+
 ## 0.4.4
 
 ### Patch Changes
