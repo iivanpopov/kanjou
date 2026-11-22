@@ -1,5 +1,16 @@
 # @kanjou/plugin
 
+## 0.6.0
+
+### Minor Changes
+
+- [#14](https://github.com/iivanpopov/kanjou/pull/14) [`b56a5c4`](https://github.com/iivanpopov/kanjou/commit/b56a5c43240a82c75266ad3975c45c92f99055dd) Thanks [@iivanpopov](https://github.com/iivanpopov)! - performance optimizations, namespacing
+
+### Patch Changes
+
+- Updated dependencies [[`b56a5c4`](https://github.com/iivanpopov/kanjou/commit/b56a5c43240a82c75266ad3975c45c92f99055dd)]:
+  - @kanjou/generator@0.6.0
+
 ## 0.5.0
 
 ### Patch Changes
