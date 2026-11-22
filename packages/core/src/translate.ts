@@ -22,6 +22,7 @@ import type {
   PluralRule,
 } from './types'
 
+import { getSharedTranslateCache } from './cache'
 import {
   formatDateTime,
   formatDisplayName,
@@ -36,8 +37,8 @@ import {
 
 export interface CreateTranslateOptions {
   locale: Locale
-  messages: Record<string, Message>
-  cache: TranslateCache
+  messages: Readonly<Record<string, Message>>
+  cache?: TranslateCache
   options?: MessageFormatOptions
 }
 
@@ -58,7 +59,7 @@ export interface Translate {
   duration: (duration: Duration, options?: FormatDurationOptions) => string
   display: (code: string, options: FormatDisplayNameOptions) => string | undefined
   locale: Locale
-  messages: Record<string, Message>
+  messages: Readonly<Record<string, Message>>
 }
 
 export function createTranslate({
@@ -67,36 +68,38 @@ export function createTranslate({
   cache,
   options,
 }: CreateTranslateOptions): Translate {
+  const resolvedCache = cache ?? getSharedTranslateCache()
+
   const parts: TranslateParts = Object.assign(
     (id: MessageId, values?: MessageValues) =>
-      formatMessageParts(cache.message, locale, messages, id, values, options),
+      formatMessageParts(resolvedCache.message, locale, messages, id, values, options),
     {
       unsafe: (id?: string, values?: Record<string, any>) =>
-        formatMessageParts(cache.message, locale, messages, id ?? '', values, options),
+        formatMessageParts(resolvedCache.message, locale, messages, id ?? '', values, options),
     },
   )
 
   const translate: Translate = Object.assign(
     (id: MessageId, values?: MessageValues) =>
-      formatMessage(cache.message, locale, messages, id, values, options),
+      formatMessage(resolvedCache.message, locale, messages, id, values, options),
     {
       unsafe: (id?: string, values?: Record<string, any>) =>
-        formatMessage(cache.message, locale, messages, id ?? '', values, options),
+        formatMessage(resolvedCache.message, locale, messages, id ?? '', values, options),
       parts,
       number: (number: NumberLike, options?: FormatNumberOptions) =>
-        formatNumber(cache.number, locale, number, options),
+        formatNumber(resolvedCache.number, locale, number, options),
       date: (date: DateLike, options?: FormatDateTimeOptions) =>
-        formatDateTime(cache.dateTime, locale, date, options),
+        formatDateTime(resolvedCache.dateTime, locale, date, options),
       plural: (number: number, options?: FormatPluralOptions) =>
-        formatPlural(cache.plural, locale, number, options),
+        formatPlural(resolvedCache.plural, locale, number, options),
       list: (list: ListLike, options?: FormatListOptions) =>
-        formatList(cache.list, locale, list, options),
+        formatList(resolvedCache.list, locale, list, options),
       relative: (value: number, unit: Unit, options?: FormatRelativeTimeOptions) =>
-        formatRelativeTime(cache.relative, locale, value, unit, options),
+        formatRelativeTime(resolvedCache.relative, locale, value, unit, options),
       duration: (duration: Duration, options?: FormatDurationOptions) =>
-        formatDuration(cache.duration, locale, duration, options),
+        formatDuration(resolvedCache.duration, locale, duration, options),
       display: (code: string, options: FormatDisplayNameOptions) =>
-        formatDisplayName(cache.display, locale, code, options),
+        formatDisplayName(resolvedCache.display, locale, code, options),
       locale,
       messages,
     },

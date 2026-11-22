@@ -5,7 +5,8 @@ export type { MessageFormat, MessageMarkupPart, MessagePart } from 'messageforma
 
 export interface Register {}
 
-export type Message = string | Model.Message
+export type CompiledMessage = (values?: Record<string, any>) => string
+export type Message = string | CompiledMessage | Model.Message
 export type DefaultMessageValue = string | number
 export type DefaultMessages = Record<string, Record<string, DefaultMessageValue>>
 
@@ -110,6 +111,9 @@ export interface DefaultFunctions {
 }
 
 export type Locale = Register extends { locale: infer RegisteredLocale } ? RegisteredLocale : string
+export type Namespace = Register extends { namespace: infer RegisteredNamespace }
+  ? RegisteredNamespace
+  : string
 export type Messages = Register extends { messages: infer RegisteredMessages }
   ? RegisteredMessages
   : DefaultMessages
