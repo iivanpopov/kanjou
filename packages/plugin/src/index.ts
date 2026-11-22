@@ -5,6 +5,8 @@ import { CONFIG_FILENAME, Generator, getConfig } from '@kanjou/generator'
 import path from 'node:path'
 import { createUnplugin } from 'unplugin'
 
+import { loadMessageFormatModule, resolveMessageFormatId } from './messageformat'
+
 const VIRTUAL_PREFIX = 'virtual:kanjou/'
 const RESOLVED_PREFIX = '\0' + VIRTUAL_PREFIX
 
@@ -14,6 +16,7 @@ export const kanjouPluginFactory: UnpluginFactory<ConfigInput | undefined> = (op
 
   return {
     name: 'kanjou',
+    enforce: 'pre',
 
     async buildStart() {
       if (config.dts !== false) {
@@ -21,13 +24,19 @@ export const kanjouPluginFactory: UnpluginFactory<ConfigInput | undefined> = (op
       }
     },
 
-    resolveId(id) {
+    resolveId(id, importer) {
+      const resolved = resolveMessageFormatId(id, importer)
+      if (resolved !== undefined) return resolved
+
       if (id.startsWith(VIRTUAL_PREFIX)) {
         return '\0' + id
       }
     },
 
     async load(id) {
+      const loaded = loadMessageFormatModule(id)
+      if (loaded !== undefined) return loaded
+
       if (!id.startsWith(RESOLVED_PREFIX)) return
 
       const target = id.slice(RESOLVED_PREFIX.length)
@@ -53,9 +62,7 @@ export const kanjouPluginFactory: UnpluginFactory<ConfigInput | undefined> = (op
       }
 
       const localesDir = path.resolve(config.localesDir)
-      if (id.startsWith(localesDir)) {
-        await generator.emitDts()
-      }
+      if (id === localesDir || id.startsWith(localesDir + path.sep)) await generator.emitDts()
     },
   }
 }

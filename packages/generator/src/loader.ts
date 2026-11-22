@@ -18,7 +18,7 @@ export function parse(file: string): ParsedFile {
   }
 }
 
-const jiti = createJiti(import.meta.url, { moduleCache: false })
+const jiti = createJiti(import.meta.url, { moduleCache: false, tryNative: false })
 
 export const LOCALE_EXTENSIONS: ReadonlySet<string> = new Set(['.ts', '.js', '.mts', '.mjs'])
 
@@ -30,13 +30,63 @@ export async function load<File = any>(file: ParsedFile | string): Promise<File>
 
 export async function readLocaleFiles(localesDir: string): Promise<ParsedFile[]> {
   try {
-    const entries = await fs.readdir(localesDir)
+    const entries = await fs.readdir(localesDir, { withFileTypes: true })
 
     return entries
-      .map((file) => parse(path.join(localesDir, file)))
+      .filter((entry) => entry.isFile())
+      .map((entry) => parse(path.join(localesDir, entry.name)))
       .filter((file) => LOCALE_EXTENSIONS.has(file.ext))
   } catch (err: any) {
     if (err.code === 'ENOENT') return []
+    throw err
+  }
+}
+
+export async function readNamespaceFiles(
+  localesDir: string,
+  locale: string,
+): Promise<ParsedFile[]> {
+  return await readLocaleFiles(path.join(localesDir, locale))
+}
+
+export async function readLocaleWatchFiles(localesDir: string, locale: string): Promise<string[]> {
+  const localeDir = path.resolve(localesDir, locale)
+  try {
+    const entries = await fs.readdir(localeDir, { recursive: true, withFileTypes: true })
+    const files: string[] = []
+    for (const entry of entries) {
+      if (!entry.isFile()) continue
+      const ext = path.extname(entry.name)
+
+      if (LOCALE_EXTENSIONS.has(ext)) files.push(path.join(entry.parentPath, entry.name))
+    }
+    return files
+  } catch (err: any) {
+    if (err.code === 'ENOENT') return []
+    throw err
+  }
+}
+
+export async function readLocaleNamespaces(
+  localesDir: string,
+): Promise<Record<string, ParsedFile[]>> {
+  try {
+    const entries = await fs.readdir(localesDir, { withFileTypes: true })
+    const dirs = entries.filter((entry) => entry.isDirectory())
+    const result: Record<string, ParsedFile[]> = {}
+
+    await Promise.all(
+      dirs.map(async (dir) => {
+        const files = await readNamespaceFiles(localesDir, dir.name)
+        if (files.length > 0) {
+          result[dir.name] = files
+        }
+      }),
+    )
+
+    return result
+  } catch (err: any) {
+    if (err.code === 'ENOENT') return {}
     throw err
   }
 }
