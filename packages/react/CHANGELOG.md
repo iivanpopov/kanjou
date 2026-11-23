@@ -1,5 +1,13 @@
 # @kanjou/react
 
+## 0.6.1
+
+### Patch Changes
+
+- [#16](https://github.com/iivanpopov/kanjou/pull/16) [`fbab2f7`](https://github.com/iivanpopov/kanjou/commit/fbab2f73661d347e4f64cf355e301237d2e278a6) Thanks [@iivanpopov](https://github.com/iivanpopov)! - fix types
+- Updated dependencies [[`fbab2f7`](https://github.com/iivanpopov/kanjou/commit/fbab2f73661d347e4f64cf355e301237d2e278a6)]:
+  - @kanjou/core@0.6.1
+
 ## 0.6.0
 
 ### Minor Changes
