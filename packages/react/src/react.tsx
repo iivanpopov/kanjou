@@ -1,4 +1,10 @@
-import type { Functions, Locale, Message, MessageFormatOptions, TranslateCache } from '@kanjou/core'
+import type {
+  Locale,
+  Message,
+  MessageFormatOptions,
+  MessageFunctions,
+  TranslateCache,
+} from '@kanjou/core'
 import type { Context, ReactNode } from 'react'
 
 import { createTranslate } from '@kanjou/core'
@@ -17,7 +23,7 @@ interface TranslateProviderState {
   locale: Locale
   messages: Readonly<Record<string, Message>>
   options?: Omit<MessageFormatOptions, 'functions'>
-  functions?: Functions
+  functions?: MessageFunctions
   components?: Components
   cache?: TranslateCache
 }
@@ -29,7 +35,7 @@ export interface TranslateProviderProps {
   locale?: Locale
   messages: Readonly<Record<string, Message>>
   options?: Omit<MessageFormatOptions, 'functions'>
-  functions?: Functions
+  functions?: MessageFunctions
   components?: Components
   cache?: TranslateCache
   children: ReactNode

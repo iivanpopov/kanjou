@@ -25,31 +25,31 @@ export default {
 } as const
 ```
 
-Wrap your app with `KanjouProvider`:
+Wrap your app with `TranslateProvider`:
 
 ```tsx
 // main.tsx
-import { KanjouProvider } from '@kanjou/react'
+import { TranslateProvider } from '@kanjou/react'
 import { createRoot } from 'react-dom/client'
 
 import App from './app'
 import en from './locales/en'
 
 createRoot(document.getElementById('root')!).render(
-  <KanjouProvider locale="en" messages={en}>
+  <TranslateProvider locale="en" messages={en}>
     <App />
-  </KanjouProvider>,
+  </TranslateProvider>,
 )
 ```
 
-Use the `useKanjou` hook:
+Use the `useTranslate` hook:
 
 ```tsx
 // app.tsx
-import { useKanjou } from '@kanjou/react'
+import { useTranslate } from '@kanjou/react'
 
 function App() {
-  const t = useKanjou()
+  const t = useTranslate()
 
   return <p>{t('apples', { count: 3 })}</p>
 }
