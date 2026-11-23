@@ -34,11 +34,14 @@ export type MessageFunction<
   input?: Input,
 ) => MessageValue<MessageType, PartsType>
 
+export type MessageFunctions = Partial<Functions> &
+  Record<string, MessageFunction<any, any, any, any> | undefined>
+
 export type MessageFormatOptions<
   MessageType extends string = string,
   PartsType extends string = MessageType,
 > = Omit<MfOptions<MessageType, PartsType>, 'functions'> & {
-  functions?: Functions
+  functions?: MessageFunctions
 }
 
 export type MessageFormatFactory = (
