@@ -487,8 +487,11 @@ export class Generator {
       return `  ${JSON.stringify(key)}: { ${propertiesString} }`
     })
 
+    const clientTypes =
+      targetModule === '@kanjou/core' ? '@kanjou/plugin/client/core' : '@kanjou/plugin/client'
+
     const code = `
-      /// <reference types="@kanjou/plugin/client" />
+      /// <reference types="${clientTypes}" />
 
       import type { DefaultMessageValue } from ${serializedModule};
 
