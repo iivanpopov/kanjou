@@ -3,7 +3,7 @@ import { defineConfig } from 'tsdown'
 export default defineConfig([
   {
     entry: ['./src/cli.ts'],
-    dts: { oxc: true },
+    dts: false,
     banner: '#!/usr/bin/env node',
   },
   {

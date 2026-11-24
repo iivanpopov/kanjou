@@ -1,6 +1,8 @@
 import { Generator, getConfig } from '@kanjou/generator'
 import consola from 'consola'
 
+import { KanjouCliError } from '../errors'
+
 export async function generate(): Promise<void> {
   const config = getConfig()
 
@@ -10,7 +12,9 @@ export async function generate(): Promise<void> {
   const emittedFiles = await generator.emitDts()
 
   if (emittedFiles.length === 0) {
-    throw new Error(`Base locale "${config.baseLocale}" not found`)
+    throw new KanjouCliError(`Base locale "${config.baseLocale}" not found`, {
+      localesDir: config.localesDir,
+    })
   }
 
   emittedFiles.forEach((file) => {
