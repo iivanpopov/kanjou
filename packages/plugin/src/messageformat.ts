@@ -11,9 +11,9 @@ const DEFAULT_FUNCTIONS_ID = '\0kanjou:mf-default-functions'
 const MF_ENTRY_RE = /[\\/]messageformat[\\/]lib[\\/]messageformat\.js$/
 const ALLOWED_MF_FN_FILES = new Set(Object.values(BUILTIN_FUNCTION_FILES))
 
-let cachedMfDir: string | null = null
+const mfDirCache = new Map<string, string>()
 
-function resolveMessageFormatDir(importer?: string): string | null {
+function resolveMessageFormatDir(importer?: string): string | undefined {
   const candidates: string[] = []
   if (importer && !importer.startsWith('\0')) candidates.push(importer)
   candidates.push(path.join(process.cwd(), 'package.json'), import.meta.url)
@@ -29,25 +29,30 @@ function resolveMessageFormatDir(importer?: string): string | null {
     } catch {}
   }
 
-  return null
+  return undefined
 }
 
-function getMfDir(importer?: string): string | null {
-  cachedMfDir ??= resolveMessageFormatDir(importer)
-  return cachedMfDir
+function getMfDir(importer?: string): string | undefined {
+  const importerDir = importer && !importer.startsWith('\0') ? path.dirname(importer) : ''
+  const cacheKey = `${importerDir}\0${process.cwd()}`
+  const cached = mfDirCache.get(cacheKey)
+  if (cached !== undefined) return cached
+
+  const resolved = resolveMessageFormatDir(importer)
+  if (resolved !== undefined) mfDirCache.set(cacheKey, resolved)
+  return resolved
 }
 
-export function resolveMessageFormatId(id: string, importer?: string): string | null | undefined {
+export function resolveMessageFormatId(id: string, importer?: string): string | undefined {
   if (id.startsWith(VIRTUAL_FN_PREFIX)) {
     const file = id.slice(VIRTUAL_FN_PREFIX.length)
-    if (!ALLOWED_MF_FN_FILES.has(file)) return null
+    if (!ALLOWED_MF_FN_FILES.has(file)) return undefined
     const mfDir = getMfDir(importer)
-    if (!mfDir) return null
+    if (!mfDir) return undefined
     return path.join(mfDir, 'lib', 'functions', file)
   }
 
   if (importer && MF_ENTRY_RE.test(importer)) {
-    cachedMfDir ??= path.dirname(path.dirname(importer))
     if (id === './data-model/parse.js') return NOOP_PARSE_ID
     if (id === './data-model/validate.js') return NOOP_VALIDATE_ID
     if (id === './functions/index.js') return DEFAULT_FUNCTIONS_ID

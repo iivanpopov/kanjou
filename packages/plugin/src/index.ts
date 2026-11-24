@@ -19,6 +19,7 @@ export const kanjouPluginFactory: UnpluginFactory<ConfigInput | undefined> = (op
     enforce: 'pre',
 
     async buildStart() {
+      this.addWatchFile(path.resolve(CONFIG_FILENAME))
       if (config.dts !== false) {
         await generator.emitDts()
       }
@@ -51,15 +52,18 @@ export const kanjouPluginFactory: UnpluginFactory<ConfigInput | undefined> = (op
     },
 
     async watchChange(id) {
-      if (config.dts === false) return
       if (id.endsWith('.d.ts')) return
 
       if (id.endsWith(CONFIG_FILENAME)) {
         config = getConfig(options)
         generator = new Generator(config)
-        await generator.emitDts()
+        if (config.dts !== false) {
+          await generator.emitDts()
+        }
         return
       }
+
+      if (config.dts === false) return
 
       const localesDir = path.resolve(config.localesDir)
       if (id === localesDir || id.startsWith(localesDir + path.sep)) await generator.emitDts()
