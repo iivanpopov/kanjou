@@ -16,6 +16,7 @@ import type {
   Message,
   MessageFormatOptions,
   MessageFunctionContext,
+  MessageFunctions,
   MessageId,
   MessagePart,
   MessageRuntime,
@@ -27,6 +28,42 @@ import type {
 } from './types'
 
 import { KanjouError, KanjouFormatError } from './errors'
+
+const JSON_NUMBER_RE = /^-?(?:0|[1-9]\d*)(?:\.\d+)?(?:[eE][+-]?\d+)?$/
+const BUILTIN_FUNCTION_NAMES: ReadonlySet<string> = new Set([
+  'string',
+  'number',
+  'integer',
+  'offset',
+  'currency',
+  'percent',
+  'unit',
+  'date',
+  'time',
+  'datetime',
+])
+const DATE_FIELDS_VALUES = new Set([
+  'weekday',
+  'day-weekday',
+  'month-day',
+  'month-day-weekday',
+  'year-month-day',
+  'year-month-day-weekday',
+])
+const DATE_LENGTH_VALUES = new Set(['long', 'medium', 'short'])
+const TIME_PRECISION_VALUES = new Set(['hour', 'minute', 'second'])
+const TIME_ZONE_STYLE_VALUES = new Set(['long', 'short'])
+
+export function assertValidMessageFunctions(functions?: MessageFunctions): void {
+  if (!functions) return
+  for (const name of BUILTIN_FUNCTION_NAMES) {
+    if (Object.hasOwn(functions, name) && functions[name] !== undefined) {
+      throw new KanjouError(
+        `Built-in function ":${name}" is AOT-compiled and cannot be overridden via options.functions.`,
+      )
+    }
+  }
+}
 
 export interface FormatRelativeTimeParams {
   cache: Cache
@@ -47,7 +84,14 @@ function serializeFlatOptions(options: object): string {
 function isCompiledIntlOptions<Options>(
   options: Options | CompiledIntlOptions<Options> | undefined,
 ): options is CompiledIntlOptions<Options> {
-  return Array.isArray(options)
+  return (
+    Array.isArray(options) &&
+    options.length === 2 &&
+    typeof options[0] === 'object' &&
+    options[0] !== null &&
+    typeof options[1] === 'string' &&
+    options[1] !== ''
+  )
 }
 
 export function resolveMessage(
@@ -82,7 +126,7 @@ function coerceMessageResult(result: unknown): string {
 
 function partToText(part: MessagePart): string {
   if (part.type === 'markup') return ''
-  if ('parts' in part && Array.isArray(part.parts)) {
+  if ('parts' in part && Array.isArray(part.parts) && part.parts.length > 0) {
     let text = ''
     for (const sub of part.parts) {
       if (sub.value !== null && sub.value !== undefined) {
@@ -111,21 +155,35 @@ function unwrapValue(value: unknown): unknown {
   return value
 }
 
-function toNumber(value: unknown): number | bigint {
+function parseNumberOperand(value: unknown): number | bigint | null {
   const unwrapped = unwrapValue(value)
-  if (typeof unwrapped === 'number' || typeof unwrapped === 'bigint') return unwrapped
-  if (typeof unwrapped === 'string' && unwrapped.trim() !== '') {
-    const parsed = Number(unwrapped)
-    if (!Number.isNaN(parsed)) return parsed
+  if (typeof unwrapped === 'number') {
+    return Number.isNaN(unwrapped) ? null : unwrapped
   }
-  return Number.NaN
+  if (typeof unwrapped === 'bigint') return unwrapped
+  if (typeof unwrapped === 'string') {
+    const trimmed = unwrapped.trim()
+    if (trimmed !== '' && JSON_NUMBER_RE.test(trimmed)) {
+      const parsed = Number(trimmed)
+      if (!Number.isNaN(parsed)) return parsed
+    }
+  }
+  return null
 }
 
-function toDate(value: unknown): Date | number {
+function parseDateOperand(value: unknown): Date | number | null {
   const unwrapped = unwrapValue(value)
-  if (unwrapped instanceof Date || typeof unwrapped === 'number') return unwrapped
-  if (typeof unwrapped === 'string') return new Date(unwrapped)
-  return new Date(Number.NaN)
+  if (unwrapped instanceof Date) {
+    return Number.isNaN(unwrapped.getTime()) ? null : unwrapped
+  }
+  if (typeof unwrapped === 'number') {
+    return Number.isFinite(unwrapped) ? unwrapped : null
+  }
+  if (typeof unwrapped === 'string' && unwrapped.trim() !== '') {
+    const parsed = new Date(unwrapped)
+    return Number.isNaN(parsed.getTime()) ? null : parsed
+  }
+  return null
 }
 
 export function createMessageRuntime(
@@ -133,16 +191,101 @@ export function createMessageRuntime(
   locale: Locale,
   options?: MessageFormatOptions,
 ): MessageRuntime {
-  const number: MessageRuntime['number'] = (value, opt) =>
-    getIntlFormatter(cache.number, locale, opt, Intl.NumberFormat).format(toNumber(value))
-  const date: MessageRuntime['date'] = (value, opt) =>
-    getIntlFormatter(cache.dateTime, locale, opt, Intl.DateTimeFormat).format(toDate(value))
-  const plural: MessageRuntime['plural'] = (value, opt) =>
-    formatPlural(cache.plural, locale, Number(toNumber(value)), opt)
+  assertValidMessageFunctions(options?.functions)
+
+  const number: MessageRuntime['number'] = (value, opt, fallback) => {
+    const num = parseNumberOperand(value)
+    if (num === null) return fallback ?? '{:number}'
+    return getIntlFormatter(cache.number, locale, opt, Intl.NumberFormat).format(num)
+  }
+  const date: MessageRuntime['date'] = (value, opt, fallback) => {
+    const d = parseDateOperand(value)
+    if (d === null) return fallback ?? '{:date}'
+    return getIntlFormatter(cache.dateTime, locale, opt, Intl.DateTimeFormat).format(d)
+  }
+  const integer: MessageRuntime['integer'] = (value) => {
+    const num = parseNumberOperand(value)
+    if (num === null || typeof num === 'bigint') return num
+    return Number.isFinite(num) ? Math.round(num) : num
+  }
+  const offset: MessageRuntime['offset'] = (value, delta, negate) => {
+    const num = parseNumberOperand(value)
+    if (num === null) return null
+    const parsedDelta = parseNumberOperand(delta)
+    if (parsedDelta === null) return null
+    if (typeof parsedDelta === 'number' && !Number.isInteger(parsedDelta)) return null
+    if (typeof num === 'bigint') {
+      const d = typeof parsedDelta === 'bigint' ? parsedDelta : BigInt(parsedDelta)
+      return negate ? num - d : num + d
+    }
+    const d = Number(parsedDelta)
+    if (!Number.isFinite(d)) return null
+    return negate ? num - d : num + d
+  }
+  const currencyOpts: MessageRuntime['currencyOpts'] = (base, fractionDigits) => {
+    const out: FormatNumberOptions = { ...base }
+    if (fractionDigits !== 'auto') {
+      const n = parseNumberOperand(fractionDigits)
+      if (typeof n === 'number' && Number.isInteger(n) && n >= 0) {
+        out.minimumFractionDigits = n
+        out.maximumFractionDigits = n
+      }
+    }
+    return out
+  }
+  const dateOpts: MessageRuntime['dateOpts'] = (base, input) => {
+    const out: FormatDateTimeOptions = base ? { ...base } : {}
+    if (input.kind !== 'date' && input.hour12 !== undefined) {
+      if (input.hour12 === true || input.hour12 === 'true') out.hour12 = true
+      else if (input.hour12 === false || input.hour12 === 'false') out.hour12 = false
+    }
+    if (!input.hasDirectStyle) {
+      if (input.kind !== 'time' && !input.hasDirectDateField) {
+        const df =
+          typeof input.fields === 'string' && DATE_FIELDS_VALUES.has(input.fields)
+            ? input.fields
+            : 'year-month-day'
+        const dl =
+          typeof input.length === 'string' && DATE_LENGTH_VALUES.has(input.length)
+            ? input.length
+            : undefined
+        if (df.includes('year')) out.year = 'numeric'
+        if (df.includes('month')) {
+          if (dl === 'long') out.month = 'long'
+          else if (dl === 'short') out.month = 'numeric'
+          else out.month = 'short'
+        }
+        if (df === 'day-weekday' || df.includes('month-day')) out.day = 'numeric'
+        if (df.includes('weekday')) out.weekday = dl === 'long' ? 'long' : 'short'
+      }
+      if (input.kind !== 'date' && !input.hasDirectTimeField) {
+        const tp =
+          typeof input.precision === 'string' && TIME_PRECISION_VALUES.has(input.precision)
+            ? input.precision
+            : 'minute'
+        out.hour = 'numeric'
+        if (tp !== 'hour') out.minute = 'numeric'
+        if (tp === 'second') out.second = 'numeric'
+      }
+      if (input.kind !== 'date' && !input.hasDirectTimeZoneName) {
+        if (
+          typeof input.timeZoneStyle === 'string' &&
+          TIME_ZONE_STYLE_VALUES.has(input.timeZoneStyle)
+        ) {
+          out.timeZoneName = input.timeZoneStyle as 'short' | 'long'
+        }
+      }
+    }
+    return out
+  }
+  const plural: MessageRuntime['plural'] = (value, opt) => {
+    const num = parseNumberOperand(value)
+    return formatPlural(cache.plural, locale, num === null ? Number.NaN : Number(num), opt)
+  }
 
   const numberForSelection: MessageRuntime['numberForSelection'] = (value, options) => {
-    const num = toNumber(value)
-    if (Number.isNaN(num)) return null
+    const num = parseNumberOperand(value)
+    if (num === null) return null
     const opt = isCompiledIntlOptions(options) ? options[0] : options
     if (opt?.style === 'percent') {
       return typeof num === 'bigint' ? num * 100n : num * 100
@@ -174,7 +317,9 @@ export function createMessageRuntime(
     }
 
     const key = value === null || value === undefined ? '' : coerceMessageResult(value)
-    return keys.has(key) ? key : null
+    if (keys.has(key)) return key
+    const normalized = key.normalize()
+    return normalized !== key && keys.has(normalized) ? normalized : null
   }
 
   const str: MessageRuntime['str'] = (value) => {
@@ -183,9 +328,18 @@ export function createMessageRuntime(
     if (typeof value === 'object') {
       const mv = value as MessageValue
       if (typeof mv.toString === 'function' && mv.toString !== Object.prototype.toString) {
-        return mv.toString()
+        const result: unknown = mv.toString()
+        return String(result)
       }
-      if ('value' in mv) return coerceMessageResult(mv.value)
+      if ('value' in mv && mv.value !== undefined) return coerceMessageResult(mv.value)
+      if (typeof mv.toParts === 'function') return partsToString(mv.toParts())
+      if (
+        mv.type === 'fallback' &&
+        'source' in mv &&
+        typeof (mv as { source?: unknown }).source === 'string'
+      ) {
+        return `{${(mv as { source: string }).source}}`
+      }
     }
     return coerceMessageResult(value)
   }
@@ -229,7 +383,22 @@ export function createMessageRuntime(
     return text === '' ? [] : [{ type: 'text', value: text }]
   }
 
-  return { locale, number, date, plural, select, numberForSelection, selectPlural, fn, str, parts }
+  return {
+    locale,
+    number,
+    date,
+    integer,
+    offset,
+    currencyOpts,
+    dateOpts,
+    plural,
+    select,
+    numberForSelection,
+    selectPlural,
+    fn,
+    str,
+    parts,
+  }
 }
 
 const EMPTY_OPTIONS = Object.freeze({})
@@ -240,9 +409,23 @@ function getIntlFormatter<Formatter, Options extends object | undefined>(
   options: Options | CompiledIntlOptions<Options>,
   Formatter: new (locale: Locale, options: Options) => Formatter,
 ): Formatter {
-  const compiled = isCompiledIntlOptions(options)
-  const intlOptions = compiled ? options[0] : options
-  const serialized = compiled ? options[1] : intlOptions && serializeFlatOptions(intlOptions)
+  let intlOptions: Options
+  let serialized: string | undefined
+  if (isCompiledIntlOptions(options)) {
+    intlOptions = options[0]
+    serialized = options[1]
+  } else if (Array.isArray(options)) {
+    if (typeof options[0] === 'object' && options[0] !== null) {
+      intlOptions = options[0] as Options
+      serialized = serializeFlatOptions(options[0])
+    } else {
+      intlOptions = undefined as Options
+      serialized = ''
+    }
+  } else {
+    intlOptions = options
+    serialized = intlOptions && serializeFlatOptions(intlOptions)
+  }
   const key = serialized ? `${locale.length}:${locale}:${serialized}` : locale
   let formatter: Formatter | undefined = cache.get(key)
   if (!formatter) {
@@ -258,12 +441,43 @@ function isFormatRelativeTimeParams(
   return 'value' in arg && 'unit' in arg && 'cache' in arg
 }
 
+const lazyRuntimeByGetter = new WeakMap<() => MessageRuntime, MessageRuntime>()
+
+function getLazyRuntime(getRuntime: () => MessageRuntime): MessageRuntime {
+  let lazy = lazyRuntimeByGetter.get(getRuntime)
+  if (lazy) return lazy
+
+  lazy = {
+    get locale() {
+      return getRuntime().locale
+    },
+    number: (value, opt, fallback) => getRuntime().number(value, opt, fallback),
+    date: (value, opt, fallback) => getRuntime().date(value, opt, fallback),
+    integer: (value) => getRuntime().integer(value),
+    offset: (value, delta, negate) => getRuntime().offset(value, delta, negate),
+    currencyOpts: (base, fractionDigits) => getRuntime().currencyOpts(base, fractionDigits),
+    dateOpts: (base, input) => getRuntime().dateOpts(base, input),
+    plural: (value, opt) => getRuntime().plural(value, opt),
+    select: (value, keys, opt) => getRuntime().select(value, keys, opt),
+    numberForSelection: (value, options) => getRuntime().numberForSelection(value, options),
+    selectPlural: (num, options) => getRuntime().selectPlural(num, options),
+    fn: (name, operand, exprOpt, literalOptionKeys) =>
+      getRuntime().fn(name, operand, exprOpt, literalOptionKeys),
+    str: (value) => getRuntime().str(value),
+    parts: (value) => getRuntime().parts(value),
+  }
+  lazyRuntimeByGetter.set(getRuntime, lazy)
+  return lazy
+}
+
 function callRenderer<Result>(
   render: (values?: Record<string, any>, runtime?: MessageRuntime) => Result,
   values: Record<string, any> | undefined,
   getRuntime: () => MessageRuntime,
 ): Result {
-  return render.length < 2 ? render(values) : render(values, getRuntime())
+  return render.length < 2
+    ? render(values, getLazyRuntime(getRuntime))
+    : render(values, getRuntime())
 }
 
 export function formatMessage<Id extends string = MessageId>(
@@ -274,13 +488,18 @@ export function formatMessage<Id extends string = MessageId>(
   getRuntime: () => MessageRuntime,
 ): string {
   const message = resolveMessage(messages, id)
-  if (message === undefined) return id
   if (typeof message === 'string') return message
+  if (typeof message !== 'function' && (message === null || typeof message !== 'object')) return id
 
   try {
     if (typeof message === 'function') return callRenderer(message, values, getRuntime)
-    if ('render' in message) return message.render(values, getRuntime(), false)
-    return partsToString(callRenderer(message.parts, values, getRuntime))
+    if ('render' in message && typeof message.render === 'function') {
+      return message.render(values, getRuntime(), false)
+    }
+    if ('parts' in message && typeof message.parts === 'function') {
+      return partsToString(callRenderer(message.parts, values, getRuntime))
+    }
+    return id
   } catch (err) {
     throw new KanjouFormatError(
       `Failed to format message "${id}" for locale "${locale}"`,
@@ -305,13 +524,18 @@ export function formatMessageParts<Id extends string>(
   getRuntime: () => MessageRuntime,
 ): MessagePart[] {
   const message = resolveMessage(messages, id)
-  if (message === undefined) return []
   if (typeof message === 'string') return toTextParts(message)
+  if (typeof message !== 'function' && (message === null || typeof message !== 'object')) return []
 
   try {
     if (typeof message === 'function') return toTextParts(callRenderer(message, values, getRuntime))
-    if ('render' in message) return message.render(values, getRuntime(), true)
-    return callRenderer(message.parts, values, getRuntime)
+    if ('render' in message && typeof message.render === 'function') {
+      return message.render(values, getRuntime(), true)
+    }
+    if ('parts' in message && typeof message.parts === 'function') {
+      return callRenderer(message.parts, values, getRuntime)
+    }
+    return []
   } catch (err) {
     throw new KanjouFormatError(
       `Failed to format message parts "${id}" for locale "${locale}"`,
@@ -401,5 +625,10 @@ export function formatDuration(
   duration: Duration,
   options?: FormatDurationOptions,
 ): string {
+  if (typeof Intl.DurationFormat !== 'function') {
+    throw new KanjouError(
+      'Intl.DurationFormat is not supported in this runtime. Upgrade to Node >= 23 or a supported browser, or load an Intl.DurationFormat polyfill.',
+    )
+  }
   return getIntlFormatter(cache, locale, options, Intl.DurationFormat).format(duration)
 }

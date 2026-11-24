@@ -27,7 +27,7 @@ export type MessagePart<P extends string = string> =
   | MessageTextPart
   | MessageMarkupPart
   | MessageFallbackPart
-  | MessageFormattedPart<P>
+  | ([P] extends [never] ? never : MessageFormattedPart<P>)
 
 export interface MessageFunctionContext {
   readonly locale: Locale
@@ -54,16 +54,38 @@ export type SelectOptions = FormatPluralOptions & {
   style?: string | undefined
 }
 
+export interface DynamicDateTimeOptionsInput {
+  readonly kind: 'date' | 'time' | 'datetime'
+  readonly hasDirectStyle?: boolean | undefined
+  readonly hasDirectDateField?: boolean | undefined
+  readonly hasDirectTimeField?: boolean | undefined
+  readonly hasDirectTimeZoneName?: boolean | undefined
+  readonly fields?: unknown
+  readonly length?: unknown
+  readonly precision?: unknown
+  readonly timeZoneStyle?: unknown
+  readonly hour12?: unknown
+}
+
 export interface MessageRuntime {
   readonly locale: Locale
   readonly number: (
     value: unknown,
     options?: FormatNumberOptions | CompiledIntlOptions<FormatNumberOptions>,
+    fallback?: string,
   ) => string
   readonly date: (
     value: unknown,
     options?: FormatDateTimeOptions | CompiledIntlOptions<FormatDateTimeOptions>,
+    fallback?: string,
   ) => string
+  readonly integer: (value: unknown) => number | bigint | null
+  readonly offset: (value: unknown, delta: unknown, negate?: boolean) => number | bigint | null
+  readonly currencyOpts: (base: FormatNumberOptions, fractionDigits: unknown) => FormatNumberOptions
+  readonly dateOpts: (
+    base: FormatDateTimeOptions | undefined,
+    input: DynamicDateTimeOptionsInput,
+  ) => FormatDateTimeOptions
   readonly plural: (value: unknown, options?: FormatPluralOptions) => PluralRule
   readonly select: (
     value: unknown,
@@ -114,10 +136,8 @@ export type MapPartsType<Id extends MessageId> = {
   }
     ? Functions[FunctionName] extends MessageFunction<any, any, any, infer PartsType>
       ? PartsType
-      : 'string'
-    : Messages[Id][Value] extends number | bigint
-      ? 'number'
-      : 'string'
+      : never
+    : never
 }
 export type InferPartsType<Id extends MessageId> = MapPartsType<Id>[keyof MapPartsType<Id>]
 
@@ -132,7 +152,11 @@ export type MessageFunction<
   input?: Input,
 ) => MessageFunctionResult<MessageType, PartsType>
 
-export type MessageFunctions = Partial<Functions> &
+export type BuiltinFunctionName = keyof BuiltinFunctions
+
+export type MessageFunctions = {
+  [K in BuiltinFunctionName]?: never
+} & Partial<Omit<Functions, BuiltinFunctionName>> &
   Record<string, MessageFunction<any, any, any, any> | undefined>
 
 export interface MessageFormatOptions {
@@ -140,7 +164,7 @@ export interface MessageFormatOptions {
 }
 
 export interface DefaultFunctions {
-  string: MessageFunction<Record<string, unknown>, unknown, 'string'>
+  string: MessageFunction<Record<string, unknown>, unknown, 'string', never>
 
   number: MessageFunction<
     Partial<
@@ -148,7 +172,8 @@ export interface DefaultFunctions {
         Intl.PluralRulesOptions & { select?: 'exact' | 'cardinal' | 'ordinal' }
     >,
     NumberLike,
-    'number'
+    'number',
+    never
   >
 
   integer: MessageFunction<
@@ -160,7 +185,8 @@ export interface DefaultFunctions {
       useGrouping: Intl.NumberFormatOptions['useGrouping']
     }>,
     NumberLike,
-    'number'
+    'number',
+    never
   >
 
   offset: MessageFunction<
@@ -172,7 +198,8 @@ export interface DefaultFunctions {
       }
     >,
     NumberLike,
-    'number'
+    'number',
+    never
   >
 }
 
@@ -184,7 +211,8 @@ export interface DraftFunctions {
       currencySign?: 'standard' | 'accounting'
     },
     NumberLike,
-    'number'
+    'number',
+    never
   >
 
   percent: MessageFunction<
@@ -200,14 +228,20 @@ export interface DraftFunctions {
       useGrouping: Intl.NumberFormatOptions['useGrouping']
     }>,
     NumberLike,
-    'number'
+    'number',
+    never
   >
 
-  date: MessageFunction<Partial<Intl.DateTimeFormatOptions>, DateLike | string, 'datetime'>
+  date: MessageFunction<Partial<Intl.DateTimeFormatOptions>, DateLike | string, 'datetime', never>
 
-  datetime: MessageFunction<Partial<Intl.DateTimeFormatOptions>, DateLike | string, 'datetime'>
+  datetime: MessageFunction<
+    Partial<Intl.DateTimeFormatOptions>,
+    DateLike | string,
+    'datetime',
+    never
+  >
 
-  time: MessageFunction<Partial<Intl.DateTimeFormatOptions>, DateLike | string, 'datetime'>
+  time: MessageFunction<Partial<Intl.DateTimeFormatOptions>, DateLike | string, 'datetime', never>
 
   unit: MessageFunction<
     Partial<Intl.NumberFormatOptions> & {
@@ -215,16 +249,25 @@ export interface DraftFunctions {
       unitDisplay?: 'short' | 'long' | 'narrow'
     },
     NumberLike,
-    'number'
+    'number',
+    never
   >
 }
 
 export type BuiltinFunctions = DefaultFunctions & DraftFunctions
 
 export type Locale = Register extends { locale: infer RegisteredLocale } ? RegisteredLocale : string
+export type FlatLocale = Register extends { flatLocales: infer RegisteredFlatLocale }
+  ? RegisteredFlatLocale
+  : Locale
 export type Namespace = Register extends { namespace: infer RegisteredNamespace }
   ? RegisteredNamespace
   : string
+export type LocaleNamespaces = Register extends {
+  localeNamespaces: infer RegisteredLocaleNamespaces extends Record<string, string>
+}
+  ? RegisteredLocaleNamespaces
+  : Record<Locale, Namespace>
 export type Messages = Register extends { messages: infer RegisteredMessages }
   ? RegisteredMessages
   : DefaultMessages
