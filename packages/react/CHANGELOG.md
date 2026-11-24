@@ -1,5 +1,16 @@
 # @kanjou/react
 
+## 0.7.0
+
+### Minor Changes
+
+- [#18](https://github.com/iivanpopov/kanjou/pull/18) [`be39012`](https://github.com/iivanpopov/kanjou/commit/be39012069245847ef97e5811bfe060669af6e6c) Thanks [@iivanpopov](https://github.com/iivanpopov)! - bug fixes
+
+### Patch Changes
+
+- Updated dependencies [[`be39012`](https://github.com/iivanpopov/kanjou/commit/be39012069245847ef97e5811bfe060669af6e6c)]:
+  - @kanjou/core@0.7.0
+
 ## 0.6.1
 
 ### Patch Changes
