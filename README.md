@@ -6,18 +6,9 @@ Internationalization for React powered by [MessageFormat 2](https://messageforma
 
 > **Kanjou** is not supposed to mean something. Just a _random_ japanese word.
 
-## Requirements
+## Quick Start
 
-- **Node.js >= 20** (all `@kanjou/*` packages are **ESM-only**).
-- **Precompilation-only**: Kanjou **does not parse MessageFormat 2 strings at runtime**. Messages must be precompiled at build time with `@kanjou/plugin` (`virtual:kanjou/*`) or `@kanjou/cli` (`kanjou compile`). Passing raw MF2 strings directly to `TranslateProvider` or `createTranslate` outputs the unparsed string literal (and runtime parsing is disabled under `@kanjou/plugin`).
-
-Each message is compiled into one of three tiers:
-
-1. **Plain string** (`"Hello"`) — compiled to a JS string literal with zero function or AST overhead.
-2. **Template function** (`"Hi, {$name}"`) — compiled to an inline arrow function `(v) => ...` with zero AST or `MessageFormat` runtime overhead.
-3. **MF2 AST (`Model.Message`)** (`.input` / `.local` / `.match`, `:function`, markup) — compiled to a serialized AST executed by `MessageFormat` without runtime parsing.
-
-## Quick Start (Bundler Plugin)
+> Kanjou precompiles translations at build time via `@kanjou/plugin` or `@kanjou/cli` and does not parse MessageFormat 2 strings at runtime.
 
 Install `@kanjou/react` and `@kanjou/plugin`:
 
@@ -59,12 +50,6 @@ import { defineConfig } from 'vite'
 export default defineConfig({
   plugins: [kanjou(), react()],
 })
-```
-
-Add client virtual module types (e.g. `src/vite-env.d.ts`) and enable `skipLibCheck: true` in `tsconfig.json` when using `@kanjou/plugin`:
-
-```ts
-/// <reference types="@kanjou/plugin/client" />
 ```
 
 Import the precompiled locale from `virtual:kanjou/en` and wrap your app with `TranslateProvider`:
@@ -122,10 +107,17 @@ import en from './generated/en.js'
 
 ## Agent Skills
 
-Install the Kanjou and MessageFormat 2 agent skills from this repository:
+Install the `kanjou` and `messageformat-2` agent skills from this repository:
 
 ```bash
-npx skills add iivanpopov/kanjou
+pnpx skills add iivanpopov/kanjou
+```
+
+Or install a specific skill:
+
+```bash
+pnpx skills add iivanpopov/kanjou --skill kanjou
+pnpx skills add iivanpopov/kanjou --skill messageformat-2
 ```
 
 ## Documentation
