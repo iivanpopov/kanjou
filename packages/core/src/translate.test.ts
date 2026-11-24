@@ -944,3 +944,338 @@ describe('wave 1 core fixes', () => {
     expectTypeOf<MessageValue<'x', 'y'>>().not.toBeNever()
   })
 })
+
+describe('wave 2 generator & compiler fixes', () => {
+  it('Should emit fallback placeholders for missing, null, and invalid built-in operands', () => {
+    const messages = compileBundle({
+      num: '{$n :number}',
+      int: '{$n :integer}',
+      pct: '{$n :percent}',
+      cur: '{$n :currency currency=USD}',
+      unit: '{$n :unit unit=kilometer}',
+      off: '{$n :offset add=1}',
+      date: '{$d :date timeZone=UTC}',
+      time: '{$d :time timeZone=UTC}',
+      dt: '{$d :datetime timeZone=UTC}',
+      litNum: '{|abc| :number}',
+      noArgNum: '{:number}',
+      inputNum: '.input {$n :number}\n{{V: {$n}}}',
+      localNum: '.local $x = {$n :number}\n{{V: {$x}}}',
+      localNumMarkup: '.local $x = {$n :number}\n{{V: {#b}{$x}{/b}}}',
+    })
+    const t = createTranslate({ locale: 'en', messages })
+
+    for (const id of ['num', 'int', 'pct', 'cur', 'unit', 'off'] as const) {
+      expect(t.unsafe(id, {})).toBe('{$n}')
+      expect(t.unsafe(id, { n: null })).toBe('{$n}')
+      expect(t.unsafe(id, { n: 'abc' })).toBe('{$n}')
+      expect(t.parts.unsafe(id, {})).toEqual([{ type: 'text', value: '{$n}' }])
+    }
+
+    for (const id of ['date', 'time', 'dt'] as const) {
+      expect(t.unsafe(id, {})).toBe('{$d}')
+      expect(t.unsafe(id, { d: null })).toBe('{$d}')
+      expect(t.unsafe(id, { d: 'not-a-date' })).toBe('{$d}')
+      expect(t.parts.unsafe(id, {})).toEqual([{ type: 'text', value: '{$d}' }])
+    }
+
+    expect(t.unsafe('litNum')).toBe('{|abc|}')
+    expect(t.unsafe('noArgNum')).toBe('{:number}')
+    expect(t.unsafe('inputNum', {})).toBe('V: {$n}')
+    expect(t.unsafe('localNum', {})).toBe('V: {$x}')
+    expect(t.parts.unsafe('localNum', {})).toEqual([{ type: 'text', value: 'V: {$x}' }])
+    expect(t.parts.unsafe('localNumMarkup', {})).toEqual([
+      { type: 'text', value: 'V: ' },
+      { type: 'markup', kind: 'open', name: 'b' },
+      { type: 'text', value: '{$x}' },
+      { type: 'markup', kind: 'close', name: 'b' },
+    ])
+  })
+
+  it('Should reject non-JSON numeric strings and accept valid numeric strings in :number', () => {
+    const messages = compileBundle({
+      num: '{$n :number}',
+    })
+    const t = createTranslate({ locale: 'en', messages })
+
+    for (const invalid of ['0x10', '0b101', '0o17', 'Infinity', '+1', '01', '.5', '1.']) {
+      expect(t.unsafe('num', { n: invalid })).toBe('{$n}')
+    }
+    expect(t.unsafe('num', { n: '42.5' })).toBe('42.5')
+    expect(t.unsafe('num', { n: '1e3' })).toBe('1,000')
+    expect(t.unsafe('num', { n: ' 1 ' })).toBe('1')
+  })
+
+  it('Should fall back cleanly in :offset for invalid deltas or null operands', () => {
+    const messages = compileBundle({
+      dyn: '{$n :offset add=$delta}',
+      fracLit: '{$n :offset add=1.5}',
+      negDyn: '{$n :offset subtract=$delta}',
+    })
+    const t = createTranslate({ locale: 'en', messages })
+
+    expect(t.unsafe('dyn', { n: 10 })).toBe('{$n}')
+    expect(t.unsafe('dyn', { n: 10, delta: 'abc' })).toBe('{$n}')
+    expect(t.unsafe('dyn', { n: 10, delta: 1.5 })).toBe('{$n}')
+    expect(t.unsafe('dyn', { n: null, delta: 2 })).toBe('{$n}')
+    expect(t.unsafe('fracLit', { n: 10 })).toBe('{$n}')
+    expect(t.unsafe('negDyn', { n: 10, delta: 3 })).toBe('7')
+  })
+
+  it('Should preserve formatting, selection, and custom parts across .local aliases', () => {
+    const messages = compileBundle({
+      numAlias: '.local $a = {$n :number minimumFractionDigits=2}\n.local $b = {$a}\n{{{$b}}}',
+      curAlias: '.local $a = {$n :currency currency=USD}\n.local $b = {$a}\n{{{$b}}}',
+      dateAlias: '.local $a = {$d :date timeZone=UTC}\n.local $b = {$a}\n{{{$b}}}',
+      pctAlias: '.local $a = {$n :percent}\n.local $b = {$a}\n{{{$b}}}',
+      offAlias: '.local $a = {$n :offset add=2}\n.local $b = {$a}\n{{{$b}}}',
+      pluralAlias: `.local $a = {$n :number}
+.local $b = {$a}
+.match $b
+one {{{$b} item}}
+* {{{$b} items}}`,
+      wrapAlias: '.local $a = {$n :wrap}\n.local $b = {$a}\n{{{$b}}}',
+    })
+    const wrap: MessageFunction = (_ctx, _opts, operand) => ({
+      type: 'wrap',
+      value: `[${String(operand)}]`,
+      toParts: () => [{ type: 'wrap', value: String(operand) }],
+    })
+    const t = createTranslate({ locale: 'en', messages, options: { functions: { wrap } } })
+
+    expect(t.unsafe('numAlias', { n: 3 })).toBe('3.00')
+    expect(t.unsafe('numAlias', {})).toBe('{$b}')
+    expect(t.unsafe('curAlias', { n: 12.5 })).toBe('$12.50')
+    expect(t.unsafe('dateAlias', { d: sampleDate })).toBe('Mar 15, 2026')
+    expect(t.unsafe('pctAlias', { n: 0.25 })).toBe('25%')
+    expect(t.unsafe('offAlias', { n: 5 })).toBe('7')
+    expect(t.unsafe('pluralAlias', { n: 1 })).toBe('1 item')
+    expect(t.unsafe('pluralAlias', { n: 2 })).toBe('2 items')
+    expect(t.unsafe('wrapAlias', { n: 'hi' })).toBe('[hi]')
+    expect(t.parts.unsafe('wrapAlias', { n: 'hi' })).toEqual([{ type: 'wrap', value: 'hi' }])
+  })
+
+  it('Should support re-annotation and :string on formatted declarations', () => {
+    const messages = compileBundle({
+      intToStr: '.input {$n :integer}\n{{{$n :string}}}',
+      numToStr: '.input {$n :number minimumFractionDigits=2}\n{{{$n :string}}}',
+      numToNum:
+        '.input {$n :number minimumFractionDigits=2}\n{{{$n :number maximumFractionDigits=3}}}',
+      curToStr: '.input {$a :currency currency=USD}\n{{{$a :string}}}',
+      dateToStr: '.input {$d :date timeZone=UTC}\n{{{$d :string}}}',
+      dateToTime: '.input {$d :date timeZone=UTC}\n{{{$d :time}}}',
+      offToStr: '.input {$n :offset add=5}\n{{{$n :string}}}',
+      inheritedMatch: `.input {$n :number minimumFractionDigits=$fd}
+.local $b = {$n :number}
+.match $b
+one {{{$b} item}}
+* {{{$b} items}}`,
+    })
+    const t = createTranslate({ locale: 'en', messages })
+
+    expect(t.unsafe('intToStr', { n: 3.7 })).toBe('4')
+    expect(t.unsafe('numToStr', { n: 3 })).toBe('3.00')
+    expect(t.unsafe('numToNum', { n: 3.1234 })).toBe('3.123')
+    expect(t.unsafe('curToStr', { a: 12.5 })).toBe('$12.50')
+    expect(t.unsafe('dateToStr', { d: sampleDate })).toBe('Mar 15, 2026')
+    expect(t.unsafe('dateToTime', { d: sampleDate })).toBe('2:30 PM')
+    expect(t.unsafe('offToStr', { n: 10 })).toBe('15')
+    expect(t.unsafe('inheritedMatch', { n: 1, fd: 0 })).toBe('1 item')
+    expect(t.unsafe('inheritedMatch', { n: 1, fd: 1 })).toBe('1.0 items')
+  })
+
+  it('Should evaluate declarations lazily and at most once when shared', () => {
+    let unusedCalls = 0
+    let throwingCalls = 0
+    let sharedCalls = 0
+
+    const messages = compileBundle({
+      unusedCustom: '.local $u = {$x :unusedFn}\n{{OK: {$name}}}',
+      unusedUnknown: '.local $u = {$x :doesNotExist}\n{{Safe}}',
+      branchLazy: `.local $boom = {$x :throwFn}
+.input {$role :string}
+.match $role
+admin {{{$boom}}}
+* {{Safe}}`,
+      shared: '.local $s = {$x :sharedFn}\n{{{$s} / {$s}}}',
+    })
+
+    const unusedFn: MessageFunction = () => {
+      unusedCalls++
+      return 'unused'
+    }
+    const throwFn: MessageFunction = () => {
+      throwingCalls++
+      throw new Error('boom')
+    }
+    const sharedFn: MessageFunction = (_ctx, _opts, operand) => {
+      sharedCalls++
+      return `v:${String(operand)}`
+    }
+
+    const t = createTranslate({
+      locale: 'en',
+      messages,
+      options: { functions: { unusedFn, throwFn, sharedFn } },
+    })
+
+    expect(t.unsafe('unusedCustom', { name: 'Ada' })).toBe('OK: Ada')
+    expect(unusedCalls).toBe(0)
+    expect(t.unsafe('unusedUnknown', {})).toBe('Safe')
+    expect(t.unsafe('branchLazy', { role: 'guest' })).toBe('Safe')
+    expect(throwingCalls).toBe(0)
+    expect(() => t.unsafe('branchLazy', { role: 'admin' })).toThrow(KanjouFormatError)
+    expect(throwingCalls).toBe(1)
+    expect(t.unsafe('shared', { x: 7 })).toBe('v:7 / v:7')
+    expect(sharedCalls).toBe(1)
+  })
+
+  it('Should forward roundingMode, roundingIncrement, and trailingZeroDisplay to plural selection', () => {
+    const messages = compileBundle({
+      ceil: `.input {$n :number maximumFractionDigits=0 roundingMode=ceil}
+.match $n
+one {{one ({$n})}}
+* {{other ({$n})}}`,
+      floor: `.input {$n :number maximumFractionDigits=0 roundingMode=floor}
+.match $n
+one {{one ({$n})}}
+* {{other ({$n})}}`,
+      inc: `.input {$n :number roundingIncrement=5 minimumFractionDigits=0 maximumFractionDigits=0}
+.match $n
+one {{one ({$n})}}
+* {{other ({$n})}}`,
+      strip: `.input {$n :number minimumFractionDigits=2 trailingZeroDisplay=stripIfInteger}
+.match $n
+one {{one ({$n})}}
+* {{other ({$n})}}`,
+    })
+    const t = createTranslate({ locale: 'en', messages })
+
+    expect(t.unsafe('ceil', { n: 0.4 })).toBe('one (1)')
+    expect(t.unsafe('floor', { n: 1.9 })).toBe('one (1)')
+    expect(t.unsafe('inc', { n: 1 })).toBe('other (0)')
+    expect(t.unsafe('strip', { n: 1 })).toBe('one (1)')
+    expect(t.unsafe('strip', { n: 1.5 })).toBe('other (1.50)')
+  })
+
+  it('Should ignore minimumFractionDigits on :integer without throwing RangeError', () => {
+    const messages = compileBundle({
+      intWithMinFrac: '{$n :integer minimumFractionDigits=2}',
+    })
+    const t = createTranslate({ locale: 'en', messages })
+
+    expect(t.unsafe('intWithMinFrac', { n: 3.7 })).toBe('4')
+  })
+
+  it('Should support variable draft options for :date, :time, :datetime, and :currency', () => {
+    const messages = compileBundle({
+      dateVar: '{$d :date fields=$f length=$l timeZone=UTC}',
+      timeVar: '{$d :time precision=$p timeZoneStyle=$s hour12=false timeZone=UTC}',
+      dtVar:
+        '{$d :datetime dateFields=$df dateLength=$dl timePrecision=$tp hour12=false timeZone=UTC}',
+      curVar: '{$a :currency currency=USD fractionDigits=$fd}',
+    })
+    const t = createTranslate({ locale: 'en', messages })
+
+    expect(t.unsafe('dateVar', { d: sampleDate, f: 'month-day-weekday', l: 'long' })).toBe(
+      'Sunday, March 15',
+    )
+    expect(t.unsafe('timeVar', { d: sampleDate, p: 'second', s: 'short' })).toBe('14:30:45 UTC')
+    expect(t.unsafe('dtVar', { d: sampleDate, df: 'month-day', dl: 'short', tp: 'hour' })).toBe(
+      '3/15, 14',
+    )
+    expect(t.unsafe('curVar', { a: 12.5, fd: 0 })).toBe('$13')
+    expect(t.unsafe('curVar', { a: 12.5, fd: 'auto' })).toBe('$12.50')
+  })
+
+  it('Should apply timeZoneStyle=short alongside direct hour=2-digit', () => {
+    const messages = compileBundle({
+      directHourTz: '{$d :time hour=2-digit timeZoneStyle=short hour12=false timeZone=UTC}',
+    })
+    const t = createTranslate({ locale: 'en', messages })
+
+    expect(t.unsafe('directHourTz', { d: sampleDate })).toBe('14 UTC')
+  })
+
+  it('Should handle hour12 invalid literals and boolean/string variables cleanly', () => {
+    const messages = compileBundle({
+      litYes: '{$d :time hour12=yes timeZone=UTC}',
+      litOne: '{$d :time hour12=1 timeZone=UTC}',
+      varH12: '{$d :time hour12=$h timeZone=UTC}',
+    })
+    const t = createTranslate({ locale: 'en', messages })
+
+    expect(t.unsafe('litYes', { d: sampleDate })).toBe('2:30 PM')
+    expect(t.unsafe('litOne', { d: sampleDate })).toBe('2:30 PM')
+    expect(t.unsafe('varH12', { d: sampleDate, h: 'false' })).toBe('14:30')
+    expect(t.unsafe('varH12', { d: sampleDate, h: 'true' })).toBe('2:30 PM')
+    expect(t.unsafe('varH12', { d: sampleDate, h: undefined })).toBe('2:30 PM')
+    expect(t.unsafe('varH12', { d: sampleDate, h: false })).toBe('14:30')
+    expect(t.unsafe('varH12', { d: sampleDate, h: true })).toBe('2:30 PM')
+  })
+
+  it('Should normalize Unicode NFD/NFC keys in :string selection while keeping original output', () => {
+    const messages = compileBundle({
+      matchNfc: `.input {$word :string}
+.match $word
+caf\u00e9 {{Matched: {$word}}}
+* {{Other: {$word}}}`,
+    })
+    const t = createTranslate({ locale: 'en', messages })
+
+    expect(t.unsafe('matchNfc', { word: 'cafe\u0301' })).toBe('Matched: cafe\u0301')
+    expect(t.unsafe('matchNfc', { word: 'caf\u00e9' })).toBe('Matched: caf\u00e9')
+  })
+
+  it('Should not box primitives or traverse Object.prototype on dotted variable access', () => {
+    const messages = compileBundle({
+      nameLen: '{$name.length}',
+      numCtor: '{$a.constructor}',
+      numMethod: '{$n.toFixed}',
+      arrLen: '{$arr.length}',
+      objProto: '{$obj.toString}',
+    })
+    const t = createTranslate({ locale: 'en', messages })
+
+    expect(t.unsafe('nameLen', { name: 'Ada' })).toBe('{$name.length}')
+    expect(t.unsafe('numCtor', { a: 42 })).toBe('{$a.constructor}')
+    expect(t.unsafe('numMethod', { n: 42 })).toBe('{$n.toFixed}')
+    expect(t.unsafe('arrLen', { arr: ['a', 'b', 'c'] })).toBe('3')
+    expect(t.unsafe('objProto', { obj: {} })).toBe('{$obj.toString}')
+  })
+
+  it('Should support string mode toString and parts mode toParts when markup and custom functions coexist', () => {
+    const messages = compileBundle({
+      rich: 'Before {#b}{$x :badge}{/b} After',
+      richAlias: '.local $b = {$x :badge}\n{{Before {#i}{$b}{/i} After}}',
+    })
+    const badge: MessageFunction = (_ctx, _opts, operand) => ({
+      type: 'badge',
+      toString: () => `[${String(operand)}]`,
+      toParts: () => [{ type: 'badge', value: String(operand) }],
+    })
+    const t = createTranslate({
+      locale: 'en',
+      messages,
+      options: { functions: { badge } },
+    })
+
+    expect(t.unsafe('rich', { x: 'VIP' })).toBe('Before [VIP] After')
+    expect(t.parts.unsafe('rich', { x: 'VIP' })).toEqual([
+      { type: 'text', value: 'Before ' },
+      { type: 'markup', kind: 'open', name: 'b' },
+      { type: 'badge', value: 'VIP' },
+      { type: 'markup', kind: 'close', name: 'b' },
+      { type: 'text', value: ' After' },
+    ])
+
+    expect(t.unsafe('richAlias', { x: 'PRO' })).toBe('Before [PRO] After')
+    expect(t.parts.unsafe('richAlias', { x: 'PRO' })).toEqual([
+      { type: 'text', value: 'Before ' },
+      { type: 'markup', kind: 'open', name: 'i' },
+      { type: 'badge', value: 'PRO' },
+      { type: 'markup', kind: 'close', name: 'i' },
+      { type: 'text', value: ' After' },
+    ])
+  })
+})

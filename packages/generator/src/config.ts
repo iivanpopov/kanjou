@@ -68,8 +68,11 @@ function omitUndefined(input: ConfigInput): Record<string, unknown> {
   return result
 }
 
-export function getConfig(inlineConfig: ConfigInput = {}): Config {
-  const configFilePath = path.resolve(CONFIG_FILENAME)
+export function getConfig(inlineConfig: ConfigInput = {}, rootDir?: string): Config {
+  const baseDir = rootDir ? path.resolve(rootDir) : undefined
+  const configFilePath = baseDir
+    ? path.resolve(baseDir, CONFIG_FILENAME)
+    : path.resolve(CONFIG_FILENAME)
   const exists = existsSync(configFilePath)
 
   let base: unknown = {}
@@ -104,10 +107,20 @@ export function getConfig(inlineConfig: ConfigInput = {}): Config {
   }
 
   try {
-    return ConfigSchema.parse({
+    const parsed = ConfigSchema.parse({
       ...(base as Record<string, unknown>),
       ...omitUndefined(inlineConfig),
     })
+    if (!baseDir) return parsed
+    return {
+      ...parsed,
+      localesDir: path.resolve(baseDir, parsed.localesDir),
+      compile: { outDir: path.resolve(baseDir, parsed.compile.outDir) },
+      dts:
+        parsed.dts === false
+          ? false
+          : { ...parsed.dts, outDir: path.resolve(baseDir, parsed.dts.outDir) },
+    }
   } catch (err) {
     if (err instanceof z.ZodError) {
       const details = err.issues
