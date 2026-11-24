@@ -4,7 +4,7 @@
   "private": false,
   "license": "ISC",
   "author": "Ivan Popov <iivanpopov@proton.me>",
-  "repository": "https://github.com/iivanpopov/kanjou.git",
+  "repository": "git+https://github.com/iivanpopov/kanjou.git",
   "bin": {
     "kanjou": "./dist/cli.mjs"
   },
@@ -27,11 +27,14 @@
   "dependencies": {
     "@kanjou/generator": "workspace:*",
     "cac": "^7.0.0",
-    "consola": " ^3.4.2",
+    "consola": "^3.4.2",
     "jsonc-parser": "^3.3.1",
     "typescript": "catalog:tooling"
   },
   "devDependencies": {
     "tsdown": "catalog:tooling"
+  },
+  "engines": {
+    "node": ">=20"
   }
 }

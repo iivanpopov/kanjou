@@ -1,19 +1,24 @@
 import type { Model } from 'messageformat'
 import type { Options as PrettierOptions } from 'prettier'
 
-import { parseMessage, validate } from 'messageformat'
+import { parseMessage, validate, visit } from 'messageformat'
 import fs from 'node:fs/promises'
 import path from 'node:path'
 import prettier from 'prettier'
 
 import type { Config } from './config'
 
+import { KanjouMessageError } from './errors'
 import {
+  compareStrings,
   load,
+  readAllLocales,
   readLocaleFiles,
   readLocaleNamespaces,
   readLocaleWatchFiles,
   readNamespaceFiles,
+  validateReservedLocaleName,
+  validateReservedLocaleNames,
 } from './loader'
 
 export interface TypeProperty {
@@ -29,7 +34,7 @@ export interface DtsStructure {
 
 export interface CompileResult {
   locale: string
-  namespace?: string
+  namespace?: string | undefined
   inputFile: string
   outputFile: string
 }
@@ -39,10 +44,20 @@ export interface VirtualModule {
   watchFiles: string[]
 }
 
-const VALID_SEGMENT_RE = /^[\w-]+$/
 const SIMPLE_IDENT_RE = /^[a-zA-Z_$][a-zA-Z0-9_$]*$/
 const TEMPLATE_ESCAPE_RE = /[\\`\r\n]|\$\{/g
 const TEMPLATE_OPEN = '$' + '{'
+
+function isValidSegment(segment: string): boolean {
+  return (
+    segment.length > 0 &&
+    segment !== '.' &&
+    segment !== '..' &&
+    !segment.includes('/') &&
+    !segment.includes('\\') &&
+    !segment.includes('\0')
+  )
+}
 
 const TEMPLATE_ESCAPES: Readonly<Record<string, string>> = {
   '\\': '\\\\',
@@ -61,6 +76,25 @@ export const BUILTIN_FUNCTION_FILES: Readonly<Record<string, string>> = {
 
 type MessageKind = 'plain' | 'simple' | 'complex'
 
+function parseAndValidateMessage(
+  source: string,
+  filePath: string,
+  messageKey: string,
+): Model.Message {
+  try {
+    const ast = parseMessage(source)
+    validate(ast)
+    return ast
+  } catch (err) {
+    throw new KanjouMessageError(
+      `Invalid message "${messageKey}" in "${filePath}": ${err instanceof Error ? err.message : String(err)}`,
+      filePath,
+      messageKey,
+      { cause: err },
+    )
+  }
+}
+
 function classifyMessage(ast: Model.Message): MessageKind {
   if (ast.type !== 'message' || ast.declarations.length > 0) return 'complex'
   if (ast.pattern.length === 0) return 'plain'
@@ -78,15 +112,28 @@ function escapeTemplateChunk(str: string): string {
   return str.replace(TEMPLATE_ESCAPE_RE, (ch) => TEMPLATE_ESCAPES[ch] ?? ch)
 }
 
+function buildOwnRootAccess(name: string): string {
+  const key = JSON.stringify(name)
+  if (SIMPLE_IDENT_RE.test(name)) {
+    return `(v!=null&&Object.hasOwn(v,${key})?v.${name}:undefined)`
+  }
+  return `(v!=null&&Object.hasOwn(v,${key})?v[${key}]:undefined)`
+}
+
 function buildVarAccess(name: string): string {
-  if (SIMPLE_IDENT_RE.test(name)) return `v?.${name}`
-  if (!name.includes('.')) return `v?.[${JSON.stringify(name)}]`
+  if (!name.includes('.')) return buildOwnRootAccess(name)
 
   const segments = name.split('.')
-  const nested = segments.every((s) => SIMPLE_IDENT_RE.test(s))
-    ? `v?.${segments.join('?.')}`
-    : `v${segments.map((s) => `?.[${JSON.stringify(s)}]`).join('')}`
-  return `(v?.[${JSON.stringify(name)}]??${nested})`
+  const first = segments[0]
+  if (first === undefined) return buildOwnRootAccess(name)
+
+  const rest = segments.slice(1)
+  const root = buildOwnRootAccess(first)
+  const nestedTail = rest.every((s) => SIMPLE_IDENT_RE.test(s))
+    ? rest.map((s) => `?.${s}`).join('')
+    : rest.map((s) => `?.[${JSON.stringify(s)}]`).join('')
+
+  return `(${buildOwnRootAccess(name)}??${root}${nestedTail})`
 }
 
 function compileSimpleMessage(ast: Model.PatternMessage): string {
@@ -99,23 +146,20 @@ function compileSimpleMessage(ast: Model.PatternMessage): string {
   return `(v)=>\`${chunks.join('')}\``
 }
 
-function getAstExpressions(ast: Model.Message): Model.Expression[] {
-  const expressions: Model.Expression[] = []
-  for (const decl of ast.declarations) expressions.push(decl.value)
-
-  const parts =
-    ast.type === 'message' ? ast.pattern : ast.variants.flatMap((variant) => variant.value)
-  for (const part of parts) {
-    if (typeof part === 'object' && part.type === 'expression') expressions.push(part)
-  }
-  return expressions
-}
-
-function collectUsedFunctions(messages: Record<string, string>): Set<string> {
+function collectUsedFunctions(messages: Record<string, string>, filePath: string): Set<string> {
   const used = new Set<string>()
-  for (const value of Object.values(messages)) {
-    for (const expr of getAstExpressions(parseMessage(value))) {
-      if (expr.functionRef?.name) used.add(expr.functionRef.name)
+  for (const [key, value] of Object.entries(messages)) {
+    try {
+      const ast = parseMessage(value)
+      const { functions } = validate(ast)
+      for (const fn of functions) used.add(fn)
+    } catch (err) {
+      throw new KanjouMessageError(
+        `Invalid message "${key}" in "${filePath}": ${err instanceof Error ? err.message : String(err)}`,
+        filePath,
+        key,
+        { cause: err },
+      )
     }
   }
   return used
@@ -123,6 +167,7 @@ function collectUsedFunctions(messages: Record<string, string>): Set<string> {
 
 interface BaseLocaleData {
   messages: Record<string, string>
+  keyToFile: Map<string, string>
   locales: string[]
   namespaces: string[]
   watchFiles: string[]
@@ -132,33 +177,39 @@ export class Generator {
   constructor(public config: Config) {}
 
   async compile(): Promise<CompileResult[]> {
-    const [localeFiles, localeNamespaces] = await Promise.all([
-      readLocaleFiles(this.config.localesDir),
-      readLocaleNamespaces(this.config.localesDir),
-    ])
-    const results: CompileResult[] = []
+    const { localeFiles, localeNamespaces } = await readAllLocales(this.config.localesDir)
 
-    await Promise.all([
-      ...localeFiles.map(async (file) => {
-        const messages = await load<Record<string, string>>(file)
-        const outputFile = await this.emitCompiled(file.name, messages)
-        results.push({ locale: file.name, inputFile: file.relative, outputFile })
-      }),
-      ...Object.entries(localeNamespaces).flatMap(([locale, files]) =>
-        files.map(async (file) => {
-          const messages = await load<Record<string, string>>(file)
-          const outputFile = await this.emitCompiled(path.join(locale, file.name), messages)
-          results.push({
+    const namespaceEntries = Object.entries(localeNamespaces)
+      .sort(([a], [b]) => compareStrings(a, b))
+      .flatMap(([locale, files]) => files.map((file) => ({ locale, file })))
+
+    const [localeResults, namespaceResults] = await Promise.all([
+      Promise.all(
+        localeFiles.map(async (file): Promise<CompileResult> => {
+          const messages = await load(file)
+          const outputFile = await this.emitCompiled(file.name, messages, file.relative)
+          return { locale: file.name, inputFile: file.relative, outputFile }
+        }),
+      ),
+      Promise.all(
+        namespaceEntries.map(async ({ locale, file }): Promise<CompileResult> => {
+          const messages = await load(file)
+          const outputFile = await this.emitCompiled(
+            path.join(locale, file.name),
+            messages,
+            file.relative,
+          )
+          return {
             locale,
             namespace: file.name,
             inputFile: file.relative,
             outputFile,
-          })
+          }
         }),
       ),
     ])
 
-    return results
+    return [...localeResults, ...namespaceResults]
   }
 
   async emitDts(): Promise<string[]> {
@@ -167,7 +218,12 @@ export class Generator {
     const base = await this.loadBaseLocaleData()
     if (!base) return []
 
-    const dtsStructure = this.buildDtsStructure(base.messages, base.locales, base.namespaces)
+    const dtsStructure = this.buildDtsStructure(
+      base.messages,
+      base.locales,
+      base.namespaces,
+      base.keyToFile,
+    )
     const code = await this.dtsToString(dtsStructure)
     const outPath = path.join(this.config.dts.outDir, 'locales.kanjou.d.ts')
 
@@ -187,6 +243,7 @@ export class Generator {
 
   private async virtualLocales(): Promise<VirtualModule> {
     const localeFiles = await readLocaleFiles(this.config.localesDir)
+    validateReservedLocaleNames(localeFiles)
     const locales = localeFiles.map((file) => file.name)
     return {
       code: this.virtualLocalesToString(locales),
@@ -196,6 +253,7 @@ export class Generator {
 
   private async virtualNamespaces(): Promise<VirtualModule> {
     const localeNamespaces = await readLocaleNamespaces(this.config.localesDir)
+    validateReservedLocaleNames([], Object.keys(localeNamespaces), this.config.localesDir)
     const watchFiles = Object.values(localeNamespaces).flatMap((files) =>
       files.map((file) => file.absolute),
     )
@@ -206,26 +264,19 @@ export class Generator {
   }
 
   private async virtualFunctions(): Promise<VirtualModule> {
-    const [localeFiles, localeNamespaces] = await Promise.all([
-      readLocaleFiles(this.config.localesDir),
-      readLocaleNamespaces(this.config.localesDir),
-    ])
+    const { locales, localeFiles, localeNamespaces } = await readAllLocales(this.config.localesDir)
 
     const files = [...localeFiles, ...Object.values(localeNamespaces).flat()]
     if (!files.length) return { code: 'export default Object.create(null)', watchFiles: [] }
 
-    const locales = Array.from(
-      new Set([...localeFiles.map((file) => file.name), ...Object.keys(localeNamespaces)]),
-    )
-
     const [loadedMessages, watchGroups] = await Promise.all([
-      Promise.all(files.map((file) => load<Record<string, string>>(file))),
+      Promise.all(files.map(async (file) => ({ file, messages: await load(file) }))),
       Promise.all(locales.map((locale) => readLocaleWatchFiles(this.config.localesDir, locale))),
     ])
 
     const used = new Set<string>()
-    for (const messages of loadedMessages) {
-      for (const fn of collectUsedFunctions(messages)) used.add(fn)
+    for (const { file, messages } of loadedMessages) {
+      for (const fn of collectUsedFunctions(messages, file.relative)) used.add(fn)
     }
 
     const watchFiles = Array.from(
@@ -243,95 +294,98 @@ export class Generator {
     const [locale, namespace] = segments
     if (
       segments.length !== 2 ||
-      !locale ||
-      !namespace ||
-      !VALID_SEGMENT_RE.test(locale) ||
-      !VALID_SEGMENT_RE.test(namespace)
+      locale === undefined ||
+      namespace === undefined ||
+      !isValidSegment(locale) ||
+      !isValidSegment(namespace)
     ) {
       return null
     }
+
+    validateReservedLocaleName(locale, target)
 
     const nsFiles = await readNamespaceFiles(this.config.localesDir, locale)
     const nsFile = nsFiles.find((file) => file.name === namespace)
     if (!nsFile) return null
 
     const [messages, watchFiles] = await Promise.all([
-      load<Record<string, string>>(nsFile),
+      load(nsFile),
       readLocaleWatchFiles(this.config.localesDir, locale),
     ])
 
     return {
-      code: this.compileMessagesToCode(messages),
+      code: this.compileMessagesToCode(messages, nsFile.relative),
       watchFiles: watchFiles.length > 0 ? watchFiles : [nsFile.absolute],
     }
   }
 
   private async virtualLocale(locale: string): Promise<VirtualModule | null> {
     const localeFiles = await readLocaleFiles(this.config.localesDir)
+    validateReservedLocaleNames(localeFiles)
     const localeFile = localeFiles.find((file) => file.name === locale)
     if (!localeFile) return null
 
     const [messages, nestedWatchFiles] = await Promise.all([
-      load<Record<string, string>>(localeFile),
+      load(localeFile),
       readLocaleWatchFiles(this.config.localesDir, locale),
     ])
 
     return {
-      code: this.compileMessagesToCode(messages),
+      code: this.compileMessagesToCode(messages, localeFile.relative),
       watchFiles: [localeFile.absolute, ...nestedWatchFiles],
     }
   }
 
   private async loadBaseLocaleData(): Promise<BaseLocaleData | null> {
-    const [localeFiles, localeNamespaces, nestedWatchFiles] = await Promise.all([
-      readLocaleFiles(this.config.localesDir),
-      readLocaleNamespaces(this.config.localesDir),
+    const [{ locales, localeFiles, localeNamespaces }, nestedWatchFiles] = await Promise.all([
+      readAllLocales(this.config.localesDir),
       readLocaleWatchFiles(this.config.localesDir, this.config.baseLocale),
     ])
 
-    const locales = Array.from(
-      new Set([...localeFiles.map((file) => file.name), ...Object.keys(localeNamespaces)]),
-    ).sort()
     const baseNamespaces = localeNamespaces[this.config.baseLocale] ?? []
-    const namespaces = baseNamespaces.map((file) => file.name).sort()
+    const namespaces = baseNamespaces.map((file) => file.name)
     const baseFile = localeFiles.find((file) => file.name === this.config.baseLocale)
 
-    let messages: Record<string, string>
+    if (!baseFile && baseNamespaces.length === 0) return null
+
+    const filesToLoad = baseFile ? [baseFile, ...baseNamespaces] : baseNamespaces
     const watchSet = new Set<string>(nestedWatchFiles)
+    const loadedEntries = await Promise.all(
+      filesToLoad.map(async (file) => {
+        watchSet.add(file.absolute)
+        return { file, messages: await load(file) }
+      }),
+    )
 
-    if (baseFile) {
-      watchSet.add(baseFile.absolute)
-      messages = await load<Record<string, string>>(baseFile)
-    } else if (baseNamespaces.length > 0) {
-      const loaded = await Promise.all(
-        baseNamespaces.map((file) => {
-          watchSet.add(file.absolute)
-          return load<Record<string, string>>(file)
-        }),
-      )
-      messages = Object.assign({}, ...loaded)
-    } else return null
+    const messages: Record<string, string> = Object.create(null)
+    const keyToFile = new Map<string, string>()
 
-    return { messages, locales, namespaces, watchFiles: Array.from(watchSet) }
+    for (const { file, messages: fileMessages } of loadedEntries) {
+      for (const [key, value] of Object.entries(fileMessages)) {
+        messages[key] = value
+        keyToFile.set(key, file.relative)
+      }
+    }
+
+    return { messages, keyToFile, locales, namespaces, watchFiles: Array.from(watchSet) }
   }
 
-  private compileMessagesToCode(messages: Record<string, string>): string {
+  private compileMessagesToCode(messages: Record<string, string>, filePath: string): string {
     const entries: string[] = []
 
     for (const [key, value] of Object.entries(messages)) {
-      const ast = parseMessage(value)
-      validate(ast)
+      const ast = parseAndValidateMessage(value, filePath, key)
 
       const serializedKey = JSON.stringify(key)
       const kind = classifyMessage(ast)
 
       if (kind === 'plain') {
         const text = (ast as Model.PatternMessage).pattern[0] ?? ''
-        entries.push(`${serializedKey}:${JSON.stringify(text)}`)
+        entries.push(`[${serializedKey}]:${JSON.stringify(text)}`)
       } else if (kind === 'simple') {
-        entries.push(`${serializedKey}:${compileSimpleMessage(ast as Model.PatternMessage)}`)
+        entries.push(`[${serializedKey}]:${compileSimpleMessage(ast as Model.PatternMessage)}`)
       } else {
-        entries.push(`${serializedKey}:${JSON.stringify(ast)}`)
+        entries.push(`[${serializedKey}]:${JSON.stringify(ast)}`)
       }
     }
 
@@ -346,8 +400,9 @@ export class Generator {
   private async emitCompiled(
     relativeName: string,
     messages: Record<string, string>,
+    inputFilePath: string,
   ): Promise<string> {
-    const code = this.compileMessagesToCode(messages)
+    const code = this.compileMessagesToCode(messages, inputFilePath)
     const outPath = path.join(this.config.compile.outDir, `${relativeName}.js`)
     await this.writeFile(outPath, code)
     return outPath
@@ -357,48 +412,49 @@ export class Generator {
     messages: Record<string, string>,
     locales: string[],
     namespaces: string[],
+    keyToFile?: ReadonlyMap<string, string>,
   ): DtsStructure {
-    const dtsMessages: Record<string, TypeProperty[]> = {}
+    const dtsMessages: Record<string, TypeProperty[]> = Object.create(null)
 
     const resolveType = (functionRef?: { name: string }): string =>
-      functionRef ? `{ __fn: '${functionRef.name}' }` : 'DefaultMessageValue'
+      functionRef ? `{ __fn: ${JSON.stringify(functionRef.name)} }` : 'DefaultMessageValue'
 
     for (const [key, message] of Object.entries(messages)) {
-      const ast = parseMessage(message)
+      const filePath = keyToFile?.get(key) ?? this.config.baseLocale
+      const ast = parseAndValidateMessage(message, filePath, key)
       const values = new Map<string, TypeProperty>()
+      const locals = new Set<string>()
 
-      for (const declaration of ast.declarations) {
-        const type = resolveType(declaration.value.functionRef)
-
-        if (declaration.type === 'input') {
-          values.set(declaration.name, { type, name: declaration.name })
-        } else if (
-          declaration.type === 'local' &&
-          declaration.value.arg?.type === 'variable' &&
-          !values.has(declaration.value.arg.name)
-        ) {
-          values.set(declaration.value.arg.name, { type, name: declaration.value.arg.name })
+      const recordVariable = (name: string, functionRef?: { name: string }): void => {
+        if (locals.has(name)) return
+        const existing = values.get(name)
+        if (!existing) {
+          values.set(name, { type: resolveType(functionRef), name })
+        } else if (functionRef && existing.type === 'DefaultMessageValue') {
+          values.set(name, { type: resolveType(functionRef), name })
         }
       }
 
-      const parts =
-        ast.type === 'message' ? ast.pattern : ast.variants.flatMap((variant) => variant.value)
-
-      for (const part of parts) {
-        if (
-          typeof part !== 'object' ||
-          part.type !== 'expression' ||
-          part.arg?.type !== 'variable' ||
-          values.has(part.arg.name)
-        ) {
-          continue
-        }
-
-        values.set(part.arg.name, {
-          type: resolveType(part.functionRef),
-          name: part.arg.name,
-        })
-      }
+      visit(ast, {
+        declaration(decl) {
+          if (decl.type === 'local') {
+            return () => {
+              locals.add(decl.name)
+            }
+          }
+          return undefined
+        },
+        expression(expr) {
+          if (expr.arg?.type === 'variable') {
+            recordVariable(expr.arg.name, expr.functionRef)
+          }
+        },
+        value(val, context, position) {
+          if (val.type === 'variable' && (position !== 'arg' || context === 'selector')) {
+            recordVariable(val.name)
+          }
+        },
+      })
 
       dtsMessages[key] = Array.from(values.values())
     }
@@ -407,12 +463,15 @@ export class Generator {
   }
 
   private async dtsToString(dts: DtsStructure): Promise<string> {
+    const targetModule = this.config.dts === false ? '@kanjou/react' : this.config.dts.module
+    const serializedModule = JSON.stringify(targetModule)
+
     const localeType = dts.locales.length
-      ? dts.locales.map((locale) => `'${locale}'`).join(' | ')
+      ? dts.locales.map((locale) => JSON.stringify(locale)).join(' | ')
       : 'never'
 
     const namespaceLine = dts.namespaces.length
-      ? `namespace: ${dts.namespaces.map((ns) => `'${ns}'`).join(' | ')};`
+      ? `namespace: ${dts.namespaces.map((ns) => JSON.stringify(ns)).join(' | ')};`
       : ''
 
     const messageProperties = Object.entries(dts.messages).map(([key, properties]) => {
@@ -427,12 +486,15 @@ export class Generator {
       return `  ${JSON.stringify(key)}: { ${propertiesString} }`
     })
 
+    const clientTypes =
+      targetModule === '@kanjou/core' ? '@kanjou/plugin/client/core' : '@kanjou/plugin/client'
+
     const code = `
-      /// <reference types="@kanjou/plugin/client" />
+      /// <reference types="${clientTypes}" />
 
-      import type { DefaultMessageValue } from '@kanjou/react';
+      import type { DefaultMessageValue } from ${serializedModule};
 
-      declare module '@kanjou/react' {
+      declare module ${serializedModule} {
         export interface Register {
           locale: ${localeType};
           ${namespaceLine}
@@ -456,7 +518,7 @@ export class Generator {
   private virtualLocalesToString(locales: string[]): string {
     const entries = locales.map(
       (locale) =>
-        `  "${locale}": () => import('virtual:kanjou/${locale}').then((module) => module.default)`,
+        `  [${JSON.stringify(locale)}]: () => import(${JSON.stringify(`virtual:kanjou/${locale}`)}).then((module) => module.default)`,
     )
     return `export default {\n${entries.join(',\n')}\n}`
   }
@@ -465,9 +527,9 @@ export class Generator {
     const localeEntries = Object.entries(localeNamespaces).map(([locale, files]) => {
       const nsEntries = files.map(
         (file) =>
-          `    "${file.name}": () => import('virtual:kanjou/${locale}/${file.name}').then((module) => module.default)`,
+          `    [${JSON.stringify(file.name)}]: () => import(${JSON.stringify(`virtual:kanjou/${locale}/${file.name}`)}).then((module) => module.default)`,
       )
-      return `  "${locale}": {\n${nsEntries.join(',\n')}\n  }`
+      return `  [${JSON.stringify(locale)}]: {\n${nsEntries.join(',\n')}\n  }`
     })
     return `export default {\n${localeEntries.join(',\n')}\n}`
   }

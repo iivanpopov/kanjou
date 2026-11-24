@@ -8,14 +8,28 @@ Internationalization for React powered by [MessageFormat 2](https://messageforma
 
 ## Quick Start
 
+> Kanjou precompiles translations at build time via `@kanjou/plugin` or `@kanjou/cli` and does not parse MessageFormat 2 strings at runtime.
+
+Install `@kanjou/react` and `@kanjou/plugin`:
+
 ```bash
-pnpm install @kanjou/react
+pnpm add @kanjou/react
+pnpm add -D @kanjou/plugin
 ```
 
-Define your translation using [MF2 syntax](https://messageformat.unicode.org):
+Create `kanjou.config.json` in your project root:
+
+```json
+{
+  "baseLocale": "en",
+  "localesDir": "./src/locales"
+}
+```
+
+Define your translations using [MF2 syntax](https://messageformat.unicode.org):
 
 ```ts
-// locales/en.ts
+// src/locales/en.ts
 export default {
   apples: `
     .input {$count :number}
@@ -25,15 +39,28 @@ export default {
 } as const
 ```
 
-Wrap your app with `TranslateProvider`:
+Register `@kanjou/plugin/vite` (or `@kanjou/plugin/webpack`):
+
+```ts
+// vite.config.ts
+import kanjou from '@kanjou/plugin/vite'
+import react from '@vitejs/plugin-react'
+import { defineConfig } from 'vite'
+
+export default defineConfig({
+  plugins: [kanjou(), react()],
+})
+```
+
+Import the precompiled locale from `virtual:kanjou/en` and wrap your app with `TranslateProvider`:
 
 ```tsx
-// main.tsx
+// src/main.tsx
 import { TranslateProvider } from '@kanjou/react'
 import { createRoot } from 'react-dom/client'
+import en from 'virtual:kanjou/en'
 
 import App from './app'
-import en from './locales/en'
 
 createRoot(document.getElementById('root')!).render(
   <TranslateProvider locale="en" messages={en}>
@@ -45,7 +72,7 @@ createRoot(document.getElementById('root')!).render(
 Use the `useTranslate` hook:
 
 ```tsx
-// app.tsx
+// src/app.tsx
 import { useTranslate } from '@kanjou/react'
 
 function App() {
@@ -53,6 +80,44 @@ function App() {
 
   return <p>{t('apples', { count: 3 })}</p>
 }
+```
+
+## CLI Precompilation Workflow
+
+If you prefer ahead-of-time compilation without a bundler plugin, use `@kanjou/cli`:
+
+```bash
+pnpm add -D @kanjou/cli
+```
+
+Generate TypeScript declarations (`locales.kanjou.d.ts`) and compile locale modules into `compile.outDir` (default `./generated`):
+
+```bash
+pnpm kanjou generate
+pnpm kanjou compile
+```
+
+Then import the precompiled locale module directly:
+
+```tsx
+import { TranslateProvider } from '@kanjou/react'
+
+import en from './generated/en.js'
+```
+
+## Agent Skills
+
+Install the `kanjou` and `messageformat-2` agent skills from this repository:
+
+```bash
+pnpx skills add iivanpopov/kanjou
+```
+
+Or install a specific skill:
+
+```bash
+pnpx skills add iivanpopov/kanjou --skill kanjou
+pnpx skills add iivanpopov/kanjou --skill messageformat-2
 ```
 
 ## Documentation

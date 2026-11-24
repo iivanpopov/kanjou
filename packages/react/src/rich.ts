@@ -4,16 +4,20 @@ import type { ElementType, ReactNode } from 'react'
 import { createElement, Fragment } from 'react'
 
 function toText(part: MessagePart<string>): string {
-  if ('parts' in part && Array.isArray(part.parts)) {
+  if ('parts' in part && Array.isArray(part.parts) && part.parts.length > 0) {
     let text = ''
     for (const sub of part.parts) {
-      if (sub.value !== null && sub.value !== undefined) text += String(sub.value as any)
+      if (sub.value !== null && sub.value !== undefined) {
+        // oxlint-disable-next-line typescript/no-base-to-string
+        text += String(sub.value)
+      }
     }
     return text
   }
 
   if ('value' in part && part.value !== null && part.value !== undefined) {
-    return String(part.value as any)
+    // oxlint-disable-next-line typescript/no-base-to-string
+    return String(part.value)
   }
 
   if (part.type === 'fallback' && 'source' in part) return `{${part.source}}`
@@ -30,27 +34,23 @@ export type Components = Record<string, ElementType>
 
 function findComponent(
   name: string,
-  components: (Components | undefined)[],
+  components: readonly (Components | undefined)[],
 ): ElementType | undefined {
   for (const c of components) if (c && Object.hasOwn(c, name) && c[name]) return c[name]
   return undefined
 }
 
 function consume(
-  parts: MessagePart<string>[],
+  parts: readonly MessagePart<string>[],
   index: number,
   openTag: string | undefined,
-  ...components: (Components | undefined)[]
+  components: readonly (Components | undefined)[],
 ): [ReactNode[], number] {
   const nodes: ReactNode[] = []
 
   while (index < parts.length) {
     const part = parts[index]
-
-    if (part.type === 'bidiIsolation') {
-      index++
-      continue
-    }
+    if (!part) break
 
     if (part.type === 'markup' && 'kind' in part) {
       const { kind, name } = part
@@ -64,12 +64,16 @@ function consume(
       const render = findComponent(name, components)
 
       if (kind === 'standalone') {
-        if (render) nodes.push(createElement(render, { ...part.options, key: index }))
+        if (render) {
+          const options: Record<string, unknown> = { ...part.options, key: index }
+          const { children: _, ...props } = options
+          nodes.push(createElement(render, props))
+        }
         index++
         continue
       }
 
-      const [children, next] = consume(parts, index + 1, name, ...components)
+      const [children, next] = consume(parts, index + 1, name, components)
 
       const _children = toNode(children)
       const props = render ? { ...part.options, key: index } : { key: index }
@@ -87,9 +91,9 @@ function consume(
 }
 
 export function formatRich(
-  parts: MessagePart<string>[],
-  ...components: (Components | undefined)[]
+  parts: readonly MessagePart<string>[],
+  components: readonly (Components | undefined)[] = [],
 ): ReactNode {
-  const [nodes] = consume(parts, 0, undefined, ...components)
+  const [nodes] = consume(parts, 0, undefined, components)
   return toNode(nodes)
 }

@@ -5,12 +5,17 @@ import { CONFIG_FILENAME, Generator, getConfig } from '@kanjou/generator'
 import path from 'node:path'
 import { createUnplugin } from 'unplugin'
 
-import { loadMessageFormatModule, resolveMessageFormatId } from './messageformat'
+import { createMessageFormatResolver } from './messageformat'
+
+export { KanjouPluginError } from './errors'
+export type { KanjouPluginErrorOptions } from './errors'
 
 const VIRTUAL_PREFIX = 'virtual:kanjou/'
 const RESOLVED_PREFIX = '\0' + VIRTUAL_PREFIX
 
 export const kanjouPluginFactory: UnpluginFactory<ConfigInput | undefined> = (options) => {
+  const configFilePath = path.resolve(CONFIG_FILENAME)
+  const messageFormat = createMessageFormatResolver()
   let config = getConfig(options)
   let generator = new Generator(config)
 
@@ -19,13 +24,14 @@ export const kanjouPluginFactory: UnpluginFactory<ConfigInput | undefined> = (op
     enforce: 'pre',
 
     async buildStart() {
+      this.addWatchFile(configFilePath)
       if (config.dts !== false) {
         await generator.emitDts()
       }
     },
 
     resolveId(id, importer) {
-      const resolved = resolveMessageFormatId(id, importer)
+      const resolved = messageFormat.resolveId(id, importer)
       if (resolved !== undefined) return resolved
 
       if (id.startsWith(VIRTUAL_PREFIX)) {
@@ -34,7 +40,7 @@ export const kanjouPluginFactory: UnpluginFactory<ConfigInput | undefined> = (op
     },
 
     async load(id) {
-      const loaded = loadMessageFormatModule(id)
+      const loaded = messageFormat.load(id)
       if (loaded !== undefined) return loaded
 
       if (!id.startsWith(RESOLVED_PREFIX)) return
@@ -51,15 +57,18 @@ export const kanjouPluginFactory: UnpluginFactory<ConfigInput | undefined> = (op
     },
 
     async watchChange(id) {
-      if (config.dts === false) return
       if (id.endsWith('.d.ts')) return
 
-      if (id.endsWith(CONFIG_FILENAME)) {
+      if (path.resolve(id) === configFilePath) {
         config = getConfig(options)
         generator = new Generator(config)
-        await generator.emitDts()
+        if (config.dts !== false) {
+          await generator.emitDts()
+        }
         return
       }
+
+      if (config.dts === false) return
 
       const localesDir = path.resolve(config.localesDir)
       if (id === localesDir || id.startsWith(localesDir + path.sep)) await generator.emitDts()
