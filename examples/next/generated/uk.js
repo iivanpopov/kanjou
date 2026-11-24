@@ -15,16 +15,16 @@ export default {
     {
       const _key = r.selectPlural(_n0)
       if (_key === 'one') {
-        return `У вас є ${r.number(_d0)} яблуко.`
+        return `У вас є ${r.number(_d0, undefined, '{$count}')} яблуко.`
       }
       if (_key === 'few') {
-        return `У вас є ${r.number(_d0)} яблука.`
+        return `У вас є ${r.number(_d0, undefined, '{$count}')} яблука.`
       }
       if (_key === 'many') {
-        return `У вас є ${r.number(_d0)} яблук.`
+        return `У вас є ${r.number(_d0, undefined, '{$count}')} яблук.`
       }
     }
-    return `У вас є ${r.number(_d0)} яблук.`
+    return `У вас є ${r.number(_d0, undefined, '{$count}')} яблук.`
   },
   'title.counter': 'Кількість кліків',
   'button.reset': 'Скинути',
