@@ -19,17 +19,23 @@ export interface FormatRich {
 }
 
 export function enrich(t: Translate, components?: Components): ReactTranslate {
+  const fallbackForEmpty = (id?: string): ReactNode => {
+    const msg = id !== undefined ? t.messages[id] : undefined
+    return msg === undefined || msg === null ? (id ?? null) : null
+  }
+
   const rich: FormatRich = (id, values, options) => {
     const parts = t.parts(id, values)
-    if (parts.length === 0) return null
+    if (parts.length === 0) return fallbackForEmpty(id)
     return formatRich(parts, options?.components, components)
   }
 
   rich.unsafe = (id, values, options) => {
     const parts = t.parts.unsafe(id, values)
-    if (parts.length === 0) return null
+    if (parts.length === 0) return fallbackForEmpty(id)
     return formatRich(parts, options?.components, components)
   }
 
-  return Object.assign(t, { rich })
+  const wrapped = ((id: MessageId, values?: MessageValues) => t(id, values)) as ReactTranslate
+  return Object.assign(wrapped, t, { rich })
 }

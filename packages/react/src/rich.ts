@@ -4,7 +4,7 @@ import type { ElementType, ReactNode } from 'react'
 import { createElement, Fragment } from 'react'
 
 function toText(part: MessagePart<string>): string {
-  if ('parts' in part && Array.isArray(part.parts)) {
+  if ('parts' in part && Array.isArray(part.parts) && part.parts.length > 0) {
     let text = ''
     for (const sub of part.parts) {
       if (sub.value !== null && sub.value !== undefined) text += String(sub.value as any)
@@ -47,11 +47,6 @@ function consume(
   while (index < parts.length) {
     const part = parts[index]
 
-    if (part.type === 'bidiIsolation') {
-      index++
-      continue
-    }
-
     if (part.type === 'markup' && 'kind' in part) {
       const { kind, name } = part
 
@@ -64,7 +59,11 @@ function consume(
       const render = findComponent(name, components)
 
       if (kind === 'standalone') {
-        if (render) nodes.push(createElement(render, { ...part.options, key: index }))
+        if (render) {
+          const props: Record<string, unknown> = { ...part.options, key: index }
+          delete props.children
+          nodes.push(createElement(render, props))
+        }
         index++
         continue
       }

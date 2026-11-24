@@ -21,21 +21,28 @@ export interface CreateTranslateContext {
   locale: Locale
 }
 
+let nextConfigId = 0
+
 export function defineTranslate(
   config: ReactDefineTranslateConfig,
 ): (locale: Locale) => ReactTranslate {
   const cache = config.cache ?? createTranslateCache()
+  const configId = ++nextConfigId
 
   return (locale: Locale): ReactTranslate => {
+    if (!Object.hasOwn(config.resources, locale) || config.resources[locale] === undefined) {
+      throw new Error(`No resources defined for locale "${locale}".`)
+    }
     const messages = config.resources[locale]
 
-    let translate = cache.translate.get(locale)
+    const cacheKey = `${configId}\0${locale}`
+    let translate = cache.translate.get(cacheKey)
     if (!translate) {
       translate = enrich(
         createTranslate({ locale, messages, cache, options: config.options }),
         config.components,
       )
-      cache.translate.set(locale, translate)
+      cache.translate.set(cacheKey, translate)
     }
     return translate
   }

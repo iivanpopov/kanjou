@@ -17,7 +17,9 @@ import { enrich } from './enrich'
 
 export * from './enrich'
 
-export const TranslateContext: Context<ReactTranslate> = createContext({} as ReactTranslate)
+const DEFAULT_TRANSLATE = {} as ReactTranslate
+
+export const TranslateContext: Context<ReactTranslate> = createContext(DEFAULT_TRANSLATE)
 
 interface TranslateProviderState {
   locale: Locale
@@ -135,5 +137,9 @@ export function TranslateProvider({
 }
 
 export function useTranslate(): ReactTranslate {
-  return use(TranslateContext)
+  const translate = use(TranslateContext)
+  if (translate === DEFAULT_TRANSLATE) {
+    throw new Error('useTranslate() must be used inside a <TranslateProvider>.')
+  }
+  return translate
 }
