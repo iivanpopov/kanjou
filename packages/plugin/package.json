@@ -4,16 +4,22 @@
   "private": false,
   "license": "ISC",
   "author": "Ivan Popov <iivanpopov@proton.me>",
-  "repository": "https://github.com/iivanpopov/kanjou.git",
+  "repository": "git+https://github.com/iivanpopov/kanjou.git",
   "files": [
     "dist",
     "client.d.ts",
+    "client-core.d.ts",
     "README.md",
     "LICENSE"
   ],
   "type": "module",
   "exports": {
-    "./client": "./client.d.ts",
+    "./client": {
+      "types": "./client.d.ts"
+    },
+    "./client/core": {
+      "types": "./client-core.d.ts"
+    },
     ".": {
       "types": "./dist/index.d.mts",
       "import": "./dist/index.mjs"
@@ -39,5 +45,20 @@
     "@types/node": "catalog:",
     "tsdown": "catalog:tooling",
     "typescript": "catalog:tooling"
+  },
+  "peerDependencies": {
+    "@kanjou/core": "workspace:*",
+    "@kanjou/react": "workspace:*"
+  },
+  "peerDependenciesMeta": {
+    "@kanjou/core": {
+      "optional": true
+    },
+    "@kanjou/react": {
+      "optional": true
+    }
+  },
+  "engines": {
+    "node": ">=20"
   }
 }
