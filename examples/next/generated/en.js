@@ -13,9 +13,9 @@ export default {
     const _d0 = v?.count
     const _n0 = r.numberForSelection(_d0)
     if (r.selectPlural(_n0) === 'one') {
-      return `You have ${r.number(_d0)} apple.`
+      return `You have ${r.number(_d0, undefined, '{$count}')} apple.`
     }
-    return `You have ${r.number(_d0)} apples.`
+    return `You have ${r.number(_d0, undefined, '{$count}')} apples.`
   },
   'title.counter': 'Click count',
   'button.reset': 'Reset',
