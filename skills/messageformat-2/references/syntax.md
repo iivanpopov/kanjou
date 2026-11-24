@@ -1,36 +1,33 @@
 # Syntax: patterns, text, literals, markup
 
-## Contents
-
-- Patterns and quoted patterns
-- Text and escapes
-- Expressions and annotations
-- Literals
-- Markup
-
 ## Patterns
 
-A pattern is a sequence of text and placeholders formatted as a unit. Formatting a message (without errors) always yields the result of exactly one pattern: the simple message's pattern or the matching variant's pattern.
+Formatting a message yields one pattern: the **simple message**'s bare pattern or the matching **variant**'s **quoted pattern**.
 
-- **Unquoted pattern** = a simple message. Almost anything not beginning with `.` or `{{` works.
-  `This is a pattern. It can include expressions like {$v} and {#bold}markup{/bold}.`
-- **Quoted pattern** `{{...}}`: required when the message has declarations or `.match`; required for every variant pattern.
+- **Simple message** (unquoted pattern):
+  ```
+  This is a pattern. It can include expressions like {$v} and {#bold}markup{/bold}.
+  ```
+  Wrap a bare pattern in `{{...}}` whenever it starts with `.` or `{{` so the parser reads it as text rather than a declaration or quoted pattern:
+  ```
+  {{.hidden}}
+  ```
+- **Quoted pattern** `{{...}}`: required in every **complex message** (declarations or `.match`), including every variant pattern.
   ```
   .local $y = {1}
   {{This pattern must be quoted.}}
   ```
-- Some characters cannot appear in an unquoted pattern; quoting avoids this.
 
 ## Text
 
-Translatable content. Any Unicode code point is allowed except surrogates U+D800-U+DFFF. `\`, `{`, `}` must be escaped. Whitespace (spaces, tabs, newlines) is significant and preserved:
+Translatable content accepts any Unicode code point except surrogates U+D800–U+DFFF. Escape `\`, `{`, `}` as `\\`, `\{`, `\}`. Whitespace (spaces, tabs, newlines) inside patterns is preserved:
 
 ```
 .input {$num :number}
 {{   This is the {$num} pattern   }}
 ```
 
--> `   This is the 5 pattern   ` (surrounding spaces kept inside `{{ }}`)
+-> `   This is the 5 pattern   `
 
 Escapes:
 
@@ -40,58 +37,49 @@ Backslash: \\, left curly brace \{, right curly brace \}
 
 -> `Backslash: \, left curly brace {, right curly brace }`
 
-## Expressions (placeholders)
+## Expressions
 
-An expression is in `{ }` and holds an operand with an optional annotation (function + options):
+An expression sits in `{ }` and holds an operand with an optional annotation (function and options):
 
 ```
-{$date :datetime weekday=long}   // operand, function, option
-{42 :number style=percent}       // literal operand
-{|Some text|}                    // literal expression
-{$name}                          // variable, no function
+{$date :datetime dateFields=weekday dateLength=long}
+{0.42 :percent}
+{|Some text|}
+{$name}
 ```
-
-Read `{$date :datetime weekday=long}` as: "take `$date` and format it as a date, using the long weekday." Expressions appear in patterns, in declarations, and in variants.
 
 ## Literals
 
-A literal is literal text in code, not data from a variable. Contexts: variant keys, expression operands, option values (an option value is a literal if it doesn't start with `$`).
+A literal is inline code data used as a variant key, expression operand, or option value (any option value without a leading `$`).
 
-**Unquoted literal**: a number, or a string of alphanumerics starting with a letter or `_`.
+- **Unquoted literal**: letters, digits, `_`, `-`, `.`, `+`, and Unicode name characters.
 
-```
-.local $x = {42}
-.local $y = {number42}
-.local $z = {_number}
-{{{$x} {$y} {$z}}}
-```
+  ```
+  .local $x = {42}
+  .local $y = {number42}
+  .local $z = {_number}
+  {{{$x} {$y} {$z}}}
+  ```
 
--> `42 number42 _number`. The braces belong to the expression, not the literal.
+  -> `42 number42 _number`
 
-**Quoted literal** `|...|`: almost any character; required when the text has non-alphanumerics, spaces, etc.
+- **Quoted literal** `|...|`: required for empty literals or literals containing spaces or other punctuation (`@`, `:`, `/`, `{`, `}`, `|`, `*`); escape `\` and `|` inside `|...|` as `\\` and `\|`.
+  ```
+  .local $x = {|@literal|}
+  .local $y = {|white space|}
+  .local $z = {|{{curly braces}}|}
+  {{{$x} {$y} {$z} {|and \\, a backslash|}}}
+  ```
+  -> `@literal white space {{curly braces}} and \, a backslash`
 
-```
-.local $x = {|@literal|}
-.local $y = {|white space|}
-.local $z = {|{{curly braces}}|}
-{{{$x} {$y} {$z} {|and \\, a backslash|}}}
-```
-
--> `@literal white space {{curly braces}} and \, a backslash`
-A literal used as pattern content still has to sit inside an expression `{...}`. Backslash is written `\\` inside quoted literals.
-
-Examples needing quotes: `|image.png|` (has `.`), `year=|2-digit|` (has `-`).
-
-MF2 is untyped: number literals are strings to the formatter; the number/other distinction is purely syntactic. Functions parse numbers from strings. Exact allowed characters are in the formal grammar (`name`, `number-literal`, `quoted-char` productions).
+Place a literal used as pattern content inside an expression `{...}`, e.g. `{|2024-05-01T15:04:06| :date}`.
 
 ## Markup
 
-A kind of placeholder: **open** `{#name}`, **close** `{/name}`, **standalone** `{#name/}`.
+**Markup** placeholders mark regions or standalone items: open `{#name}`, close `{/name}`, standalone `{#name/}`:
 
 ```
 Click {#link}here{/link}. {#bold}{$count}{/bold} {#star-icon/}
 ```
 
-- Names are not built into MF2 (`link`, `bold`, `star-icon` are playground-provided).
-- Not tied to HTML or any markup language; the formatter does not interpret it, it passes markup through in the formatted result (representation is implementation-specific).
-- Markup names are code; do not translate them. Text between tags is translatable.
+Markup tags are app-defined pass-through tokens independent of HTML; preserve tag names verbatim and translate only the text between them.

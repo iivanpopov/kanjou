@@ -1,43 +1,43 @@
 # Variables and declarations
 
-## Contents
-
-- Variables
-- `.local`
-- `.input`
-- Shadowing and redeclaration
-
 ## Variables
 
-Reference data supplied at runtime. Always prefixed with `$`. The name may contain almost any non-space, non-punctuation characters and cannot start with a digit.
+Variables reference runtime data with a `$` prefix. Variable names allow letters, digits, `_`, `-`, `.`, `+` (and Unicode name characters), starting with a character other than `-`, `.`, or `0-9`.
 
 ```
 Your name is {$name}.
-You have {42 :number style=currency currency=$currency}.   // variable as an option value
+You have {42 :currency currency=$currency}.
 ```
 
 ## `.local`
 
-Binds a new variable to an expression within the message.
+Binds a new variable to an expression within the message:
 
 ```
 .local $count = {42}
 {{The count is: {$count}}}
+```
 
+-> `The count is: 42`
+
+```
 .local $score = {0.42}
-.local $score_percent = {$score :number style=percent}
+.local $score_percent = {$score :percent}
 {{Your score was {$score_percent}.}}
 ```
 
--> `The count is: 42`, `Your score was 42%.`
+-> `Your score was 42%.`
 
-The right-hand side may contain literals, functions, and other variables (local or external), but only ones declared **before** it. It cannot reference itself.
+The right-hand side may use literals, functions, and variables declared earlier, excluding the variable being defined. `.local` can also bind a formatted value for reuse:
 
-Also usable to name a formatted value: `.local $date1 = {$date :datetime weekday=long}` then `{{Today is {$date1}.}}`.
+```
+.local $day = {$date :date fields=weekday length=long}
+{{Today is {$day}.}}
+```
 
 ## `.input`
 
-Explicitly names an external value; the operand must be a variable, which is both the input and the declared name.
+Declares an external runtime variable; the operand must be a variable matching the declared name:
 
 ```
 .input {$count :number}
@@ -46,42 +46,40 @@ Explicitly names an external value; the operand must be a variable, which is bot
 
 Uses:
 
-- **Documentation**: `.input {$count}` tells the developer the message expects `count` and tells the translator it is supplied.
-- **Annotation / coercion**: `.input {$amount :number style=currency currency=USD}` always formats it that way. Functions here are coercions (they return a new value of the type, or signal an error), not type assertions. A non-numeric value under `:number` gives "Input is not numeric", surfacing bad input early.
-- **Selection options travel with the variable**: options in `.input` apply to any `.match` using it.
-  ```
-  .input {$rank :number select=ordinal}
-  .match $rank
-  one {{This is the {$rank}st most expensive item}}
-  two {{This is the {$rank}nd most expensive item}}
-  few {{This is the {$rank}rd most expensive item}}
-  *   {{This is the {$rank}th most expensive item}}
-  ```
-  (rank 32 -> "32nd")
-
-Equivalent forms: `.local $d = {$date :datetime weekday=long}` + `{$d}` vs `.input {$date :datetime weekday=long}` + `{$date}`.
+- **Documentation**: `.input {$count}` documents the expected external variable for developers and translators.
+- **Annotation and coercion**: `.input {$amount :currency currency=USD}` applies a function to every reference of `$amount` and surfaces bad operands early (for example, a non-numeric value under `:number` raises `bad-operand`).
+- **Selector options**: options on `.input` carry into `.match`, e.g. `.input {$rank :number select=ordinal}` (see [matchers.md](matchers.md)).
 
 ## Shadowing and redeclaration
 
-- A `.local` with the same name as an external input **shadows** it: later references use the local value.
+- A `.local` sharing an external runtime input's name **shadows** that input when no `.input` or earlier reference declared it first:
   ```
   .local $count = {42}
-  {{The count is: {$count}}}      // with external count=32 -> "The count is: 42"
+  {{The count is: {$count}}}
   ```
-- A variable can be declared only **once**. These are all errors (duplicate declaration):
-  ```
-  .local $count = {42}
-  .local $count = {32}
+  With external `count=32` -> `The count is: 42`.
+- Declaring any variable twice raises `duplicate-declaration` (including implicit declaration from an earlier `$var` use). Give each variable a unique name (see [errors.md](errors.md)).
 
-  .input {$count :number}
-  .local $count = {32}
+Bad (redeclaring an `.input`):
 
-  .local $count = {32}
-  .input {$count :number}
-  ```
-- Using an external variable creates an **implicit declaration**, so this is also an error:
-  ```
-  .local $count1 = {$count}
-  .local $count = {32}
-  ```
-- Fix: give each variable a unique name.
+```
+.input {$count :number}
+.local $count = {32}
+{{{$count}}}
+```
+
+Bad (implicit declaration by earlier use):
+
+```
+.local $count1 = {$count}
+.local $count = {32}
+{{{$count1} {$count}}}
+```
+
+Good:
+
+```
+.input {$count :number}
+.local $defaultCount = {32}
+{{{$count} {$defaultCount}}}
+```

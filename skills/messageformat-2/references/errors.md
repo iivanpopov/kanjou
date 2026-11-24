@@ -1,48 +1,78 @@
 # MF2 errors: failing and corrected examples
 
-## Contents
+Error names in parentheses match the JS `messageformat` implementation. Syntax and data-model errors fail at parse/validation time with no fallback output.
 
-- Syntax, key-mismatch, fallback, duplicate-variant errors
-- Selector errors (annotation, bad selector, bad variant key)
-- Declaration errors (duplicate declaration, unresolved variable)
-- Function errors (unknown function, bad operand, bad option, duplicate option)
+## Syntax errors (`missing-syntax`, `bad-escape`, `parse-error`)
 
-Names in parentheses are the JavaScript implementation's error names; wording varies by implementation.
+Missing `{{ }}` around a **complex message** pattern:
 
-Categories: syntax errors, data-model errors (found without runtime data), resolution errors (unclear meaning from missing/inconsistent runtime data), message function errors. Syntax and data-model errors are non-recoverable: the formatter provides no fallback output.
+Bad:
 
-## Syntax error (`parse-error`)
+```
+.input {$x :number}
+Value: {$x}
+```
 
-Bad: `{|Some text|` (missing closing brace)
-Good: `{|Some text|}`
+Good:
+
+```
+.input {$x :number}
+{{Value: {$x}}}
+```
+
+Unescaped `{` in text or unquoted literal with spaces:
+
+Bad:
+
+```
+.local $label = {two words}
+{{Use {literal} braces}}
+```
+
+Good:
+
+```
+.local $label = {|two words|}
+{{Use \{literal\} braces: {$label}}}
+```
 
 ## Variant key mismatch (`key-mismatch`)
 
-Number of keys per variant must equal the number of selectors.
+Each **variant** needs one key per **selector**.
+
+Bad:
 
 ```
-// Bad
 .local $x = {1 :number}
 .match $x
 one * {{Too many keys}}
 *   * {{Also too many keys}}
+```
 
-// Good
+Good:
+
+```
 .local $x = {1 :number}
 .match $x
-one {{Correct number of keys}}
-*   {{Also correct number of keys}}
+one {{x is singular}}
+*   {{x is plural}}
 ```
 
 ## Missing fallback variant (`missing-fallback`)
 
+Every `.match` requires an **all-`*` fallback**.
+
+Bad:
+
 ```
-// Bad
 .local $x = {1 :number}
 .match $x
 one {{x is singular}}
+```
 
-// Good
+Good:
+
+```
 .local $x = {1 :number}
 .match $x
 one {{x is singular}}
@@ -51,35 +81,49 @@ one {{x is singular}}
 
 ## Duplicate variant (`duplicate-variant`)
 
-Key lists are ordered: `one *` and `* one` are not duplicates.
+Key lists must be unique (`one *` and `* one` are distinct).
+
+Bad:
 
 ```
-// Bad
-one {{x is singular}}
-one {{x is singular.}}
-*   {{x is not singular}}
-
-// Good
-one {{x is singular}}
-*   {{x is not singular}}
-```
-
-## Missing selector annotation (`missing-selector-annotation`)
-
-```
-// Bad
+.input {$x :number}
 .match $x
 one {{x is singular}}
+one {{x is singular.}}
 *   {{x is plural}}
+```
 
-// Good
+Good:
+
+```
 .input {$x :number}
 .match $x
 one {{x is singular}}
 *   {{x is plural}}
 ```
 
-Annotations are transitive:
+## Missing selector annotation (`missing-selector-annotation`)
+
+Every **selector** needs a selectable function annotation on itself or via transitive `.local` declarations.
+
+Bad:
+
+```
+.match $x
+one {{x is singular}}
+*   {{x is plural}}
+```
+
+Good:
+
+```
+.input {$x :number}
+.match $x
+one {{x is singular}}
+*   {{x is plural}}
+```
+
+Good (transitive annotation):
 
 ```
 .input {$x :number}
@@ -91,43 +135,72 @@ one {{x is singular}}
 
 ## Duplicate declaration (`duplicate-declaration`)
 
+A variable can be declared once (see [variables.md](variables.md) for shadowing vs redeclaration).
+
+Bad:
+
 ```
-// Bad
 .input {$x :number}
 .local $x = {42}
+{{{$x}}}
+```
 
-// Bad (implicit declaration by earlier use)
-.local $count1 = {$count}
-.local $count = {32}
+Good:
 
-// Good
+```
 .input {$x :number}
 .local $y = {42}
+{{{$x} {$y}}}
 ```
 
 ## Duplicate option name (`duplicate-option-name`)
 
-Bad: `.input {$x :number style=percent style=decimal}`
-Good: `.input {$x :number style=percent}`
+Bad:
 
-## Unresolved variable ("Variable not available")
+```
+.input {$x :number useGrouping=always useGrouping=never}
+{{{$x}}}
+```
 
-An `.input` or `{$x}` reference needs a value supplied at runtime, or a `.local` declaration.
+Good:
+
+```
+.input {$x :number useGrouping=always}
+{{{$x}}}
+```
+
+## Unresolved variable (`unresolved-variable`)
+
+Every `$var` without a `.local` needs a runtime value; `{1}` or a runtime argument fixes missing inputs:
 
 ```
 .input {$x :number}
 {{{$x}}}
 ```
 
-fails when no value for `$x` is supplied; works when `x` = 5.
+Fails when `x` is omitted at runtime; formats when `x = 5`.
 
-## Unknown function
+## Unknown function (`unknown-function`)
 
-Bad: `.local $x = {1 :num}`
-Good: `.local $x = {1 :number}`
-Check spelling, or make sure a custom function with that name is registered.
+Bad:
+
+```
+.local $x = {1 :num}
+{{{$x}}}
+```
+
+Good:
+
+```
+.local $x = {1 :number}
+{{{$x}}}
+```
+
+Verify spelling, and ensure custom or draft functions (such as `:datetime` or `:currency`) are registered in the formatter.
 
 ## Bad selector (`bad-selector`)
+
+Required selectable functions are `:number`, `:integer`, `:offset`, `:string` (and draft `:percent`). Formatter-only functions (`:datetime`, `:date`, `:time`, `:currency`, `:unit`) and unsupported `select` options (use `cardinal`, `ordinal`, or `exact`) fail selection.
 
 Bad:
 
@@ -137,19 +210,25 @@ Bad:
 * {{The due date is {$day}}}
 ```
 
-Good (no matching needed):
+Good (format directly without `.match`):
 
 ```
 .local $day = {|2024-05-01| :datetime}
 {{The due date is {$day}}}
 ```
 
-`:number`, `:integer`, `:string` are selectable; `:datetime`, `:date`, `:time` are not.
+## Bad operand (`bad-operand`)
 
-## Bad operand ("Input is not numeric" / "Input is not a date")
+Pass a numeric value to `:number`/`:integer`/`:offset`/`:percent`/`:currency`/`:unit`, and an ISO 8601 string or `Date` to `:datetime`/`:date`/`:time`.
 
-Bad: `.local $horse = {|horse| :number}` and `{|horse| :datetime}`
-Good: pass a numeric value for `:number`, an ISO 8601 string for date functions:
+Bad:
+
+```
+.local $horse = {|horse| :number}
+{{{$horse}}}
+```
+
+Good:
 
 ```
 .input {$numHorses :number}
@@ -158,29 +237,24 @@ one {{You have a horse.}}
 *   {{You have {$numHorses} horses.}}
 ```
 
-## Bad option ("Value foo is not valid for :number option minimumFractionDigits")
+## Bad option (`bad-option`)
 
-Bad: `{1 :number minimumFractionDigits=foo}`
-Good: `{1 :number minimumFractionDigits=2}` -> `1.00`
-Check the function's option table in [functions.md](functions.md).
+Check allowed option names and values in [functions.md](functions.md).
 
-## Bad variant key
-
-Custom selector functions define what kinds of keys they can match against. Just as the operand of `:number` has to be parseable as a number, it can only match against numeric keys.
+Bad:
 
 ```
-// Bad
-.local $answer = {42 :number}
-.match $answer
-1     {{The value is one.}}
-horse {{The value is a horse.}}
-*     {{The value is not one.}}
-
-// Good
-.local $answer = {42 :number}
-.match $answer
-1 {{The value is one.}}
-* {{The value is not one.}}
+{1 :number minimumFractionDigits=foo}
 ```
 
-(Some implementations do not yet raise this error.)
+Good:
+
+```
+{1 :number minimumFractionDigits=2}
+```
+
+-> `1.00`
+
+## Invalid variant key
+
+A strict or custom selector can reject keys incompatible with its operand type (for example, a non-numeric key against a numeric-only selector); keep variant keys valid for the selector function.

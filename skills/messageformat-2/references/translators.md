@@ -1,28 +1,25 @@
 # Translating MF2 messages
 
-MF2 syntax makes clear which parts are text and which are code.
+## Translate vs. keep verbatim
 
-## Translate vs. keep
+| Translate                                                        | Keep verbatim                                                                                                                                 |
+| ---------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
+| Plain text outside `{ }` (**simple message**)                    | Anything inside single `{ }`: `$var`, `:func`, `option=value`                                                                                 |
+| Plain text inside `{{ }}` (**complex message**), excluding `{ }` | **Markup** (`{#bold}`, `{/bold}`, `{#icon/}`)                                                                                                 |
+| Text between markup tags (`{#bold}bold text{/bold}`)             | Declaration lines (`.local`, `.input`)                                                                                                        |
+|                                                                  | Code-like literals (`\|2024-05-01T15:04:06\|` in options); translate text literals (`{\|John Doe\|}`) only when developer intent calls for it |
 
-| Translate                                                           | Do NOT translate                                                                                                                                 |
-| ------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Plain text outside `{ }` (simple message)                           | Anything inside single `{ }`: placeholders `{$name}`, functions `:datetime`, options `dateStyle=long`                                            |
-| Plain text inside `{{ }}` (complex message), excluding placeholders | Markup (`{#bold}`, `{/bold}`, `{#icon/}`) - tags start with `#` or `/`                                                                           |
-| Text between markup tags (`{#bold}bold text{/bold}`)                | Declaration lines (`.local`, `.input`) - these are code                                                                                          |
-|                                                                     | Code-like literals (e.g. `\|2-digit\|` in options) - usually code; but a literal like `{\|John Doe\|}` in text depends on the developer's intent |
-
-Example: `It is the {$today :datetime dateStyle=long timeStyle=long} today.` -> only "It is the" and "today" are translated.
+Example: `It is {$today :datetime dateFields=year-month-day dateLength=long timePrecision=minute} today.` -> translate only `It is ` and ` today.`.
 
 ## Rules
 
-- You may **move placeholders** to produce correct grammar: `Hello, {$name}!` -> `{$name}, hello!`. Move the braces with them.
-- Keep curly braces balanced.
-- In a complex message (with declarations), only text inside the double braces `{{ }}` is translatable.
-- To write a literal brace in text, escape it: `\{`, `\}` (and `\\` for a backslash).
+- Move placeholders (`{$name}`) with their `{ }` braces to match target grammar: `Hello, {$name}!` -> `{$name}, hello!`.
+- In a **complex message**, translate only text inside `{{ }}`.
+- Escape literal `{`, `}`, `\` in text as `\{`, `\}`, `\\`.
 
 ## Matchers
 
-Translating a matcher might involve adding new variants: translate the existing variants and add any new ones the target language needs. When looking at a matcher, ask whether more (or fewer) variants are needed in the target language; the CLDR Plural Rules page lists plural categories per language. The `*` key matches anything.
+Translate existing **variants** and add or remove variants to match the target language's CLDR plural categories while keeping the **all-`*` fallback**.
 
 English -> Czech:
 
@@ -35,21 +32,12 @@ many {{{$numDays} dne}}
 *    {{{$numDays} dní}}
 ```
 
-New `few` and `many` variants were added.
-
 ## Declarations
 
-Lines beginning `.local`/`.input` are code, not translatable; the pattern after them in `{{ }}` is.
+Keep `.local`/`.input` lines verbatim; translate only the pattern inside `{{ }}`:
 
 ```
 .local $x = {|This is an expression|}
-.input {$now :datetime dateStyle=long}
+.input {$now :date fields=year-month-day length=long}
 {{{$x} from {$now}}}
 ```
-
-## Before finishing
-
-- Braces balanced, `{{ }}` intact.
-- Every variant keeps its keys and a `*` fallback exists.
-- No function, option, or markup name was altered.
-- Added/removed variants match the target language's plural categories.
