@@ -29,7 +29,9 @@ export interface TypeProperty {
 
 export interface DtsStructure {
   locales: string[]
+  flatLocales: string[]
   namespaces: string[]
+  localeNamespaces: Record<string, string[]>
   messages: Record<string, TypeProperty[]>
 }
 
@@ -102,7 +104,9 @@ interface BaseLocaleData {
   messages: Record<string, string>
   keyToFile: Map<string, string>
   locales: string[]
+  flatLocales: string[]
   namespaces: string[]
+  localeNamespaces: Record<string, string[]>
   watchFiles: string[]
 }
 
@@ -154,13 +158,18 @@ export class Generator {
     const dtsStructure = this.buildDtsStructure(
       base.messages,
       base.locales,
+      base.flatLocales,
       base.namespaces,
+      base.localeNamespaces,
       base.keyToFile,
     )
     const code = await this.dtsToString(dtsStructure)
     const outPath = path.join(this.config.dts.outDir, 'locales.kanjou.d.ts')
 
-    await this.writeFile(outPath, code)
+    const existing = await fs.readFile(outPath, 'utf-8').catch(() => undefined)
+    if (existing !== code) {
+      await this.writeFile(outPath, code)
+    }
     return [outPath]
   }
 
@@ -271,7 +280,23 @@ export class Generator {
       }
     }
 
-    return { messages, keyToFile, locales, namespaces, watchFiles: Array.from(watchSet) }
+    const flatLocales = localeFiles.map((file) => file.name)
+    const sortedLocaleNamespaces: Record<string, string[]> = Object.create(null)
+    for (const [locale, files] of Object.entries(localeNamespaces).sort(([a], [b]) =>
+      compareStrings(a, b),
+    )) {
+      sortedLocaleNamespaces[locale] = files.map((file) => file.name)
+    }
+
+    return {
+      messages,
+      keyToFile,
+      locales,
+      flatLocales,
+      namespaces,
+      localeNamespaces: sortedLocaleNamespaces,
+      watchFiles: Array.from(watchSet),
+    }
   }
 
   private compileMessagesToCode(messages: Record<string, string>, filePath: string): string {
@@ -297,7 +322,9 @@ export class Generator {
   private buildDtsStructure(
     messages: Record<string, string>,
     locales: string[],
+    flatLocales: string[],
     namespaces: string[],
+    localeNamespaces: Record<string, string[]>,
     keyToFile?: ReadonlyMap<string, string>,
   ): DtsStructure {
     const dtsMessages: Record<string, TypeProperty[]> = Object.create(null)
@@ -345,7 +372,13 @@ export class Generator {
       dtsMessages[key] = Array.from(values.values())
     }
 
-    return { locales, namespaces, messages: dtsMessages }
+    return {
+      locales,
+      flatLocales,
+      namespaces,
+      localeNamespaces,
+      messages: dtsMessages,
+    }
   }
 
   private async dtsToString(dts: DtsStructure): Promise<string> {
@@ -356,9 +389,25 @@ export class Generator {
       ? dts.locales.map((locale) => JSON.stringify(locale)).join(' | ')
       : 'never'
 
+    const flatLocaleType = dts.flatLocales.length
+      ? dts.flatLocales.map((locale) => JSON.stringify(locale)).join(' | ')
+      : 'never'
+
     const namespaceLine = dts.namespaces.length
       ? `namespace: ${dts.namespaces.map((ns) => JSON.stringify(ns)).join(' | ')};`
       : ''
+
+    const localeNamespaceEntries = Object.entries(dts.localeNamespaces).map(
+      ([locale, namespaces]) => {
+        const nsUnion = namespaces.length
+          ? namespaces.map((ns) => JSON.stringify(ns)).join(' | ')
+          : 'never'
+        return `${JSON.stringify(locale)}: ${nsUnion}`
+      },
+    )
+    const localeNamespacesType = localeNamespaceEntries.length
+      ? `{ ${localeNamespaceEntries.join('; ')} }`
+      : '{}'
 
     const messageProperties = Object.entries(dts.messages).map(([key, properties]) => {
       const propertiesString = properties
@@ -383,7 +432,9 @@ export class Generator {
       declare module ${serializedModule} {
         export interface Register {
           locale: ${localeType};
+          flatLocales: ${flatLocaleType};
           ${namespaceLine}
+          localeNamespaces: ${localeNamespacesType};
           messages: {
             ${messageProperties.join('\n')}
           };
