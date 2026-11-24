@@ -1,5 +1,16 @@
 # @kanjou/cli
 
+## 0.8.0
+
+### Minor Changes
+
+- [#20](https://github.com/iivanpopov/kanjou/pull/20) [`55adf66`](https://github.com/iivanpopov/kanjou/commit/55adf66a65d696e5ecaef2824a9ffc580826e6af) Thanks [@iivanpopov](https://github.com/iivanpopov)! - perf
+
+### Patch Changes
+
+- Updated dependencies [[`55adf66`](https://github.com/iivanpopov/kanjou/commit/55adf66a65d696e5ecaef2824a9ffc580826e6af)]:
+  - @kanjou/generator@0.8.0
+
 ## 0.7.0
 
 ### Minor Changes
