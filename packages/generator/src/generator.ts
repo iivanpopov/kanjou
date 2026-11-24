@@ -8,6 +8,7 @@ import prettier from 'prettier'
 
 import type { Config } from './config'
 
+import { compileMessage, createConstantPool } from './compiler'
 import { KanjouMessageError } from './errors'
 import {
   compareStrings,
@@ -45,8 +46,27 @@ export interface VirtualModule {
 }
 
 const SIMPLE_IDENT_RE = /^[a-zA-Z_$][a-zA-Z0-9_$]*$/
-const TEMPLATE_ESCAPE_RE = /[\\`\r\n]|\$\{/g
-const TEMPLATE_OPEN = '$' + '{'
+
+function formatObjectKey(key: string): string {
+  if (key === '__proto__') return '["__proto__"]'
+  if (SIMPLE_IDENT_RE.test(key)) return key
+  return JSON.stringify(key)
+}
+
+export function compileMessages(
+  messages: Readonly<Record<string, string>>,
+  filePath = '<inline>',
+): string {
+  const entries: string[] = []
+  const constants = createConstantPool()
+
+  for (const [key, value] of Object.entries(messages)) {
+    const ast = parseAndValidateMessage(value, filePath, key)
+    entries.push(`${formatObjectKey(key)}:${compileMessage(ast, constants.hoist)}`)
+  }
+
+  return `${constants.emit()}export default {${entries.join(',')}}`
+}
 
 function isValidSegment(segment: string): boolean {
   return (
@@ -58,23 +78,6 @@ function isValidSegment(segment: string): boolean {
     !segment.includes('\0')
   )
 }
-
-const TEMPLATE_ESCAPES: Readonly<Record<string, string>> = {
-  '\\': '\\\\',
-  '`': '\\`',
-  '\r': '\\r',
-  '\n': '\\n',
-  [TEMPLATE_OPEN]: '\\' + TEMPLATE_OPEN,
-}
-
-export const BUILTIN_FUNCTION_FILES: Readonly<Record<string, string>> = {
-  integer: 'number.js',
-  number: 'number.js',
-  offset: 'offset.js',
-  string: 'string.js',
-}
-
-type MessageKind = 'plain' | 'simple' | 'complex'
 
 function parseAndValidateMessage(
   source: string,
@@ -93,76 +96,6 @@ function parseAndValidateMessage(
       { cause: err },
     )
   }
-}
-
-function classifyMessage(ast: Model.Message): MessageKind {
-  if (ast.type !== 'message' || ast.declarations.length > 0) return 'complex'
-  if (ast.pattern.length === 0) return 'plain'
-  if (ast.pattern.length === 1 && typeof ast.pattern[0] === 'string') return 'plain'
-
-  const isSimple = ast.pattern.every(
-    (part) =>
-      typeof part === 'string' ||
-      (part.type === 'expression' && part.arg?.type === 'variable' && !part.functionRef),
-  )
-  return isSimple ? 'simple' : 'complex'
-}
-
-function escapeTemplateChunk(str: string): string {
-  return str.replace(TEMPLATE_ESCAPE_RE, (ch) => TEMPLATE_ESCAPES[ch] ?? ch)
-}
-
-function buildOwnRootAccess(name: string): string {
-  const key = JSON.stringify(name)
-  if (SIMPLE_IDENT_RE.test(name)) {
-    return `(v!=null&&Object.hasOwn(v,${key})?v.${name}:undefined)`
-  }
-  return `(v!=null&&Object.hasOwn(v,${key})?v[${key}]:undefined)`
-}
-
-function buildVarAccess(name: string): string {
-  if (!name.includes('.')) return buildOwnRootAccess(name)
-
-  const segments = name.split('.')
-  const first = segments[0]
-  if (first === undefined) return buildOwnRootAccess(name)
-
-  const rest = segments.slice(1)
-  const root = buildOwnRootAccess(first)
-  const nestedTail = rest.every((s) => SIMPLE_IDENT_RE.test(s))
-    ? rest.map((s) => `?.${s}`).join('')
-    : rest.map((s) => `?.[${JSON.stringify(s)}]`).join('')
-
-  return `(${buildOwnRootAccess(name)}??${root}${nestedTail})`
-}
-
-function compileSimpleMessage(ast: Model.PatternMessage): string {
-  const chunks = ast.pattern.map((part) => {
-    if (typeof part === 'string') return escapeTemplateChunk(part)
-    const name = (part as Model.Expression & { arg: Model.VariableRef }).arg.name
-    const fallback = JSON.stringify(`{$${name}}`)
-    return `${TEMPLATE_OPEN}${buildVarAccess(name)}??${fallback}}`
-  })
-  return `(v)=>\`${chunks.join('')}\``
-}
-
-function collectUsedFunctions(messages: Record<string, string>, filePath: string): Set<string> {
-  const used = new Set<string>()
-  for (const [key, value] of Object.entries(messages)) {
-    try {
-      const ast = parseMessage(value)
-      const { functions } = validate(ast)
-      for (const fn of functions) used.add(fn)
-    } catch (err) {
-      throw new KanjouMessageError(
-        `Invalid message "${key}" in "${filePath}": ${err instanceof Error ? err.message : String(err)}`,
-        filePath,
-        key,
-        { cause: err },
-      )
-    }
-  }
-  return used
 }
 
 interface BaseLocaleData {
@@ -231,12 +164,9 @@ export class Generator {
     return [outPath]
   }
 
-  async virtual(
-    target: 'locales' | 'namespaces' | 'functions' | (string & {}),
-  ): Promise<VirtualModule | null> {
+  async virtual(target: 'locales' | 'namespaces' | (string & {})): Promise<VirtualModule | null> {
     if (target === 'locales') return await this.virtualLocales()
     if (target === 'namespaces') return await this.virtualNamespaces()
-    if (target === 'functions') return await this.virtualFunctions()
     if (target.includes('/')) return await this.virtualNamespace(target)
     return await this.virtualLocale(target)
   }
@@ -259,32 +189,6 @@ export class Generator {
     )
     return {
       code: this.virtualNamespacesToString(localeNamespaces),
-      watchFiles,
-    }
-  }
-
-  private async virtualFunctions(): Promise<VirtualModule> {
-    const { locales, localeFiles, localeNamespaces } = await readAllLocales(this.config.localesDir)
-
-    const files = [...localeFiles, ...Object.values(localeNamespaces).flat()]
-    if (!files.length) return { code: 'export default Object.create(null)', watchFiles: [] }
-
-    const [loadedMessages, watchGroups] = await Promise.all([
-      Promise.all(files.map(async (file) => ({ file, messages: await load(file) }))),
-      Promise.all(locales.map((locale) => readLocaleWatchFiles(this.config.localesDir, locale))),
-    ])
-
-    const used = new Set<string>()
-    for (const { file, messages } of loadedMessages) {
-      for (const fn of collectUsedFunctions(messages, file.relative)) used.add(fn)
-    }
-
-    const watchFiles = Array.from(
-      new Set([...files.map((file) => file.absolute), ...watchGroups.flat()]),
-    )
-
-    return {
-      code: this.virtualFunctionsToString(used),
       watchFiles,
     }
   }
@@ -371,25 +275,7 @@ export class Generator {
   }
 
   private compileMessagesToCode(messages: Record<string, string>, filePath: string): string {
-    const entries: string[] = []
-
-    for (const [key, value] of Object.entries(messages)) {
-      const ast = parseAndValidateMessage(value, filePath, key)
-
-      const serializedKey = JSON.stringify(key)
-      const kind = classifyMessage(ast)
-
-      if (kind === 'plain') {
-        const text = (ast as Model.PatternMessage).pattern[0] ?? ''
-        entries.push(`[${serializedKey}]:${JSON.stringify(text)}`)
-      } else if (kind === 'simple') {
-        entries.push(`[${serializedKey}]:${compileSimpleMessage(ast as Model.PatternMessage)}`)
-      } else {
-        entries.push(`[${serializedKey}]:${JSON.stringify(ast)}`)
-      }
-    }
-
-    return `export default {${entries.join(',')}}`
+    return compileMessages(messages, filePath)
   }
 
   private async writeFile(filePath: string, content: string): Promise<void> {
@@ -532,29 +418,5 @@ export class Generator {
       return `  [${JSON.stringify(locale)}]: {\n${nsEntries.join(',\n')}\n  }`
     })
     return `export default {\n${localeEntries.join(',\n')}\n}`
-  }
-
-  private virtualFunctionsToString(used: Set<string>): string {
-    const byFile = new Map<string, string[]>()
-    const usedBuiltins: string[] = []
-
-    for (const name of Array.from(used).sort()) {
-      const file = BUILTIN_FUNCTION_FILES[name]
-      if (!file) continue
-
-      usedBuiltins.push(name)
-
-      const list = byFile.get(file)
-      if (list) list.push(name)
-      else byFile.set(file, [name])
-    }
-
-    if (usedBuiltins.length === 0) return 'export default Object.create(null)'
-
-    const imports = Array.from(byFile.entries()).map(
-      ([file, names]) => `import { ${names.join(', ')} } from 'virtual:kanjou/fn/${file}'`,
-    )
-
-    return `${imports.join('\n')}\nexport default Object.assign(Object.create(null), {${usedBuiltins.join(',')}})`
   }
 }

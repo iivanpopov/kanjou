@@ -16,6 +16,7 @@ import type {
   MessageFormatOptions,
   MessageId,
   MessagePart,
+  MessageRuntime,
   MessageValues,
   NumberLike,
   PluralRule,
@@ -24,6 +25,7 @@ import type {
 
 import { getSharedTranslateCache } from './cache'
 import {
+  createMessageRuntime,
   formatDateTime,
   formatDisplayName,
   formatDuration,
@@ -69,36 +71,25 @@ export function createTranslate({
   options,
 }: CreateTranslateOptions): Translate {
   const resolvedCache = cache ?? getSharedTranslateCache()
+  let runtime: MessageRuntime | undefined
+  const getRuntime = (): MessageRuntime =>
+    (runtime ??= createMessageRuntime(resolvedCache, locale, options))
 
   const parts: TranslateParts = Object.assign(
     <Id extends MessageId>(id: Id, values?: MessageValues<Id>) =>
-      formatMessageParts({ cache: resolvedCache.message, locale, messages, id, values, options }),
+      formatMessageParts(locale, messages, id, values, getRuntime),
     {
       unsafe: (id?: string, values?: Record<string, any>) =>
-        formatMessageParts({
-          cache: resolvedCache.message,
-          locale,
-          messages,
-          id: id ?? '',
-          values,
-          options,
-        }),
+        formatMessageParts(locale, messages, id ?? '', values, getRuntime),
     },
   )
 
   const translate: Translate = Object.assign(
     <Id extends MessageId>(id: Id, values?: MessageValues<Id>) =>
-      formatMessage({ cache: resolvedCache.message, locale, messages, id, values, options }),
+      formatMessage(locale, messages, id, values, getRuntime),
     {
       unsafe: (id?: string, values?: Record<string, any>) =>
-        formatMessage({
-          cache: resolvedCache.message,
-          locale,
-          messages,
-          id: id ?? '',
-          values,
-          options,
-        }),
+        formatMessage(locale, messages, id ?? '', values, getRuntime),
       parts,
       number: (number: NumberLike, options?: FormatNumberOptions) =>
         formatNumber(resolvedCache.number, locale, number, options),

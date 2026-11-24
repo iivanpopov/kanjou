@@ -1,10 +1,6 @@
-import type { MessageFormatOptions as MfOptions, MessagePart, Model } from 'messageformat'
-import type { MessageFunction as MfMessageFunction } from 'messageformat/functions'
-
-import { MessageFormat } from 'messageformat'
-
-import type { Cache } from './cache'
+import type { Cache, TranslateCache } from './cache'
 import type {
+  CompiledIntlOptions,
   DateLike,
   Duration,
   FormatDateTimeOptions,
@@ -19,38 +15,18 @@ import type {
   Locale,
   Message,
   MessageFormatOptions,
-  MessageFunctions,
+  MessageFunctionContext,
   MessageId,
+  MessagePart,
+  MessageRuntime,
+  MessageValue,
   MessageValues,
   NumberLike,
   PluralRule,
   Unit,
 } from './types'
 
-import { KanjouFormatError } from './errors'
-
-interface MessageCacheEntry {
-  byKey: Map<string, MessageFormat>
-  byFunctions?: WeakMap<object, Map<string, MessageFormat>>
-}
-
-export interface FormatMessageParams<Id extends string = MessageId> {
-  cache: Cache<object>
-  locale: Locale
-  messages: Readonly<Record<string, Message>>
-  id: Id
-  values?: MessageValues<Id> | undefined
-  options?: MessageFormatOptions | undefined
-}
-
-export interface FormatMessagePartsParams<Id extends string = MessageId> {
-  cache: Cache<object>
-  locale: Locale
-  messages: Readonly<Record<string, Message>>
-  id: Id
-  values?: MessageValues<Id> | undefined
-  options?: MessageFormatOptions | undefined
-}
+import { KanjouError, KanjouFormatError } from './errors'
 
 export interface FormatRelativeTimeParams {
   cache: Cache
@@ -68,83 +44,10 @@ function serializeFlatOptions(options: object): string {
   return json === '{}' ? '' : json
 }
 
-function getKey(locale: string, options?: unknown): string {
-  if (!options || typeof options !== 'object') return locale
-  const serialized = serializeFlatOptions(options)
-  return serialized ? `${locale.length}:${locale}:${serialized}` : locale
-}
-
-function getMessageOptionsKey(locale: string, options?: MessageFormatOptions): string {
-  if (!options) return locale
-  const { dir = '', localeMatcher = '', bidiIsolation = '' } = options
-  if (!dir && !localeMatcher && !bidiIsolation) return locale
-  return JSON.stringify([locale, dir, localeMatcher, bidiIsolation])
-}
-
-function resolveFunctions(
-  functions: MessageFunctions,
-): Record<string, MfMessageFunction<string, string>> {
-  let hasUndefined = false
-  for (const key of Object.keys(functions)) {
-    if (functions[key] === undefined) {
-      hasUndefined = true
-      break
-    }
-  }
-  const source = hasUndefined
-    ? Object.fromEntries(
-        Object.entries(functions).filter(
-          (entry): entry is [string, NonNullable<(typeof entry)[1]>] => entry[1] !== undefined,
-        ),
-      )
-    : functions
-  return source as Record<string, MfMessageFunction<string, string>>
-}
-
-function toMessageFormatOptions(
-  options?: MessageFormatOptions,
-): MfOptions<string, string> | undefined {
-  if (!options) return undefined
-  const mfOptions: MfOptions<string, string> = {}
-  if (options.bidiIsolation !== undefined) mfOptions.bidiIsolation = options.bidiIsolation
-  if (options.dir !== undefined) mfOptions.dir = options.dir
-  if (options.localeMatcher !== undefined) mfOptions.localeMatcher = options.localeMatcher
-  if (options.functions !== undefined) mfOptions.functions = resolveFunctions(options.functions)
-  return mfOptions
-}
-
-function getMessageFormatter(
-  cache: Cache<object, MessageCacheEntry>,
-  locale: Locale,
-  message: Model.Message,
-  options?: MessageFormatOptions,
-): MessageFormat<string, string> {
-  let entry = cache.get(message)
-  if (!entry) {
-    entry = { byKey: new Map() }
-    cache.set(message, entry)
-  }
-
-  let byKey: Map<string, MessageFormat<string, string>>
-  if (options?.functions) {
-    entry.byFunctions ??= new WeakMap()
-    let fnMap = entry.byFunctions.get(options.functions)
-    if (!fnMap) {
-      fnMap = new Map()
-      entry.byFunctions.set(options.functions, fnMap)
-    }
-    byKey = fnMap
-  } else {
-    byKey = entry.byKey
-  }
-
-  const optKey = getMessageOptionsKey(locale, options)
-  let formatter = byKey.get(optKey)
-  if (!formatter) {
-    formatter = new MessageFormat<string, string>(locale, message, toMessageFormatOptions(options))
-    byKey.set(optKey, formatter)
-  }
-  return formatter
+function isCompiledIntlOptions<Options>(
+  options: Options | CompiledIntlOptions<Options> | undefined,
+): options is CompiledIntlOptions<Options> {
+  return Array.isArray(options)
 }
 
 export function resolveMessage(
@@ -154,9 +57,7 @@ export function resolveMessage(
   return Object.hasOwn(messages, id) ? messages[id] : undefined
 }
 
-function toTextParts<Id extends string>(
-  text: string,
-): MessagePart<InferPartsType<Id extends MessageId ? Id : never>>[] {
+function toTextParts(text: string): MessagePart[] {
   return text === '' ? [] : [{ type: 'text', value: text }]
 }
 
@@ -179,25 +80,176 @@ function coerceMessageResult(result: unknown): string {
   }
 }
 
-function getIntlFormatter<Formatter, Options>(
+function partToText(part: MessagePart): string {
+  if (part.type === 'markup') return ''
+  if ('parts' in part && Array.isArray(part.parts)) {
+    let text = ''
+    for (const sub of part.parts) {
+      if (sub.value !== null && sub.value !== undefined) {
+        text += String(sub.value)
+      }
+    }
+    return text
+  }
+  if ('value' in part && part.value !== null && part.value !== undefined) {
+    return coerceMessageResult(part.value)
+  }
+  if (part.type === 'fallback' && 'source' in part) return `{${part.source}}`
+  return ''
+}
+
+function partsToString(parts: readonly MessagePart[]): string {
+  let result = ''
+  for (const part of parts) result += partToText(part)
+  return result
+}
+
+function unwrapValue(value: unknown): unknown {
+  if (typeof value === 'object' && value !== null && typeof value.valueOf === 'function') {
+    return value.valueOf()
+  }
+  return value
+}
+
+function toNumber(value: unknown): number | bigint {
+  const unwrapped = unwrapValue(value)
+  if (typeof unwrapped === 'number' || typeof unwrapped === 'bigint') return unwrapped
+  if (typeof unwrapped === 'string' && unwrapped.trim() !== '') {
+    const parsed = Number(unwrapped)
+    if (!Number.isNaN(parsed)) return parsed
+  }
+  return Number.NaN
+}
+
+function toDate(value: unknown): Date | number {
+  const unwrapped = unwrapValue(value)
+  if (unwrapped instanceof Date || typeof unwrapped === 'number') return unwrapped
+  if (typeof unwrapped === 'string') return new Date(unwrapped)
+  return new Date(Number.NaN)
+}
+
+export function createMessageRuntime(
+  cache: TranslateCache,
+  locale: Locale,
+  options?: MessageFormatOptions,
+): MessageRuntime {
+  const number: MessageRuntime['number'] = (value, opt) =>
+    getIntlFormatter(cache.number, locale, opt, Intl.NumberFormat).format(toNumber(value))
+  const date: MessageRuntime['date'] = (value, opt) =>
+    getIntlFormatter(cache.dateTime, locale, opt, Intl.DateTimeFormat).format(toDate(value))
+  const plural: MessageRuntime['plural'] = (value, opt) =>
+    formatPlural(cache.plural, locale, Number(toNumber(value)), opt)
+
+  const numberForSelection: MessageRuntime['numberForSelection'] = (value, options) => {
+    const num = toNumber(value)
+    if (Number.isNaN(num)) return null
+    const opt = isCompiledIntlOptions(options) ? options[0] : options
+    if (opt?.style === 'percent') {
+      return typeof num === 'bigint' ? num * 100n : num * 100
+    }
+    return num
+  }
+
+  const selectPlural: MessageRuntime['selectPlural'] = (num, options) => {
+    const opt = isCompiledIntlOptions(options) ? options[0] : options
+    if (num === null || opt?.select === 'exact') return null
+    return getIntlFormatter(cache.plural, locale, options, Intl.PluralRules).select(Number(num))
+  }
+
+  const select: MessageRuntime['select'] = (value, keys, opt) => {
+    if (typeof value === 'object' && value !== null) {
+      const result = value as MessageValue
+      if (typeof result.selectKey === 'function') {
+        const key = result.selectKey(new Set(keys))
+        return key !== null && keys.has(key) ? key : null
+      }
+    }
+    if (typeof value === 'number' || typeof value === 'bigint') {
+      const num = numberForSelection(value, opt)
+      if (num === null) return null
+      const exact = String(num)
+      if (keys.has(exact)) return exact
+      const category = selectPlural(num, opt)
+      return category !== null && keys.has(category) ? category : null
+    }
+
+    const key = value === null || value === undefined ? '' : coerceMessageResult(value)
+    return keys.has(key) ? key : null
+  }
+
+  const str: MessageRuntime['str'] = (value) => {
+    if (value === null || value === undefined) return ''
+    if (typeof value === 'string') return value
+    if (typeof value === 'object') {
+      const mv = value as MessageValue
+      if (typeof mv.toString === 'function' && mv.toString !== Object.prototype.toString) {
+        return mv.toString()
+      }
+      if ('value' in mv) return coerceMessageResult(mv.value)
+    }
+    return coerceMessageResult(value)
+  }
+
+  let defaultContext: MessageFunctionContext | undefined
+  let contextsByKeys: WeakMap<readonly string[], MessageFunctionContext> | undefined
+
+  const fn: MessageRuntime['fn'] = (name, operand, exprOpt, literalOptionKeys) => {
+    const functions = options?.functions
+    const func = functions && Object.hasOwn(functions, name) ? functions[name] : undefined
+    if (!func) {
+      throw new KanjouError(`Unknown message function ":${name}"`)
+    }
+    let context = (defaultContext ??= {
+      locale,
+      number,
+      date,
+      plural,
+      select,
+      literalOptionKeys: new Set<string>(),
+    })
+    if (literalOptionKeys?.length) {
+      const contexts = (contextsByKeys ??= new WeakMap())
+      const previous = contexts.get(literalOptionKeys)
+      if (previous) {
+        context = previous
+      } else {
+        context = { ...defaultContext, literalOptionKeys: new Set(literalOptionKeys) }
+        contexts.set(literalOptionKeys, context)
+      }
+    }
+    return func(context, exprOpt ?? EMPTY_OPTIONS, operand)
+  }
+
+  const parts: MessageRuntime['parts'] = (value) => {
+    if (value === null || value === undefined) return []
+    if (typeof value === 'object' && typeof (value as MessageValue).toParts === 'function') {
+      return (value as MessageValue).toParts!()
+    }
+    const text = str(value)
+    return text === '' ? [] : [{ type: 'text', value: text }]
+  }
+
+  return { locale, number, date, plural, select, numberForSelection, selectPlural, fn, str, parts }
+}
+
+const EMPTY_OPTIONS = Object.freeze({})
+
+function getIntlFormatter<Formatter, Options extends object | undefined>(
   cache: Cache,
   locale: Locale,
-  options: Options,
-  create: (locale: Locale, options: Options) => Formatter,
+  options: Options | CompiledIntlOptions<Options>,
+  Formatter: new (locale: Locale, options: Options) => Formatter,
 ): Formatter {
-  const key = getKey(locale, options)
+  const compiled = isCompiledIntlOptions(options)
+  const intlOptions = compiled ? options[0] : options
+  const serialized = compiled ? options[1] : intlOptions && serializeFlatOptions(intlOptions)
+  const key = serialized ? `${locale.length}:${locale}:${serialized}` : locale
   let formatter: Formatter | undefined = cache.get(key)
   if (!formatter) {
-    formatter = create(locale, options)
+    formatter = new Formatter(locale, intlOptions)
     cache.set(key, formatter)
   }
   return formatter
-}
-
-function isFormatMessageParams<Id extends string>(
-  arg: Cache<object> | FormatMessageParams<Id>,
-): arg is FormatMessageParams<Id> {
-  return 'messages' in arg && 'id' in arg && 'cache' in arg
 }
 
 function isFormatRelativeTimeParams(
@@ -206,45 +258,29 @@ function isFormatRelativeTimeParams(
   return 'value' in arg && 'unit' in arg && 'cache' in arg
 }
 
+function callRenderer<Result>(
+  render: (values?: Record<string, any>, runtime?: MessageRuntime) => Result,
+  values: Record<string, any> | undefined,
+  getRuntime: () => MessageRuntime,
+): Result {
+  return render.length < 2 ? render(values) : render(values, getRuntime())
+}
+
 export function formatMessage<Id extends string = MessageId>(
-  params: FormatMessageParams<Id>,
-): string
-export function formatMessage<Id extends string = MessageId>(
-  cache: Cache<object>,
   locale: Locale,
   messages: Readonly<Record<string, Message>>,
   id: Id,
-  values?: MessageValues<Id>,
-  options?: MessageFormatOptions,
-): string
-export function formatMessage<Id extends string = MessageId>(
-  cacheOrParams: Cache<object> | FormatMessageParams<Id>,
-  localeArg?: Locale,
-  messagesArg?: Readonly<Record<string, Message>>,
-  idArg?: Id,
-  valuesArg?: MessageValues<Id>,
-  optionsArg?: MessageFormatOptions,
+  values: MessageValues<Id> | undefined,
+  getRuntime: () => MessageRuntime,
 ): string {
-  const params = isFormatMessageParams(cacheOrParams)
-    ? cacheOrParams
-    : {
-        cache: cacheOrParams,
-        locale: localeArg!,
-        messages: messagesArg!,
-        id: idArg!,
-        values: valuesArg,
-        options: optionsArg,
-      }
-  const { cache, locale, messages, id, values, options } = params
-
   const message = resolveMessage(messages, id)
   if (message === undefined) return id
   if (typeof message === 'string') return message
-  if (typeof message === 'function') return coerceMessageResult(message(values))
-  if (!message || typeof message !== 'object') return id
 
   try {
-    return getMessageFormatter(cache, locale, message, options).format(values)
+    if (typeof message === 'function') return callRenderer(message, values, getRuntime)
+    if ('render' in message) return message.render(values, getRuntime(), false)
+    return partsToString(callRenderer(message.parts, values, getRuntime))
   } catch (err) {
     throw new KanjouFormatError(
       `Failed to format message "${id}" for locale "${locale}"`,
@@ -255,46 +291,27 @@ export function formatMessage<Id extends string = MessageId>(
 }
 
 export function formatMessageParts<Id extends string = MessageId>(
-  params: FormatMessagePartsParams<Id>,
-): MessagePart<InferPartsType<Id extends MessageId ? Id : never>>[]
-export function formatMessageParts<Id extends string = MessageId>(
-  cache: Cache<object>,
   locale: Locale,
   messages: Readonly<Record<string, Message>>,
   id: Id,
-  values?: MessageValues<Id>,
-  options?: MessageFormatOptions,
+  values: MessageValues<Id> | undefined,
+  getRuntime: () => MessageRuntime,
 ): MessagePart<InferPartsType<Id extends MessageId ? Id : never>>[]
-export function formatMessageParts<Id extends string = MessageId>(
-  cacheOrParams: Cache<object> | FormatMessagePartsParams<Id>,
-  localeArg?: Locale,
-  messagesArg?: Readonly<Record<string, Message>>,
-  idArg?: Id,
-  valuesArg?: MessageValues<Id>,
-  optionsArg?: MessageFormatOptions,
-): MessagePart<InferPartsType<Id extends MessageId ? Id : never>>[] {
-  const params = isFormatMessageParams(cacheOrParams)
-    ? cacheOrParams
-    : {
-        cache: cacheOrParams,
-        locale: localeArg!,
-        messages: messagesArg!,
-        id: idArg!,
-        values: valuesArg,
-        options: optionsArg,
-      }
-  const { cache, locale, messages, id, values, options } = params
-
+export function formatMessageParts<Id extends string>(
+  locale: Locale,
+  messages: Readonly<Record<string, Message>>,
+  id: Id,
+  values: MessageValues<Id> | undefined,
+  getRuntime: () => MessageRuntime,
+): MessagePart[] {
   const message = resolveMessage(messages, id)
   if (message === undefined) return []
-  if (typeof message === 'string') return toTextParts<Id>(message)
-  if (typeof message === 'function') return toTextParts<Id>(coerceMessageResult(message(values)))
-  if (!message || typeof message !== 'object') return []
+  if (typeof message === 'string') return toTextParts(message)
 
   try {
-    return getMessageFormatter(cache, locale, message, options).formatToParts(
-      values,
-    ) as MessagePart<InferPartsType<Id extends MessageId ? Id : never>>[]
+    if (typeof message === 'function') return toTextParts(callRenderer(message, values, getRuntime))
+    if ('render' in message) return message.render(values, getRuntime(), true)
+    return callRenderer(message.parts, values, getRuntime)
   } catch (err) {
     throw new KanjouFormatError(
       `Failed to format message parts "${id}" for locale "${locale}"`,
@@ -310,9 +327,7 @@ export function formatDateTime(
   date: DateLike,
   options?: FormatDateTimeOptions,
 ): string {
-  return getIntlFormatter(cache, locale, options, (l, o) => new Intl.DateTimeFormat(l, o)).format(
-    date,
-  )
+  return getIntlFormatter(cache, locale, options, Intl.DateTimeFormat).format(date)
 }
 
 export function formatNumber(
@@ -321,9 +336,7 @@ export function formatNumber(
   number: NumberLike,
   options?: FormatNumberOptions,
 ): string {
-  return getIntlFormatter(cache, locale, options, (l, o) => new Intl.NumberFormat(l, o)).format(
-    number,
-  )
+  return getIntlFormatter(cache, locale, options, Intl.NumberFormat).format(number)
 }
 
 export function formatPlural(
@@ -332,9 +345,7 @@ export function formatPlural(
   number: number,
   options?: FormatPluralOptions,
 ): PluralRule {
-  return getIntlFormatter(cache, locale, options, (l, o) => new Intl.PluralRules(l, o)).select(
-    number,
-  )
+  return getIntlFormatter(cache, locale, options, Intl.PluralRules).select(number)
 }
 
 export function formatList(
@@ -343,7 +354,7 @@ export function formatList(
   list: ListLike,
   options?: FormatListOptions,
 ): string {
-  return getIntlFormatter(cache, locale, options, (l, o) => new Intl.ListFormat(l, o)).format(list)
+  return getIntlFormatter(cache, locale, options, Intl.ListFormat).format(list)
 }
 
 export function formatDisplayName(
@@ -352,7 +363,7 @@ export function formatDisplayName(
   code: string,
   options: FormatDisplayNameOptions,
 ): string | undefined {
-  return getIntlFormatter(cache, locale, options, (l, o) => new Intl.DisplayNames(l, o)).of(code)
+  return getIntlFormatter(cache, locale, options, Intl.DisplayNames).of(code)
 }
 
 export function formatRelativeTime(params: FormatRelativeTimeParams): string
@@ -381,12 +392,7 @@ export function formatRelativeTime(
       }
   const { cache, locale, value, unit, options } = params
 
-  return getIntlFormatter(
-    cache,
-    locale,
-    options,
-    (l, o) => new Intl.RelativeTimeFormat(l, o),
-  ).format(value, unit)
+  return getIntlFormatter(cache, locale, options, Intl.RelativeTimeFormat).format(value, unit)
 }
 
 export function formatDuration(
@@ -395,7 +401,5 @@ export function formatDuration(
   duration: Duration,
   options?: FormatDurationOptions,
 ): string {
-  return getIntlFormatter(cache, locale, options, (l, o) => new Intl.DurationFormat(l, o)).format(
-    duration,
-  )
+  return getIntlFormatter(cache, locale, options, Intl.DurationFormat).format(duration)
 }

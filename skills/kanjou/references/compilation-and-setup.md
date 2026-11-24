@@ -6,15 +6,15 @@ During `kanjou compile` or `@kanjou/plugin` virtual module loading, every messag
 
 1. **`plain`**: Empty message or single text part with no declarations, expressions, `.match`, or markup.
    - Input: `"key.key1": "Hola"`
-   - Output: `["key.key1"]:"Hola"`
+   - Output: `"key.key1":"Hola"`
    - Runtime: Returned directly as a string.
 2. **`simple`**: Pattern message with no declarations, containing only text and bare `{$var}` expressions (no `:function`, no `.match`, no markup).
    - Input: `"key.key2": "Hi, {$name}"`
-   - Output: `` ["key.key2"]:(v)=>`Hi, ${v?.name??"{$name}"}` ``
-   - Behavior: Falls back to `"{$var}"` when `null` or `undefined`; supports dotted variable paths (`v?.user?.name` and flat `v?.["user.name"]`). Runs without AST or `MessageFormat`.
-3. **`complex`**: Any message with `.input`, `.local`, `.match`, `:function` (e.g. `{$count :number}`), or `{#markup}`.
-   - Output: Serialized `Model.Message` JSON AST.
-   - Runtime: Executed by `@kanjou/core` via `new MessageFormat(locale, ast, options)` without parsing source strings.
+   - Output: `` "key.key2":(v)=>`Hi, ${v?.name??"{$name}"}` ``
+   - Behavior: Falls back to `"{$var}"` when `null` or `undefined`; supports dotted variable paths (`v?.user?.name` and flat `v?.["user.name"]`). Runs without `MessageRuntime`.
+3. **`compiled`**: Any message with `.input`, `.local`, `.match`, `:function` (e.g. `{$count :number}`), or `{#markup}`.
+   - Output: AOT-compiled renderer. It can produce text, parts (for markup), or both (for custom functions that can return parts). Only renderers that need the runtime take it as a second parameter.
+   - Runtime: Built-in and draft MF2 functions and `.match` selectors compile to calls on `@kanjou/core`'s `MessageRuntime`, using cached `Intl` formatters where needed. Static options and selector keys are hoisted to the module; variable options are evaluated per call. No `messageformat` runtime is shipped in browser bundles.
 
 ## `kanjou.config.json`
 
@@ -32,7 +32,7 @@ Placed in the project root (all fields optional):
 
 - **Flat files**: `<localesDir>/en.ts`, `<localesDir>/es.ts` exporting `export default { ... } as const` (keys mapped to strings).
 - **Namespace directories**: `<localesDir>/en/common.ts`, `<localesDir>/en/auth.ts` imported as `virtual:kanjou/en/common`.
-- **Reserved names**: `locales`, `namespaces`, and `functions` are reserved for virtual modules and cannot be used as locale names.
+- **Reserved names**: `locales` and `namespaces` are reserved for virtual modules and cannot be used as locale names.
 
 ## Bundler plugin (`@kanjou/plugin`)
 
@@ -41,10 +41,7 @@ Register in Vite or Webpack:
 - Vite: `import kanjou from '@kanjou/plugin/vite'` -> `plugins: [kanjou()]`
 - Webpack: `import kanjou from '@kanjou/plugin/webpack'` -> `plugins: [kanjou()]`
 
-The plugin:
-
-- Emits `locales.kanjou.d.ts` on `buildStart` and `watchChange` (when `dts !== false`).
-- Stubs `messageformat`'s runtime parser (`parseMessage` throws `[kanjou] Runtime MF2 string parsing is disabled; pre-compile messages with @kanjou/plugin.`) and tree-shakes unused built-in functions.
+The plugin emits `locales.kanjou.d.ts` on `buildStart` and `watchChange` (when `dts !== false`) and serves AOT-compiled virtual modules.
 
 ### Virtual modules & TypeScript client types
 
@@ -54,7 +51,6 @@ The plugin:
 | `virtual:kanjou/<locale>/<ns>` | Precompiled messages for a locale namespace                                  |
 | `virtual:kanjou/locales`       | Lazy loader map `Record<Locale, () => Promise<Messages>>`                    |
 | `virtual:kanjou/namespaces`    | Lazy loader map `Record<Locale, Record<Namespace, () => Promise<Messages>>>` |
-| `virtual:kanjou/functions`     | Tree-shaken built-in MF2 functions used by the base locale                   |
 
 Add client ambient declarations and enable `skipLibCheck: true` in `tsconfig.json`:
 

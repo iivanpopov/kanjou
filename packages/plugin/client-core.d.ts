@@ -21,8 +21,3 @@ declare module 'virtual:kanjou/namespaces' {
   >
   export default namespaces
 }
-
-declare module 'virtual:kanjou/functions' {
-  const functions: Partial<import('@kanjou/core').Functions>
-  export default functions
-}

@@ -43,4 +43,4 @@ Load only the reference file(s) matching the task branch:
 1. `kanjou.config.json` points `localesDir` to the source locale directory and sets `baseLocale` (and `dts.module` if using `@kanjou/core` without `@kanjou/react`).
 2. `tsconfig.json` sets `skipLibCheck: true` and includes `locales.kanjou.d.ts` plus `@kanjou/plugin/client` (or `@kanjou/plugin/client/core`).
 3. Every `TranslateProvider`, `createTranslate`, and `defineTranslate` call receives precompiled messages from `virtual:kanjou/*` or `compile.outDir`.
-4. Custom or draft MF2 functions beyond `DefaultFunctions` (`string`, `number`, `integer`, `offset`) are explicitly passed in `options.functions` (or `TranslateProvider` `functions` prop) and registered in `Register`.
+4. Custom MF2 functions can be passed in `options.functions` (or `TranslateProvider` `functions` prop) and typed via `Register['functions']`; built-in and draft functions (`:number`, `:integer`, `:offset`, `:currency`, `:percent`, `:date`, `:datetime`, `:time`, `:unit`, `:string`) are AOT-compiled directly.

@@ -3,7 +3,7 @@ import type { ElementType, ReactNode } from 'react'
 
 import { createElement, Fragment } from 'react'
 
-function toText(part: MessagePart<string>): string {
+function toText(part: MessagePart): string {
   if ('parts' in part && Array.isArray(part.parts) && part.parts.length > 0) {
     let text = ''
     for (const sub of part.parts) {
@@ -41,7 +41,7 @@ function findComponent(
 }
 
 function consume(
-  parts: readonly MessagePart<string>[],
+  parts: readonly MessagePart[],
   index: number,
   openTag: string | undefined,
   components: readonly (Components | undefined)[],
@@ -91,7 +91,7 @@ function consume(
 }
 
 export function formatRich(
-  parts: readonly MessagePart<string>[],
+  parts: readonly MessagePart[],
   components: readonly (Components | undefined)[] = [],
 ): ReactNode {
   const [nodes] = consume(parts, 0, undefined, components)

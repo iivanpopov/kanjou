@@ -8,7 +8,7 @@ Internationalization for React powered by [MessageFormat 2](https://messageforma
 
 ## Quick Start
 
-> Kanjou precompiles translations at build time via `@kanjou/plugin` or `@kanjou/cli` and does not parse MessageFormat 2 strings at runtime.
+> Kanjou AOT-compiles all MessageFormat 2 translations (including plurals, number/date formatting, and rich markup) into plain JavaScript at build time via `@kanjou/plugin` or `@kanjou/cli`. `@kanjou/core` has zero runtime dependencies and does not ship `messageformat` in browser bundles.
 
 Install `@kanjou/react` and `@kanjou/plugin`:
 
@@ -129,3 +129,5 @@ The documentation is available [here](https://iivanpopov.github.io/kanjou).
 [ISC](https://github.com/iivanpopov/kanjou/blob/main/LICENSE)
 
 Copyright © 2026-PRESENT [Ivan Popov](https://github.com/iivanpopov)
+
+`@kanjou/generator` uses [`messageformat`](https://github.com/messageformat/messageformat) (Apache-2.0) at build time for parsing and validating MessageFormat 2 syntax.

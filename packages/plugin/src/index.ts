@@ -5,8 +5,6 @@ import { CONFIG_FILENAME, Generator, getConfig } from '@kanjou/generator'
 import path from 'node:path'
 import { createUnplugin } from 'unplugin'
 
-import { createMessageFormatResolver } from './messageformat'
-
 export { KanjouPluginError } from './errors'
 export type { KanjouPluginErrorOptions } from './errors'
 
@@ -15,7 +13,6 @@ const RESOLVED_PREFIX = '\0' + VIRTUAL_PREFIX
 
 export const kanjouPluginFactory: UnpluginFactory<ConfigInput | undefined> = (options) => {
   const configFilePath = path.resolve(CONFIG_FILENAME)
-  const messageFormat = createMessageFormatResolver()
   let config = getConfig(options)
   let generator = new Generator(config)
 
@@ -30,19 +27,13 @@ export const kanjouPluginFactory: UnpluginFactory<ConfigInput | undefined> = (op
       }
     },
 
-    resolveId(id, importer) {
-      const resolved = messageFormat.resolveId(id, importer)
-      if (resolved !== undefined) return resolved
-
+    resolveId(id) {
       if (id.startsWith(VIRTUAL_PREFIX)) {
         return '\0' + id
       }
     },
 
     async load(id) {
-      const loaded = messageFormat.load(id)
-      if (loaded !== undefined) return loaded
-
       if (!id.startsWith(RESOLVED_PREFIX)) return
 
       const target = id.slice(RESOLVED_PREFIX.length)

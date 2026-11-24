@@ -1,165 +1,35 @@
 export default {
-  'title.main': {
-    type: 'message',
-    declarations: [],
-    pattern: ['Приклад Kanjou Next.js'],
-  },
+  'title.main': 'Приклад Kanjou Next.js',
   'text.welcome': {
-    type: 'message',
-    declarations: [],
-    pattern: [
-      'Привіт, ',
-      {
-        type: 'markup',
-        kind: 'open',
-        name: 'strong',
-      },
-      {
-        type: 'expression',
-        arg: {
-          type: 'variable',
-          name: 'name',
-        },
-      },
-      {
-        type: 'markup',
-        kind: 'close',
-        name: 'strong',
-      },
-      '!',
+    parts: (v) => [
+      { type: 'text', value: 'Привіт, ' },
+      { type: 'markup', kind: 'open', name: 'strong' },
+      { type: 'text', value: String(v?.name ?? '{$name}') },
+      { type: 'markup', kind: 'close', name: 'strong' },
+      { type: 'text', value: '!' },
     ],
   },
-  'text.apples': {
-    type: 'select',
-    declarations: [
-      {
-        type: 'input',
-        name: 'count',
-        value: {
-          type: 'expression',
-          arg: {
-            type: 'variable',
-            name: 'count',
-          },
-          functionRef: {
-            type: 'function',
-            name: 'number',
-          },
-        },
-      },
-    ],
-    selectors: [
-      {
-        type: 'variable',
-        name: 'count',
-      },
-    ],
-    variants: [
-      {
-        keys: [
-          {
-            type: 'literal',
-            value: 'one',
-          },
-        ],
-        value: [
-          'У вас є ',
-          {
-            type: 'expression',
-            arg: {
-              type: 'variable',
-              name: 'count',
-            },
-          },
-          ' яблуко.',
-        ],
-      },
-      {
-        keys: [
-          {
-            type: 'literal',
-            value: 'few',
-          },
-        ],
-        value: [
-          'У вас є ',
-          {
-            type: 'expression',
-            arg: {
-              type: 'variable',
-              name: 'count',
-            },
-          },
-          ' яблука.',
-        ],
-      },
-      {
-        keys: [
-          {
-            type: 'literal',
-            value: 'many',
-          },
-        ],
-        value: [
-          'У вас є ',
-          {
-            type: 'expression',
-            arg: {
-              type: 'variable',
-              name: 'count',
-            },
-          },
-          ' яблук.',
-        ],
-      },
-      {
-        keys: [
-          {
-            type: '*',
-          },
-        ],
-        value: [
-          'У вас є ',
-          {
-            type: 'expression',
-            arg: {
-              type: 'variable',
-              name: 'count',
-            },
-          },
-          ' яблук.',
-        ],
-      },
-    ],
+  'text.apples': (v, r) => {
+    const _d0 = v?.count
+    const _n0 = r.numberForSelection(_d0)
+    {
+      const _key = r.selectPlural(_n0)
+      if (_key === 'one') {
+        return `У вас є ${r.number(_d0)} яблуко.`
+      }
+      if (_key === 'few') {
+        return `У вас є ${r.number(_d0)} яблука.`
+      }
+      if (_key === 'many') {
+        return `У вас є ${r.number(_d0)} яблук.`
+      }
+    }
+    return `У вас є ${r.number(_d0)} яблук.`
   },
-  'title.counter': {
-    type: 'message',
-    declarations: [],
-    pattern: ['Кількість кліків'],
-  },
-  'button.reset': {
-    type: 'message',
-    declarations: [],
-    pattern: ['Скинути'],
-  },
-  'input.select-locale': {
-    type: 'message',
-    declarations: [],
-    pattern: ['Виберіть мову'],
-  },
-  'title.statistics': {
-    type: 'message',
-    declarations: [],
-    pattern: ['Статистика'],
-  },
-  'label.price': {
-    type: 'message',
-    declarations: [],
-    pattern: ['Ціна'],
-  },
-  'label.date': {
-    type: 'message',
-    declarations: [],
-    pattern: ['Поточна дата'],
-  },
+  'title.counter': 'Кількість кліків',
+  'button.reset': 'Скинути',
+  'input.select-locale': 'Виберіть мову',
+  'title.statistics': 'Статистика',
+  'label.price': 'Ціна',
+  'label.date': 'Поточна дата',
 }

@@ -18,9 +18,6 @@ import { KanjouReactError } from './errors'
 
 export * from './enrich'
 
-export const TranslateContext: Context<ReactTranslate | null> =
-  createContext<ReactTranslate | null>(null)
-
 interface TranslateProviderState {
   locale: Locale
   messages: Readonly<Record<string, Message>>
@@ -47,6 +44,30 @@ function mergeRecord<T extends object>(parent?: T, child?: T): T | undefined {
   if (!parent) return child
   if (!child) return parent
   return { ...parent, ...child }
+}
+
+let translateByState: WeakMap<TranslateProviderState, ReactTranslate> | undefined
+
+function getReactTranslate(state: TranslateProviderState): ReactTranslate {
+  translateByState ??= new WeakMap()
+  let translate = translateByState.get(state)
+  if (!translate) {
+    const translateOptions =
+      state.options || state.functions
+        ? { ...state.options, functions: state.functions }
+        : undefined
+    translate = enrich(
+      createTranslate({
+        locale: state.locale,
+        messages: state.messages,
+        cache: state.cache,
+        options: translateOptions,
+      }),
+      state.components,
+    )
+    translateByState.set(state, translate)
+  }
+  return translate
 }
 
 export function TranslateProvider({
@@ -107,40 +128,13 @@ export function TranslateProvider({
     ],
   )
 
-  const translate = useMemo(() => {
-    const translateOptions =
-      mergedOptions || mergedFunctions
-        ? { ...mergedOptions, functions: mergedFunctions }
-        : undefined
-    return enrich(
-      createTranslate({
-        locale: resolvedLocale,
-        messages: mergedMessages,
-        cache: resolvedCache,
-        options: translateOptions,
-      }),
-      mergedComponents,
-    )
-  }, [
-    resolvedLocale,
-    mergedMessages,
-    resolvedCache,
-    mergedOptions,
-    mergedFunctions,
-    mergedComponents,
-  ])
-
-  return (
-    <TranslateProviderContext value={providerState}>
-      <TranslateContext value={translate}>{children}</TranslateContext>
-    </TranslateProviderContext>
-  )
+  return <TranslateProviderContext value={providerState}>{children}</TranslateProviderContext>
 }
 
 export function useTranslate(): ReactTranslate {
-  const translate = use(TranslateContext)
-  if (!translate) {
+  const state = use(TranslateProviderContext)
+  if (!state) {
     throw new KanjouReactError('useTranslate() must be used inside a <TranslateProvider>.')
   }
-  return translate
+  return getReactTranslate(state)
 }

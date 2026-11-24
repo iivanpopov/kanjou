@@ -1,12 +1,110 @@
-import type { Model } from 'messageformat'
-import type { MessageFunctionContext, MessageValue } from 'messageformat/functions'
+export interface MessageTextPart {
+  type: 'text'
+  value: string
+}
 
-export type { MessageFormat, MessageMarkupPart, MessagePart } from 'messageformat'
+export interface MessageMarkupPart {
+  type: 'markup'
+  kind: 'open' | 'standalone' | 'close'
+  name: string
+  options?: Record<string, unknown> | undefined
+}
+
+export interface MessageFallbackPart {
+  type: 'fallback'
+  source: string
+}
+
+export interface MessageFormattedPart<P extends string = string> {
+  type: P
+  locale?: string | undefined
+  dir?: 'ltr' | 'rtl' | 'auto' | undefined
+  value?: unknown
+  parts?: readonly { type: string; value: string }[] | undefined
+}
+
+export type MessagePart<P extends string = string> =
+  | MessageTextPart
+  | MessageMarkupPart
+  | MessageFallbackPart
+  | MessageFormattedPart<P>
+
+export interface MessageFunctionContext {
+  readonly locale: Locale
+  readonly number: (value: unknown, options?: FormatNumberOptions) => string
+  readonly date: (value: unknown, options?: FormatDateTimeOptions) => string
+  readonly plural: MessageRuntime['plural']
+  readonly select: MessageRuntime['select']
+  readonly literalOptionKeys: ReadonlySet<string>
+}
+
+export interface MessageValue<T extends string = string, P extends string = T> {
+  readonly type?: T | undefined
+  readonly value?: unknown
+  selectKey?: ((keys: Set<string>) => string | null) | undefined
+  toParts?: (() => MessagePart<P>[]) | undefined
+  toString?: (() => string) | undefined
+  valueOf?: (() => unknown) | undefined
+}
+
+export type CompiledIntlOptions<Options> = readonly [options: Options, cacheKey: string]
+
+export type SelectOptions = FormatPluralOptions & {
+  select?: 'exact' | undefined
+  style?: string | undefined
+}
+
+export interface MessageRuntime {
+  readonly locale: Locale
+  readonly number: (
+    value: unknown,
+    options?: FormatNumberOptions | CompiledIntlOptions<FormatNumberOptions>,
+  ) => string
+  readonly date: (
+    value: unknown,
+    options?: FormatDateTimeOptions | CompiledIntlOptions<FormatDateTimeOptions>,
+  ) => string
+  readonly plural: (value: unknown, options?: FormatPluralOptions) => PluralRule
+  readonly select: (
+    value: unknown,
+    keys: ReadonlySet<string>,
+    options?: SelectOptions,
+  ) => string | null
+  readonly numberForSelection: (
+    value: unknown,
+    options?: SelectOptions | CompiledIntlOptions<SelectOptions>,
+  ) => number | bigint | null
+  readonly selectPlural: (
+    value: number | bigint | null,
+    options?: SelectOptions | CompiledIntlOptions<SelectOptions>,
+  ) => PluralRule | null
+  readonly fn: (
+    name: string,
+    operand: unknown,
+    options?: Record<string, unknown>,
+    literalOptionKeys?: readonly string[],
+  ) => MessageFunctionResult
+  readonly str: (value: unknown) => string
+  readonly parts: (value: unknown) => MessagePart[]
+}
+
+export type MessageFunctionResult<T extends string = string, P extends string = T> =
+  | string
+  | MessageValue<T, P>
 
 export interface Register {}
 
-export type CompiledMessage = (values?: Record<string, any>) => string
-export type Message = string | CompiledMessage | Model.Message
+export type CompiledMessage = (values?: Record<string, any>, runtime?: MessageRuntime) => string
+export interface CompiledPartsMessage {
+  readonly parts: (values?: Record<string, any>, runtime?: MessageRuntime) => MessagePart[]
+}
+export interface CompiledRichMessage {
+  readonly render: {
+    (values: Record<string, any> | undefined, runtime: MessageRuntime, asParts: false): string
+    (values: Record<string, any> | undefined, runtime: MessageRuntime, asParts: true): MessagePart[]
+  }
+}
+export type Message = string | CompiledMessage | CompiledPartsMessage | CompiledRichMessage
 export type DefaultMessageValue = string | number
 export type DefaultMessages = Record<string, Record<string, DefaultMessageValue>>
 
@@ -30,17 +128,14 @@ export type MessageFunction<
   PartsType extends string = MessageType,
 > = (
   context: MessageFunctionContext,
-  options: Options,
+  options: Readonly<Options>,
   input?: Input,
-) => MessageValue<MessageType, PartsType>
+) => MessageFunctionResult<MessageType, PartsType>
 
 export type MessageFunctions = Partial<Functions> &
   Record<string, MessageFunction<any, any, any, any> | undefined>
 
 export interface MessageFormatOptions {
-  bidiIsolation?: 'default' | 'none' | undefined
-  dir?: 'ltr' | 'rtl' | 'auto' | undefined
-  localeMatcher?: 'best fit' | 'lookup' | undefined
   functions?: MessageFunctions | undefined
 }
 
@@ -124,6 +219,8 @@ export interface DraftFunctions {
   >
 }
 
+export type BuiltinFunctions = DefaultFunctions & DraftFunctions
+
 export type Locale = Register extends { locale: infer RegisteredLocale } ? RegisteredLocale : string
 export type Namespace = Register extends { namespace: infer RegisteredNamespace }
   ? RegisteredNamespace
@@ -132,8 +229,8 @@ export type Messages = Register extends { messages: infer RegisteredMessages }
   ? RegisteredMessages
   : DefaultMessages
 export type Functions = Register extends { functions: infer RegisteredFunctions }
-  ? RegisteredFunctions & DefaultFunctions
-  : DefaultFunctions
+  ? RegisteredFunctions & BuiltinFunctions
+  : BuiltinFunctions
 
 export type MessageId = keyof Messages
 

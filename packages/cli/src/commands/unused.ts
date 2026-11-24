@@ -22,12 +22,9 @@ import {
   isNamespaceImport,
   isNonNullExpression,
   isNoSubstitutionTemplateLiteral,
-  isObjectLiteralExpression,
   isParenthesizedExpression,
   isPropertyAccessExpression,
-  isPropertyAssignment,
   isSatisfiesExpression,
-  isShorthandPropertyAssignment,
   isStringLiteral,
   isTemplateExpression,
   isVariableDeclaration,
@@ -352,30 +349,7 @@ function collectExactKeysFromType(
 }
 
 function extractFormatterKeyNode(call: CallExpression): Node | undefined {
-  if (call.arguments.length >= 4) {
-    return call.arguments[3]
-  }
-  if (call.arguments.length === 1) {
-    const firstArg = call.arguments[0]
-    if (!firstArg) return undefined
-    const unwrapped = unwrapExpression(firstArg)
-    if (!isObjectLiteralExpression(unwrapped)) return undefined
-
-    for (const prop of unwrapped.properties) {
-      if (isPropertyAssignment(prop)) {
-        if ((isIdentifier(prop.name) || isStringLiteral(prop.name)) && prop.name.text === 'id') {
-          return prop.initializer
-        }
-      } else if (
-        isShorthandPropertyAssignment(prop) &&
-        isIdentifier(prop.name) &&
-        prop.name.text === 'id'
-      ) {
-        return prop.name
-      }
-    }
-  }
-  return undefined
+  return call.arguments[2]
 }
 
 export interface FindUnusedOptions {

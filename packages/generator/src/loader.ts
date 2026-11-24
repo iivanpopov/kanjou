@@ -38,11 +38,7 @@ export function parse(file: string): ParsedFile {
 const jiti = createJiti(import.meta.url, { moduleCache: false, tryNative: false })
 
 export const LOCALE_EXTENSIONS: ReadonlySet<string> = new Set(['.ts', '.js', '.mts', '.mjs'])
-export const RESERVED_LOCALE_NAMES: ReadonlySet<string> = new Set([
-  'locales',
-  'namespaces',
-  'functions',
-])
+export const RESERVED_LOCALE_NAMES: ReadonlySet<string> = new Set(['locales', 'namespaces'])
 
 export function compareStrings(a: string, b: string): number {
   if (a < b) return -1

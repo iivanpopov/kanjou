@@ -54,10 +54,11 @@ export const getTranslate = defineTranslate({
 const t = getTranslate('en')
 ```
 
-## Functions (`DefaultFunctions` vs `DraftFunctions` / custom)
+## Functions (built-in / draft vs custom)
 
-- **`DefaultFunctions`** (`string`, `number`, `integer`, `offset`): Included automatically in `virtual:kanjou/functions` when referenced by messages.
-- **Draft & custom functions** (`currency`, `percent`, `date`, `datetime`, `time`, `unit`, or app-specific functions): Pass them explicitly via `options.functions` (or `TranslateProvider` `functions` prop) and augment `Register['functions']` in `@kanjou/core` / `@kanjou/react` for type-safe `values`.
+- **Built-in & draft functions** (`string`, `number`, `integer`, `offset`, `currency`, `percent`, `date`, `datetime`, `time`, `unit`): AOT-compiled directly to cached `Intl` calls; no runtime registration needed.
+- **Custom functions**: Pass them via `options.functions` (or `TranslateProvider` `functions` prop) and augment `Register['functions']` in `@kanjou/core` / `@kanjou/react` for type-safe `values`. A custom function receives `(ctx, options, operand)`: `ctx` provides the locale, cached formatting helpers (`number`, `date`, `plural`, `select`), and `literalOptionKeys`. Treat the context and options as read-only, since they may be reused. Return a `string` for text or a `MessageValue` with `toParts()` to provide custom parts, even without markup in the message.
+- **Custom selectors**: To support `.match`, return a `MessageValue` with `selectKey(keys)`. It receives a `Set<string>` of candidate keys, not including the `*` fallback. Return one of those keys or `null`. `ctx.select(value, keys)` can use the same set.
 
 ## Errors (`KanjouError`)
 
