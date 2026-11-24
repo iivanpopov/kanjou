@@ -1,7 +1,7 @@
 import { Generator, getConfig } from '@kanjou/generator'
 import consola from 'consola'
 
-export async function compile() {
+export async function compile(): Promise<void> {
   const config = getConfig()
 
   const generator = new Generator(config)

@@ -1,4 +1,4 @@
-import type { Node, TemplateExpression } from 'typescript/unstable/ast'
+import type { Identifier, Node, SourceFile, TemplateExpression } from 'typescript/unstable/ast'
 import type { Checker, Type } from 'typescript/unstable/sync'
 
 import { getConfig, load, readLocaleFiles, readLocaleNamespaces } from '@kanjou/generator'
@@ -10,6 +10,10 @@ import {
   isAsExpression,
   isCallExpression,
   isIdentifier,
+  isImportDeclaration,
+  isImportSpecifier,
+  isNamedImports,
+  isNamespaceImport,
   isNonNullExpression,
   isNoSubstitutionTemplateLiteral,
   isParenthesizedExpression,
@@ -19,7 +23,72 @@ import {
   isTemplateExpression,
   isVariableDeclaration,
 } from 'typescript/unstable/ast'
-import { API } from 'typescript/unstable/sync'
+import { API, SymbolFlags } from 'typescript/unstable/sync'
+
+const TRANSLATOR_FACTORIES = new Set(['useTranslate', 'createTranslate'])
+
+interface FileTranslatorAliases {
+  named: Set<string>
+  namespaces: Set<string>
+}
+
+function collectFileTranslatorAliases(file: SourceFile): FileTranslatorAliases {
+  const named = new Set(TRANSLATOR_FACTORIES)
+  const namespaces = new Set<string>()
+
+  for (const stmt of file.statements) {
+    if (!isImportDeclaration(stmt) || !stmt.importClause) continue
+    const bindings = stmt.importClause.namedBindings
+    if (!bindings) continue
+
+    if (isNamedImports(bindings)) {
+      for (const spec of bindings.elements) {
+        if (!isImportSpecifier(spec) || spec.isTypeOnly) continue
+        const imported = spec.propertyName ?? spec.name
+        if (
+          (isIdentifier(imported) || isStringLiteral(imported)) &&
+          TRANSLATOR_FACTORIES.has(imported.text)
+        ) {
+          named.add(spec.name.text)
+        }
+      }
+    } else if (isNamespaceImport(bindings)) {
+      namespaces.add(bindings.name.text)
+    }
+  }
+
+  return { named, namespaces }
+}
+
+function isTranslatorFactoryCall(expr: Node, aliases: FileTranslatorAliases): boolean {
+  const unwrapped = unwrapExpression(expr)
+  if (isIdentifier(unwrapped)) {
+    return aliases.named.has(unwrapped.text)
+  }
+  if (isPropertyAccessExpression(unwrapped) && isIdentifier(unwrapped.expression)) {
+    return (
+      aliases.namespaces.has(unwrapped.expression.text) &&
+      TRANSLATOR_FACTORIES.has(unwrapped.name.text)
+    )
+  }
+  return false
+}
+
+function intrinsicTypeToPattern(intrinsicName: string): string | null {
+  switch (intrinsicName) {
+    case 'string':
+    case 'any':
+    case 'unknown':
+      return '.*'
+    case 'number':
+    case 'bigint':
+      return '-?\\d+(?:\\.\\d+)?'
+    case 'boolean':
+      return '(?:true|false)'
+    default:
+      return null
+  }
+}
 
 function escapeRegex(value: string): string {
   return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
@@ -58,6 +127,14 @@ function typeToPattern(type: Type, checker: Checker, visited = new Set<number>()
     return `(?:${parts.join('|')})`
   }
 
+  if (type.isIntersectionType()) {
+    for (const member of type.getTypes()) {
+      const part = typeToPattern(member, checker, new Set(visited))
+      if (part !== null) return part
+    }
+    return null
+  }
+
   if (type.isTemplateLiteralType()) {
     return templateToPattern(type.texts, type.getTypes(), checker, visited)
   }
@@ -69,19 +146,7 @@ function typeToPattern(type: Type, checker: Checker, visited = new Set<number>()
   }
 
   if (type.isIntrinsicType()) {
-    switch (type.intrinsicName) {
-      case 'string':
-      case 'any':
-      case 'unknown':
-        return '.*'
-      case 'number':
-      case 'bigint':
-        return '-?\\d+(?:\\.\\d+)?'
-      case 'boolean':
-        return '(?:true|false)'
-      default:
-        return null
-    }
+    return intrinsicTypeToPattern(type.intrinsicName)
   }
 
   return null
@@ -122,15 +187,20 @@ function collectExactKeysFromType(
   if (visited.has(type.id) || type.isErrorType()) return false
   visited.add(type.id)
 
-  if (type.isStringLiteralType()) {
-    outKeys.add(type.value)
+  if (
+    type.isStringLiteralType() ||
+    type.isNumberLiteralType() ||
+    type.isBigIntLiteralType() ||
+    type.isBooleanLiteralType()
+  ) {
+    outKeys.add(String(type.value))
     return true
   }
 
-  if (type.isUnionType()) {
+  if (type.isUnionType() || type.isIntersectionType()) {
     let resolvedAny = false
     for (const member of type.getTypes()) {
-      if (collectExactKeysFromType(member, checker, outKeys, outPatterns, visited)) {
+      if (collectExactKeysFromType(member, checker, outKeys, outPatterns, new Set(visited))) {
         resolvedAny = true
       }
     }
@@ -154,6 +224,15 @@ function collectExactKeysFromType(
     return false
   }
 
+  if (type.isIntrinsicType()) {
+    const pattern = intrinsicTypeToPattern(type.intrinsicName)
+    if (pattern) {
+      outPatterns.add(pattern)
+      return true
+    }
+    return false
+  }
+
   return false
 }
 
@@ -166,7 +245,7 @@ export interface FindUnusedOptions {
 export function findUnusedKeys(options: FindUnusedOptions): string[] {
   const allKeys = new Set(options.allKeys)
   const unusedKeys = new Set(allKeys)
-  const ignoreFullCatalogUnion = options.ignoreFullCatalogUnion ?? allKeys.size > 20
+  const ignoreFullCatalogUnion = options.ignoreFullCatalogUnion ?? false
   const api = new API()
 
   try {
@@ -205,24 +284,48 @@ export function findUnusedKeys(options: FindUnusedOptions): string[] {
 
       const translatorDeclNodes: Node[] = []
       const translatorNames = new Set<string>()
+      const fallbackCandidates: { declName: Identifier; callee: Node }[] = []
 
-      function collectTranslators(node: Node) {
-        if (
-          isVariableDeclaration(node) &&
-          isIdentifier(node.name) &&
-          node.initializer &&
-          isCallExpression(node.initializer) &&
-          isIdentifier(node.initializer.expression) &&
-          (node.initializer.expression.text === 'useTranslate' ||
-            node.initializer.expression.text === 'createTranslate')
-        ) {
-          translatorDeclNodes.push(node.name)
-          translatorNames.add(node.name.text)
+      for (const file of files) {
+        const aliases = collectFileTranslatorAliases(file)
+
+        function collectTranslators(node: Node) {
+          if (
+            isVariableDeclaration(node) &&
+            isIdentifier(node.name) &&
+            node.initializer &&
+            isCallExpression(node.initializer)
+          ) {
+            if (isTranslatorFactoryCall(node.initializer.expression, aliases)) {
+              translatorDeclNodes.push(node.name)
+              translatorNames.add(node.name.text)
+            } else {
+              const callee = unwrapExpression(node.initializer.expression)
+              if (isIdentifier(callee) || isPropertyAccessExpression(callee)) {
+                fallbackCandidates.push({ declName: node.name, callee })
+              }
+            }
+          }
+          node.forEachChild(collectTranslators)
         }
-        node.forEachChild(collectTranslators)
+
+        collectTranslators(file)
       }
 
-      files.forEach(collectTranslators)
+      if (fallbackCandidates.length > 0) {
+        const calleeSymbols = checker.getSymbolAtLocation(fallbackCandidates.map((c) => c.callee))
+        for (let i = 0; i < fallbackCandidates.length; i++) {
+          const sym = calleeSymbols[i]
+          if (!sym || !(sym.flags & SymbolFlags.Alias)) continue
+          const target = checker.getAliasedSymbol(sym)
+          if (!checker.isUnknownSymbol(target) && TRANSLATOR_FACTORIES.has(target.name)) {
+            const { declName } = fallbackCandidates[i]
+            translatorDeclNodes.push(declName)
+            translatorNames.add(declName.text)
+          }
+        }
+      }
+
       if (translatorDeclNodes.length === 0) continue
 
       const translators = new Set<number>()
@@ -358,11 +461,18 @@ async function loadBaseLocaleMessages(
   return null
 }
 
-export async function unused() {
+export interface UnusedOptions {
+  ignoreFullCatalogUnion?: boolean
+}
+
+export async function unused(options: UnusedOptions = {}): Promise<void> {
   const config = getConfig()
   const messages = await loadBaseLocaleMessages(config.localesDir, config.baseLocale)
   if (!messages) throw new Error(`Base locale "${config.baseLocale}" not found`)
 
-  const unusedKeys = findUnusedKeys({ allKeys: Object.keys(messages) })
+  const unusedKeys = findUnusedKeys({
+    allKeys: Object.keys(messages),
+    ignoreFullCatalogUnion: options.ignoreFullCatalogUnion,
+  })
   consola.log(unusedKeys.join('\n'))
 }
