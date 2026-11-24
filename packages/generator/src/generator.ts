@@ -7,6 +7,7 @@ import path from 'node:path'
 import prettier from 'prettier'
 
 import type { Config } from './config'
+import type { ParsedFile } from './loader'
 
 import {
   load,
@@ -39,10 +40,60 @@ export interface VirtualModule {
   watchFiles: string[]
 }
 
-const VALID_SEGMENT_RE = /^[\w-]+$/
+const RESERVED_LOCALE_NAMES = new Set(['locales', 'namespaces', 'functions'])
 const SIMPLE_IDENT_RE = /^[a-zA-Z_$][a-zA-Z0-9_$]*$/
 const TEMPLATE_ESCAPE_RE = /[\\`\r\n]|\$\{/g
 const TEMPLATE_OPEN = '$' + '{'
+
+function isValidSegment(segment: string): boolean {
+  return (
+    segment.length > 0 &&
+    segment !== '.' &&
+    segment !== '..' &&
+    !segment.includes('/') &&
+    !segment.includes('\\') &&
+    !segment.includes('\0')
+  )
+}
+
+function compareStrings(a: string, b: string): number {
+  if (a < b) return -1
+  if (a > b) return 1
+  return 0
+}
+
+function collectOptionVariables(
+  container: unknown,
+  locals: Set<string>,
+  values: Map<string, TypeProperty>,
+): void {
+  if (!container || typeof container !== 'object') return
+
+  let entries: Iterable<unknown>
+  if (container instanceof Map) {
+    entries = container.values()
+  } else if (Array.isArray(container)) {
+    entries = container
+  } else {
+    entries = Object.values(container)
+  }
+
+  for (const item of entries) {
+    const candidate = Array.isArray(item) ? item[1] : item
+    if (
+      candidate &&
+      typeof candidate === 'object' &&
+      'type' in candidate &&
+      candidate.type === 'variable' &&
+      'name' in candidate &&
+      typeof candidate.name === 'string' &&
+      !locals.has(candidate.name) &&
+      !values.has(candidate.name)
+    ) {
+      values.set(candidate.name, { type: 'DefaultMessageValue', name: candidate.name })
+    }
+  }
+}
 
 const TEMPLATE_ESCAPES: Readonly<Record<string, string>> = {
   '\\': '\\\\',
@@ -131,34 +182,54 @@ interface BaseLocaleData {
 export class Generator {
   constructor(public config: Config) {}
 
+  private validateReservedLocaleNames(localeFiles: ParsedFile[]): void {
+    for (const file of localeFiles) {
+      if (RESERVED_LOCALE_NAMES.has(file.name)) {
+        throw new Error(
+          `Reserved locale name "${file.name}" (${file.relative}) conflicts with virtual module "virtual:kanjou/${file.name}"`,
+        )
+      }
+    }
+  }
+
   async compile(): Promise<CompileResult[]> {
     const [localeFiles, localeNamespaces] = await Promise.all([
       readLocaleFiles(this.config.localesDir),
       readLocaleNamespaces(this.config.localesDir),
     ])
-    const results: CompileResult[] = []
 
-    await Promise.all([
-      ...localeFiles.map(async (file) => {
-        const messages = await load<Record<string, string>>(file)
-        const outputFile = await this.emitCompiled(file.name, messages)
-        results.push({ locale: file.name, inputFile: file.relative, outputFile })
-      }),
-      ...Object.entries(localeNamespaces).flatMap(([locale, files]) =>
-        files.map(async (file) => {
+    this.validateReservedLocaleNames(localeFiles)
+
+    const sortedLocaleFiles = [...localeFiles].sort((a, b) => compareStrings(a.name, b.name))
+    const sortedNamespaces = Object.entries(localeNamespaces)
+      .sort(([a], [b]) => compareStrings(a, b))
+      .flatMap(([locale, files]) =>
+        [...files].sort((a, b) => compareStrings(a.name, b.name)).map((file) => ({ locale, file })),
+      )
+
+    const [localeResults, namespaceResults] = await Promise.all([
+      Promise.all(
+        sortedLocaleFiles.map(async (file): Promise<CompileResult> => {
+          const messages = await load<Record<string, string>>(file)
+          const outputFile = await this.emitCompiled(file.name, messages)
+          return { locale: file.name, inputFile: file.relative, outputFile }
+        }),
+      ),
+      Promise.all(
+        sortedNamespaces.map(async ({ locale, file }): Promise<CompileResult> => {
           const messages = await load<Record<string, string>>(file)
           const outputFile = await this.emitCompiled(path.join(locale, file.name), messages)
-          results.push({
+          return {
             locale,
             namespace: file.name,
             inputFile: file.relative,
             outputFile,
-          })
+          }
         }),
       ),
     ])
 
-    return results
+    return [...localeResults, ...namespaceResults]
   }
 
   async emitDts(): Promise<string[]> {
@@ -187,6 +258,7 @@ export class Generator {
 
   private async virtualLocales(): Promise<VirtualModule> {
     const localeFiles = await readLocaleFiles(this.config.localesDir)
+    this.validateReservedLocaleNames(localeFiles)
     const locales = localeFiles.map((file) => file.name)
     return {
       code: this.virtualLocalesToString(locales),
@@ -210,6 +282,8 @@ export class Generator {
       readLocaleFiles(this.config.localesDir),
       readLocaleNamespaces(this.config.localesDir),
     ])
+
+    this.validateReservedLocaleNames(localeFiles)
 
     const files = [...localeFiles, ...Object.values(localeNamespaces).flat()]
     if (!files.length) return { code: 'export default Object.create(null)', watchFiles: [] }
@@ -241,13 +315,7 @@ export class Generator {
   private async virtualNamespace(target: string): Promise<VirtualModule | null> {
     const segments = target.split('/')
     const [locale, namespace] = segments
-    if (
-      segments.length !== 2 ||
-      !locale ||
-      !namespace ||
-      !VALID_SEGMENT_RE.test(locale) ||
-      !VALID_SEGMENT_RE.test(namespace)
-    ) {
+    if (segments.length !== 2 || !isValidSegment(locale) || !isValidSegment(namespace)) {
       return null
     }
 
@@ -268,6 +336,7 @@ export class Generator {
 
   private async virtualLocale(locale: string): Promise<VirtualModule | null> {
     const localeFiles = await readLocaleFiles(this.config.localesDir)
+    this.validateReservedLocaleNames(localeFiles)
     const localeFile = localeFiles.find((file) => file.name === locale)
     if (!localeFile) return null
 
@@ -289,6 +358,8 @@ export class Generator {
       readLocaleWatchFiles(this.config.localesDir, this.config.baseLocale),
     ])
 
+    this.validateReservedLocaleNames(localeFiles)
+
     const locales = Array.from(
       new Set([...localeFiles.map((file) => file.name), ...Object.keys(localeNamespaces)]),
     ).sort()
@@ -309,7 +380,7 @@ export class Generator {
           return load<Record<string, string>>(file)
         }),
       )
-      messages = Object.assign({}, ...loaded)
+      messages = Object.assign(Object.create(null), ...loaded)
     } else return null
 
     return { messages, locales, namespaces, watchFiles: Array.from(watchSet) }
@@ -327,11 +398,11 @@ export class Generator {
 
       if (kind === 'plain') {
         const text = (ast as Model.PatternMessage).pattern[0] ?? ''
-        entries.push(`${serializedKey}:${JSON.stringify(text)}`)
+        entries.push(`[${serializedKey}]:${JSON.stringify(text)}`)
       } else if (kind === 'simple') {
-        entries.push(`${serializedKey}:${compileSimpleMessage(ast as Model.PatternMessage)}`)
+        entries.push(`[${serializedKey}]:${compileSimpleMessage(ast as Model.PatternMessage)}`)
       } else {
-        entries.push(`${serializedKey}:${JSON.stringify(ast)}`)
+        entries.push(`[${serializedKey}]:${JSON.stringify(ast)}`)
       }
     }
 
@@ -358,7 +429,7 @@ export class Generator {
     locales: string[],
     namespaces: string[],
   ): DtsStructure {
-    const dtsMessages: Record<string, TypeProperty[]> = {}
+    const dtsMessages: Record<string, TypeProperty[]> = Object.create(null)
 
     const resolveType = (functionRef?: { name: string }): string =>
       functionRef ? `{ __fn: '${functionRef.name}' }` : 'DefaultMessageValue'
@@ -366,18 +437,40 @@ export class Generator {
     for (const [key, message] of Object.entries(messages)) {
       const ast = parseMessage(message)
       const values = new Map<string, TypeProperty>()
+      const locals = new Set<string>()
 
       for (const declaration of ast.declarations) {
         const type = resolveType(declaration.value.functionRef)
 
         if (declaration.type === 'input') {
-          values.set(declaration.name, { type, name: declaration.name })
-        } else if (
-          declaration.type === 'local' &&
-          declaration.value.arg?.type === 'variable' &&
-          !values.has(declaration.value.arg.name)
-        ) {
-          values.set(declaration.value.arg.name, { type, name: declaration.value.arg.name })
+          if (!locals.has(declaration.name)) {
+            values.set(declaration.name, { type, name: declaration.name })
+          }
+          collectOptionVariables(declaration.value.functionRef?.options, locals, values)
+          collectOptionVariables(declaration.value.attributes, locals, values)
+        } else if (declaration.type === 'local') {
+          if (
+            declaration.value.arg?.type === 'variable' &&
+            !locals.has(declaration.value.arg.name) &&
+            !values.has(declaration.value.arg.name)
+          ) {
+            values.set(declaration.value.arg.name, { type, name: declaration.value.arg.name })
+          }
+          collectOptionVariables(declaration.value.functionRef?.options, locals, values)
+          collectOptionVariables(declaration.value.attributes, locals, values)
+          locals.add(declaration.name)
+        }
+      }
+
+      if (ast.type === 'select') {
+        for (const selector of ast.selectors) {
+          if (
+            selector.type === 'variable' &&
+            !locals.has(selector.name) &&
+            !values.has(selector.name)
+          ) {
+            values.set(selector.name, { type: 'DefaultMessageValue', name: selector.name })
+          }
         }
       }
 
@@ -385,19 +478,25 @@ export class Generator {
         ast.type === 'message' ? ast.pattern : ast.variants.flatMap((variant) => variant.value)
 
       for (const part of parts) {
-        if (
-          typeof part !== 'object' ||
-          part.type !== 'expression' ||
-          part.arg?.type !== 'variable' ||
-          values.has(part.arg.name)
-        ) {
-          continue
-        }
+        if (typeof part !== 'object') continue
 
-        values.set(part.arg.name, {
-          type: resolveType(part.functionRef),
-          name: part.arg.name,
-        })
+        if (part.type === 'expression') {
+          if (
+            part.arg?.type === 'variable' &&
+            !locals.has(part.arg.name) &&
+            !values.has(part.arg.name)
+          ) {
+            values.set(part.arg.name, {
+              type: resolveType(part.functionRef),
+              name: part.arg.name,
+            })
+          }
+          collectOptionVariables(part.functionRef?.options, locals, values)
+          collectOptionVariables(part.attributes, locals, values)
+        } else if (part.type === 'markup') {
+          collectOptionVariables(part.options, locals, values)
+          collectOptionVariables(part.attributes, locals, values)
+        }
       }
 
       dtsMessages[key] = Array.from(values.values())
@@ -408,11 +507,11 @@ export class Generator {
 
   private async dtsToString(dts: DtsStructure): Promise<string> {
     const localeType = dts.locales.length
-      ? dts.locales.map((locale) => `'${locale}'`).join(' | ')
+      ? dts.locales.map((locale) => JSON.stringify(locale)).join(' | ')
       : 'never'
 
     const namespaceLine = dts.namespaces.length
-      ? `namespace: ${dts.namespaces.map((ns) => `'${ns}'`).join(' | ')};`
+      ? `namespace: ${dts.namespaces.map((ns) => JSON.stringify(ns)).join(' | ')};`
       : ''
 
     const messageProperties = Object.entries(dts.messages).map(([key, properties]) => {
@@ -456,7 +555,7 @@ export class Generator {
   private virtualLocalesToString(locales: string[]): string {
     const entries = locales.map(
       (locale) =>
-        `  "${locale}": () => import('virtual:kanjou/${locale}').then((module) => module.default)`,
+        `  [${JSON.stringify(locale)}]: () => import(${JSON.stringify(`virtual:kanjou/${locale}`)}).then((module) => module.default)`,
     )
     return `export default {\n${entries.join(',\n')}\n}`
   }
@@ -465,9 +564,9 @@ export class Generator {
     const localeEntries = Object.entries(localeNamespaces).map(([locale, files]) => {
       const nsEntries = files.map(
         (file) =>
-          `    "${file.name}": () => import('virtual:kanjou/${locale}/${file.name}').then((module) => module.default)`,
+          `    [${JSON.stringify(file.name)}]: () => import(${JSON.stringify(`virtual:kanjou/${locale}/${file.name}`)}).then((module) => module.default)`,
       )
-      return `  "${locale}": {\n${nsEntries.join(',\n')}\n  }`
+      return `  [${JSON.stringify(locale)}]: {\n${nsEntries.join(',\n')}\n  }`
     })
     return `export default {\n${localeEntries.join(',\n')}\n}`
   }

@@ -56,6 +56,34 @@ export function getConfig(inlineConfig: ConfigInput = {}): Config {
   const configFilePath = path.resolve(CONFIG_FILENAME)
   const exists = existsSync(configFilePath)
 
-  const base = exists ? JSON.parse(readFileSync(configFilePath, 'utf-8')) : {}
-  return ConfigSchema.parse({ ...base, ...inlineConfig })
+  let base: unknown = {}
+  if (exists) {
+    const raw = readFileSync(configFilePath, 'utf-8').replace(/^\uFEFF/, '')
+    try {
+      base = JSON.parse(raw)
+    } catch (err) {
+      throw new Error(
+        `Invalid ${CONFIG_FILENAME}: ${err instanceof Error ? err.message : String(err)}`,
+        { cause: err },
+      )
+    }
+    if (base === null || typeof base !== 'object' || Array.isArray(base)) {
+      throw new Error(`Invalid ${CONFIG_FILENAME}: config must be a JSON object`)
+    }
+  }
+
+  try {
+    return ConfigSchema.parse({ ...(base as Record<string, unknown>), ...inlineConfig })
+  } catch (err) {
+    if (err instanceof z.ZodError) {
+      const details = err.issues
+        .map((issue) => `${issue.path.length ? issue.path.join('.') : '<root>'}: ${issue.message}`)
+        .join('; ')
+      throw new Error(`Invalid ${CONFIG_FILENAME}: ${details}`, { cause: err })
+    }
+    throw new Error(
+      `Invalid ${CONFIG_FILENAME}: ${err instanceof Error ? err.message : String(err)}`,
+      { cause: err },
+    )
+  }
 }
