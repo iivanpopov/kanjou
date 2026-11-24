@@ -25,6 +25,7 @@ import type {
 
 import { getSharedTranslateCache } from './cache'
 import {
+  assertValidMessageFunctions,
   createMessageRuntime,
   formatDateTime,
   formatDisplayName,
@@ -70,6 +71,8 @@ export function createTranslate({
   cache,
   options,
 }: CreateTranslateOptions): Translate {
+  assertValidMessageFunctions(options?.functions)
+
   const resolvedCache = cache ?? getSharedTranslateCache()
   let runtime: MessageRuntime | undefined
   const getRuntime = (): MessageRuntime =>
