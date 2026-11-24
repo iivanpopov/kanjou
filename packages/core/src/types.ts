@@ -58,7 +58,7 @@ export interface DefaultFunctions {
       Intl.NumberFormatOptions &
         Intl.PluralRulesOptions & { select?: 'exact' | 'cardinal' | 'ordinal' }
     >,
-    number,
+    NumberLike,
     'number'
   >
 
@@ -70,7 +70,7 @@ export interface DefaultFunctions {
       signDisplay: Intl.NumberFormatOptions['signDisplay']
       useGrouping: Intl.NumberFormatOptions['useGrouping']
     }>,
-    number,
+    NumberLike,
     'number'
   >
 
@@ -80,7 +80,7 @@ export interface DefaultFunctions {
       currencyDisplay?: 'code' | 'symbol' | 'narrowSymbol' | 'name'
       currencySign?: 'standard' | 'accounting'
     },
-    number,
+    NumberLike,
     'number'
   >
 
@@ -96,7 +96,7 @@ export interface DefaultFunctions {
       trailingZeroDisplay: string
       useGrouping: Intl.NumberFormatOptions['useGrouping']
     }>,
-    number,
+    NumberLike,
     'number'
   >
 
@@ -108,7 +108,22 @@ export interface DefaultFunctions {
         subtract?: number
       }
     >,
-    number,
+    NumberLike,
+    'number'
+  >
+
+  date: MessageFunction<Partial<Intl.DateTimeFormatOptions>, DateLike | string, 'datetime'>
+
+  datetime: MessageFunction<Partial<Intl.DateTimeFormatOptions>, DateLike | string, 'datetime'>
+
+  time: MessageFunction<Partial<Intl.DateTimeFormatOptions>, DateLike | string, 'datetime'>
+
+  unit: MessageFunction<
+    Partial<Intl.NumberFormatOptions> & {
+      unit?: string
+      unitDisplay?: 'short' | 'long' | 'narrow'
+    },
+    NumberLike,
     'number'
   >
 }
@@ -137,7 +152,11 @@ export type MessageValues<Id extends string = MessageId> = Id extends keyof Mess
         ? InferFunctionInput<FunctionName>
         : Messages[Id][Value] extends string
           ? Messages[Id][Value]
-          : DefaultMessageValue
+          : Messages[Id][Value] extends number
+            ? Messages[Id][Value]
+            : Messages[Id][Value] extends bigint
+              ? Messages[Id][Value]
+              : DefaultMessageValue
     }
   : Record<string, any>
 

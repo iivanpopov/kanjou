@@ -30,9 +30,39 @@ interface MessageCacheEntry {
   byFunctions?: WeakMap<object, Map<string, MessageFormat>>
 }
 
+function canonicalize(value: unknown): unknown {
+  if (value === null || typeof value !== 'object') {
+    return typeof value === 'function' || typeof value === 'symbol' ? undefined : value
+  }
+  if (Array.isArray(value)) {
+    return value.map(canonicalize)
+  }
+  if (typeof (value as { toJSON?: unknown }).toJSON === 'function') {
+    return canonicalize((value as { toJSON: () => unknown }).toJSON())
+  }
+  const record = value as Record<string, unknown>
+  const result: Record<string, unknown> = {}
+  for (const key of Object.keys(record).sort()) {
+    const canonical = canonicalize(record[key])
+    if (canonical !== undefined) {
+      Object.defineProperty(result, key, {
+        value: canonical,
+        enumerable: true,
+        configurable: true,
+        writable: true,
+      })
+    }
+  }
+  return result
+}
+
+function stableStringify(value: unknown): string | undefined {
+  return JSON.stringify(canonicalize(value))
+}
+
 function getKey(locale: string, options?: unknown): string {
   if (!options || typeof options !== 'object') return locale
-  const serialized = JSON.stringify(options)
+  const serialized = stableStringify(options)
   return serialized && serialized !== '{}' ? `${locale}\0${serialized}` : locale
 }
 
@@ -83,6 +113,20 @@ function toTextParts<Id extends string>(
   return text === '' ? [] : ([{ type: 'text', value: text }] as any)
 }
 
+function coerceMessageResult(result: unknown): string {
+  if (result === null || result === undefined) return ''
+  if (typeof result === 'string') return result
+  if (
+    typeof result === 'number' ||
+    typeof result === 'boolean' ||
+    typeof result === 'bigint' ||
+    typeof result === 'symbol'
+  ) {
+    return String(result)
+  }
+  return JSON.stringify(result) ?? ''
+}
+
 function getIntlFormatter<Formatter, Options>(
   cache: Cache,
   locale: Locale,
@@ -109,7 +153,8 @@ export function formatMessage<Id extends string = MessageId>(
   const message = messages[id]
   if (message === undefined) return id
   if (typeof message === 'string') return message
-  if (typeof message === 'function') return message(values)
+  if (typeof message === 'function') return coerceMessageResult(message(values))
+  if (!message || typeof message !== 'object') return id
 
   return getMessageFormatter(cache, locale, message, options).format(values)
 }
@@ -125,7 +170,8 @@ export function formatMessageParts<Id extends string = MessageId>(
   const message = messages[id]
   if (message === undefined) return []
   if (typeof message === 'string') return toTextParts<Id>(message)
-  if (typeof message === 'function') return toTextParts<Id>(message(values))
+  if (typeof message === 'function') return toTextParts<Id>(coerceMessageResult(message(values)))
+  if (!message || typeof message !== 'object') return []
 
   return getMessageFormatter(cache, locale, message, options).formatToParts(values)
 }
