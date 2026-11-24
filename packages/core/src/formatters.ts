@@ -60,65 +60,18 @@ export interface FormatRelativeTimeParams {
   options?: FormatRelativeTimeOptions | undefined
 }
 
-function serializeCanonical(value: unknown, seen?: WeakSet<object>): string {
-  if (value === null) return 'null'
+function serializeFlatOptions(options: object): string {
+  const keys = Object.keys(options).sort()
+  if (keys.length === 0) return ''
 
-  if (typeof value === 'string') return JSON.stringify(value)
-  if (typeof value === 'number') return Number.isFinite(value) ? String(value) : 'null'
-  if (typeof value === 'boolean') return value ? 'true' : 'false'
-  if (typeof value === 'bigint') return `${String(value)}n`
-  if (typeof value === 'undefined' || typeof value === 'function' || typeof value === 'symbol') {
-    return ''
-  }
-
-  if (typeof value !== 'object') return ''
-
-  const obj = value
-  const visited = seen ?? new WeakSet<object>()
-  if (visited.has(obj)) return '"[Circular]"'
-
-  visited.add(obj)
-  try {
-    if ('toJSON' in obj && typeof (obj as { toJSON?: unknown }).toJSON === 'function') {
-      const json = (obj as { toJSON: () => unknown }).toJSON()
-      if (json !== obj) {
-        return serializeCanonical(json, visited)
-      }
-    }
-
-    if (Array.isArray(obj)) {
-      const parts: string[] = ['[']
-      for (let i = 0; i < obj.length; i++) {
-        if (i > 0) parts.push(',')
-        const item = serializeCanonical(obj[i], visited)
-        parts.push(item === '' ? 'null' : item)
-      }
-      parts.push(']')
-      return parts.join('')
-    }
-
-    const record = obj as Record<string, unknown>
-    const keys = Object.keys(record).sort()
-    const parts: string[] = ['{']
-    let first = true
-    for (const key of keys) {
-      const serialized = serializeCanonical(record[key], visited)
-      if (serialized === '') continue
-      if (!first) parts.push(',')
-      first = false
-      parts.push(JSON.stringify(key), ':', serialized)
-    }
-    parts.push('}')
-    return parts.join('')
-  } finally {
-    visited.delete(obj)
-  }
+  const json = JSON.stringify(options, keys)
+  return json === '{}' ? '' : json
 }
 
 function getKey(locale: string, options?: unknown): string {
   if (!options || typeof options !== 'object') return locale
-  const serialized = serializeCanonical(options)
-  return serialized && serialized !== '{}' ? `${locale.length}:${locale}:${serialized}` : locale
+  const serialized = serializeFlatOptions(options)
+  return serialized ? `${locale.length}:${locale}:${serialized}` : locale
 }
 
 function getMessageOptionsKey(locale: string, options?: MessageFormatOptions): string {

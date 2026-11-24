@@ -322,7 +322,6 @@ export class Generator {
   private async virtualLocale(locale: string): Promise<VirtualModule | null> {
     const localeFiles = await readLocaleFiles(this.config.localesDir)
     validateReservedLocaleNames(localeFiles)
-    validateReservedLocaleName(locale)
     const localeFile = localeFiles.find((file) => file.name === locale)
     if (!localeFile) return null
 
