@@ -8,7 +8,7 @@ import prettier from 'prettier'
 
 import type { Config } from './config'
 
-import { compileMessage, createConstantPool } from './compiler'
+import { compileMessage, createConstantPool, createRuntimeImports } from './compiler'
 import { KanjouMessageError } from './errors'
 import {
   compareStrings,
@@ -61,13 +61,16 @@ export function compileMessages(
 ): string {
   const entries: string[] = []
   const constants = createConstantPool()
+  const runtimeImports = createRuntimeImports()
 
   for (const [key, value] of Object.entries(messages)) {
     const ast = parseAndValidateMessage(value, filePath, key)
-    entries.push(`${formatObjectKey(key)}:${compileMessage(ast, constants.hoist)}`)
+    entries.push(
+      `${formatObjectKey(key)}:${compileMessage(ast, constants.hoist, runtimeImports.use)}`,
+    )
   }
 
-  return `${constants.emit()}export default {${entries.join(',')}}`
+  return `${runtimeImports.emit()}${constants.emit()}export default {${entries.join(',')}}`
 }
 
 function isValidSegment(segment: string): boolean {

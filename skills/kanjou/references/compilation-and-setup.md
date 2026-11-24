@@ -10,11 +10,11 @@ During `kanjou compile` or `@kanjou/plugin` virtual module loading, every messag
    - Runtime: Returned directly as a string.
 2. **`simple`**: Pattern message with no declarations, containing only text and bare `{$var}` expressions (no `:function`, no `.match`, no markup).
    - Input: `"key.key2": "Hi, {$name}"`
-   - Output: `` "key.key2":(v)=>`Hi, ${v?.name??"{$name}"}` ``
-   - Behavior: Falls back to `"{$var}"` when `null` or `undefined`; supports dotted variable paths (`v?.user?.name` and flat `v?.["user.name"]`). Runs without `MessageRuntime`.
+   - Output: `` "key.key2":(v,r)=>`Hi, ${_rv(r,v?.name,"{$name}")}` `` (where `_rv` is `rtVal` from `@kanjou/core`)
+   - Behavior: Formats values with `rtVal` using `MessageContext` (`r`), falling back to `"{$var}"` when `null` or `undefined`; supports dotted variable paths (`v?.user?.name` and flat `v?.["user.name"]`). Runs without `messageformat` AST/runtime.
 3. **`compiled`**: Any message with `.input`, `.local`, `.match`, `:function` (e.g. `{$count :number}`), or `{#markup}`.
    - Output: AOT-compiled renderer. It can produce text, parts (for markup), or both (for custom functions that can return parts). Only renderers that need the runtime take it as a second parameter.
-   - Runtime: Built-in and draft MF2 functions and `.match` selectors compile to calls on `@kanjou/core`'s `MessageRuntime`, using cached `Intl` formatters where needed. Static options and selector keys are hoisted to the module; variable options are evaluated per call. No `messageformat` runtime is shipped in browser bundles.
+   - Runtime: Built-in and draft MF2 functions and `.match` selectors compile to tree-shakeable `rt*` runtime helpers from `@kanjou/core` (taking `MessageContext`), using cached `Intl` formatters where needed. Static options and selector keys are hoisted to the module; variable options are evaluated per call. No `messageformat` runtime is shipped in browser bundles.
 
 ## `kanjou.config.json`
 
@@ -22,7 +22,7 @@ Placed in the project root (all fields optional):
 
 | Field        | Default                       | Purpose                                                                                                  |
 | ------------ | ----------------------------- | -------------------------------------------------------------------------------------------------------- |
-| `baseLocale` | `"en"`                        | Source of truth locale for `locales.kanjou.d.ts`, `compare`, `unused`                                    |
+| `baseLocale` | `"en"`                        | Source of truth locale for `locales.kanjou.d.ts` and `unused`                                            |
 | `localesDir` | `"./src/assets/locales"`      | Directory containing locale source files (`.ts`, `.js`, `.mts`, `.mjs`)                                  |
 | `compile`    | `{ "outDir": "./generated" }` | Output directory for `kanjou compile`                                                                    |
 | `dts`        | `{ "outDir": "./generated" }` | Set `false` to disable `locales.kanjou.d.ts`; `dts.module` targets `'@kanjou/react'` or `'@kanjou/core'` |

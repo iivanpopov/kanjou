@@ -1,3 +1,5 @@
+import type { TranslateCache } from './cache'
+
 export interface MessageTextPart {
   type: 'text'
   value: string
@@ -8,11 +10,6 @@ export interface MessageMarkupPart {
   kind: 'open' | 'standalone' | 'close'
   name: string
   options?: Record<string, unknown> | undefined
-}
-
-export interface MessageFallbackPart {
-  type: 'fallback'
-  source: string
 }
 
 export interface MessageFormattedPart<P extends string = string> {
@@ -26,15 +23,18 @@ export interface MessageFormattedPart<P extends string = string> {
 export type MessagePart<P extends string = string> =
   | MessageTextPart
   | MessageMarkupPart
-  | MessageFallbackPart
   | ([P] extends [never] ? never : MessageFormattedPart<P>)
 
 export interface MessageFunctionContext {
   readonly locale: Locale
   readonly number: (value: unknown, options?: FormatNumberOptions) => string
   readonly date: (value: unknown, options?: FormatDateTimeOptions) => string
-  readonly plural: MessageRuntime['plural']
-  readonly select: MessageRuntime['select']
+  readonly plural: (value: unknown, options?: FormatPluralOptions) => PluralRule
+  readonly select: (
+    value: unknown,
+    keys: ReadonlySet<string>,
+    options?: SelectOptions,
+  ) => string | null
   readonly literalOptionKeys: ReadonlySet<string>
 }
 
@@ -67,47 +67,10 @@ export interface DynamicDateTimeOptionsInput {
   readonly hour12?: unknown
 }
 
-export interface MessageRuntime {
+export interface MessageContext {
   readonly locale: Locale
-  readonly number: (
-    value: unknown,
-    options?: FormatNumberOptions | CompiledIntlOptions<FormatNumberOptions>,
-    fallback?: string,
-  ) => string
-  readonly date: (
-    value: unknown,
-    options?: FormatDateTimeOptions | CompiledIntlOptions<FormatDateTimeOptions>,
-    fallback?: string,
-  ) => string
-  readonly integer: (value: unknown) => number | bigint | null
-  readonly offset: (value: unknown, delta: unknown, negate?: boolean) => number | bigint | null
-  readonly currencyOpts: (base: FormatNumberOptions, fractionDigits: unknown) => FormatNumberOptions
-  readonly dateOpts: (
-    base: FormatDateTimeOptions | undefined,
-    input: DynamicDateTimeOptionsInput,
-  ) => FormatDateTimeOptions
-  readonly plural: (value: unknown, options?: FormatPluralOptions) => PluralRule
-  readonly select: (
-    value: unknown,
-    keys: ReadonlySet<string>,
-    options?: SelectOptions,
-  ) => string | null
-  readonly numberForSelection: (
-    value: unknown,
-    options?: SelectOptions | CompiledIntlOptions<SelectOptions>,
-  ) => number | bigint | null
-  readonly selectPlural: (
-    value: number | bigint | null,
-    options?: SelectOptions | CompiledIntlOptions<SelectOptions>,
-  ) => PluralRule | null
-  readonly fn: (
-    name: string,
-    operand: unknown,
-    options?: Record<string, unknown>,
-    literalOptionKeys?: readonly string[],
-  ) => MessageFunctionResult
-  readonly str: (value: unknown) => string
-  readonly parts: (value: unknown) => MessagePart[]
+  readonly cache: TranslateCache
+  readonly functions?: MessageFunctions | undefined
 }
 
 export type MessageFunctionResult<T extends string = string, P extends string = T> =
@@ -116,14 +79,14 @@ export type MessageFunctionResult<T extends string = string, P extends string = 
 
 export interface Register {}
 
-export type CompiledMessage = (values?: Record<string, any>, runtime?: MessageRuntime) => string
+export type CompiledMessage = (values?: Record<string, any>, runtime?: MessageContext) => string
 export interface CompiledPartsMessage {
-  readonly parts: (values?: Record<string, any>, runtime?: MessageRuntime) => MessagePart[]
+  readonly parts: (values?: Record<string, any>, runtime?: MessageContext) => MessagePart[]
 }
 export interface CompiledRichMessage {
   readonly render: {
-    (values: Record<string, any> | undefined, runtime: MessageRuntime, asParts: false): string
-    (values: Record<string, any> | undefined, runtime: MessageRuntime, asParts: true): MessagePart[]
+    (values: Record<string, any> | undefined, runtime: MessageContext, asParts: false): string
+    (values: Record<string, any> | undefined, runtime: MessageContext, asParts: true): MessagePart[]
   }
 }
 export type Message = string | CompiledMessage | CompiledPartsMessage | CompiledRichMessage

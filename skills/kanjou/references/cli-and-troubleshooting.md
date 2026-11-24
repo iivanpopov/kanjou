@@ -8,7 +8,7 @@ All commands read `kanjou.config.json` from the current working directory:
 | ----------------------------------------------------------------- | --------------------------------------------------------------------------------------------- |
 | `kanjou compile`                                                  | Precompile all locales/namespaces into JS modules in `compile.outDir` (default `./generated`) |
 | `kanjou generate`                                                 | Generate `locales.kanjou.d.ts` in `dts.outDir` (default `./generated`)                        |
-| `kanjou compare`                                                  | Cross-compare locales against `baseLocale` and report missing keys per locale                 |
+| `kanjou compare`                                                  | Cross-compare all locales against each other and report missing keys per locale               |
 | `kanjou unused [--tsconfig <path>] [--ignore-full-catalog-union]` | Scan TypeScript sources for unused base-locale message keys                                   |
 
 ### `kanjou unused` notes

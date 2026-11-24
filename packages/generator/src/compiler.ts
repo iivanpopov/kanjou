@@ -38,6 +38,7 @@ const NUMBER_LIKE_FUNCTIONS = new Set([
 ])
 
 const DATE_LIKE_FUNCTIONS = new Set(['date', 'time', 'datetime'])
+const NON_SELECTABLE_FUNCTIONS = new Set(['currency', 'unit', 'date', 'time', 'datetime'])
 const OFFSET_ONLY_OPTIONS = new Set(['add', 'subtract', 'offset'])
 
 const NUMBER_INT_OPTIONS = new Set([
@@ -125,11 +126,67 @@ interface CompiledDecl {
   needsRuntime: boolean
 }
 
+export type RuntimeHelperName =
+  | 'number'
+  | 'date'
+  | 'integer'
+  | 'offset'
+  | 'currencyOpts'
+  | 'dateOpts'
+  | 'plural'
+  | 'select'
+  | 'numberForSelection'
+  | 'selectPlural'
+  | 'fn'
+  | 'str'
+  | 'val'
+  | 'parts'
+
+const RUNTIME_IMPORT_SPECS: Record<RuntimeHelperName, readonly [exported: string, alias: string]> =
+  {
+    number: ['rtNumber', '_rn'],
+    date: ['rtDate', '_rd'],
+    integer: ['rtInteger', '_ri'],
+    offset: ['rtOffset', '_ro'],
+    currencyOpts: ['rtCurrencyOpts', '_rco'],
+    dateOpts: ['rtDateOpts', '_rdo'],
+    plural: ['rtPlural', '_rp'],
+    select: ['rtSelect', '_rs'],
+    numberForSelection: ['rtNumberForSelection', '_rnfs'],
+    selectPlural: ['rtSelectPlural', '_rsp'],
+    fn: ['rtFn', '_rf'],
+    str: ['rtStr', '_rstr'],
+    val: ['rtVal', '_rv'],
+    parts: ['rtParts', '_rpts'],
+  }
+
+export function createRuntimeImports() {
+  const used = new Set<RuntimeHelperName>()
+  return {
+    use(this: void, name: RuntimeHelperName): string {
+      used.add(name)
+      return RUNTIME_IMPORT_SPECS[name][1]
+    },
+    emit(): string {
+      if (used.size === 0) return ''
+      const specifiers = [...used]
+        .sort()
+        .map((name) => {
+          const [exported, alias] = RUNTIME_IMPORT_SPECS[name]
+          return `${exported} as ${alias}`
+        })
+        .join(',')
+      return `import {${specifiers}} from '@kanjou/core';\n`
+    },
+  }
+}
+
 interface CompileContext {
   scope: Map<string, LocalBinding>
   tempCounter: number
   needsRuntime: boolean
   hoist: (expr: string) => string
+  useRuntime: (name: RuntimeHelperName) => string
   activeUsed: Set<number>
   activeNeedsRuntime: boolean
 }
@@ -189,14 +246,19 @@ function messageHasMarkup(ast: Model.Message): boolean {
   return ast.variants.some((variant) => patternHasMarkup(variant.value))
 }
 
-function compileSimpleMessage(ast: Model.PatternMessage, hoist: CompileContext['hoist']): string {
+function compileSimpleMessage(
+  ast: Model.PatternMessage,
+  hoist: CompileContext['hoist'],
+  useRuntime: CompileContext['useRuntime'],
+): string {
+  const valFn = useRuntime('val')
   const chunks = ast.pattern.map((part) => {
     if (typeof part === 'string') return escapeTemplateChunk(part)
     const name = (part as Model.Expression & { arg: Model.VariableRef }).arg.name
     const fallback = JSON.stringify(`{$${name}}`)
-    return `${TEMPLATE_OPEN}${buildVarAccess(name, hoist)}??${fallback}}`
+    return `${TEMPLATE_OPEN}${valFn}(r,${buildVarAccess(name, hoist)},${fallback})}`
   })
-  return `(v)=>\`${chunks.join('')}\``
+  return `(v,r)=>\`${chunks.join('')}\``
 }
 
 function useBinding(binding: LocalBinding, ctx: CompileContext): LocalBinding {
@@ -252,13 +314,15 @@ function buildObjectLiteral(entries: readonly [string, string][]): string {
 }
 
 function compileCustomOptions(options: Model.Options | undefined, ctx: CompileContext): string {
-  if (!options || Object.keys(options).length === 0) return ''
+  if (!options) return ''
   const entries: [string, string][] = []
   const literalKeys: string[] = []
   for (const [key, val] of Object.entries(options)) {
+    if (key.startsWith('u:')) continue
     if (val.type === 'literal') literalKeys.push(key)
     entries.push([key, resolveOptionValueExpr(val, ctx)])
   }
+  if (entries.length === 0) return ''
   const expr = buildObjectLiteral(entries)
   const optsExpr =
     literalKeys.length === entries.length ? ctx.hoist(`Object.freeze(${expr})`) : expr
@@ -378,7 +442,7 @@ function compileNumberLikeOptions(
 
   const intlOptsExpr =
     dynamicCurrencyFdExpr !== undefined
-      ? `r.currencyOpts(${buildObjectLiteral(intlEntries)},${dynamicCurrencyFdExpr})`
+      ? `${ctx.useRuntime('currencyOpts')}(${buildObjectLiteral(intlEntries)},${dynamicCurrencyFdExpr})`
       : compileIntlOptions(intlEntries, hasVariableIntlOptions, ctx)
 
   return {
@@ -471,7 +535,7 @@ function compileDateTimeOptions(
     if (tpOpt) inputEntries.push(['precision', resolveOptionValueExpr(tpOpt, ctx)])
     if (tzStyleOpt) inputEntries.push(['timeZoneStyle', resolveOptionValueExpr(tzStyleOpt, ctx)])
     if (dynamicHour12Expr !== undefined) inputEntries.push(['hour12', dynamicHour12Expr])
-    return `r.dateOpts(${baseExpr},${buildObjectLiteral(inputEntries)})`
+    return `${ctx.useRuntime('dateOpts')}(${baseExpr},${buildObjectLiteral(inputEntries)})`
   }
 
   if (!hasDirectStyle) {
@@ -521,36 +585,31 @@ function buildOffsetRawExpr(
   options: Model.Options | undefined,
   ctx: CompileContext,
 ): string {
-  const dynamicDeltas: { expr: string; negate: boolean }[] = []
-  let staticDelta = 0
-
   const entries: readonly [Model.Literal | Model.VariableRef | undefined, boolean][] = [
     [options?.add, false],
     [options?.subtract, true],
     [options?.offset, false],
   ]
 
+  let selected: readonly [Model.Literal | Model.VariableRef, boolean] | undefined
   for (const [val, negate] of entries) {
     if (!val) continue
-    if (val.type === 'literal') {
-      const trimmed = val.value.trim()
-      if (!JSON_NUMBER_RE.test(trimmed)) return 'null'
-      const n = Number(trimmed)
-      if (!Number.isInteger(n)) return 'null'
-      staticDelta += negate ? -n : n
-    } else {
-      dynamicDeltas.push({ expr: resolveOptionValueExpr(val, ctx), negate })
-    }
+    if (selected) return 'null'
+    selected = [val, negate]
+  }
+  if (!selected) return 'null'
+
+  const [val, negate] = selected
+  const offsetFn = ctx.useRuntime('offset')
+  if (val.type === 'literal') {
+    const trimmed = val.value.trim()
+    if (!JSON_NUMBER_RE.test(trimmed)) return 'null'
+    const n = Number(trimmed)
+    if (!Number.isInteger(n) || n < 0) return 'null'
+    return `${offsetFn}(${operandExpr},${n}${negate ? ',true' : ''})`
   }
 
-  let expr = operandExpr
-  if (staticDelta !== 0) {
-    expr = `r.offset(${expr},${staticDelta})`
-  }
-  for (const d of dynamicDeltas) {
-    expr = `r.offset(${expr},${d.expr}${d.negate ? ',true' : ''})`
-  }
-  return expr
+  return `${offsetFn}(${operandExpr},${resolveOptionValueExpr(val, ctx)}${negate ? ',true' : ''})`
 }
 
 function mergeDeclarationOptions(
@@ -627,7 +686,7 @@ function compileFunctionBinding(
   if (fnName === 'string') {
     return {
       kind: 'string',
-      rawExpr: `r.str(${operandExpr})`,
+      rawExpr: `${ctx.useRuntime('str')}(${operandExpr})`,
       fallbackName: fallbackSource,
       fnName,
       sourceOptions: effectiveOptions,
@@ -642,7 +701,7 @@ function compileFunctionBinding(
     )
     return {
       kind: 'number',
-      rawExpr: `r.integer(${operandExpr})`,
+      rawExpr: `${ctx.useRuntime('integer')}(${operandExpr})`,
       fallbackName: fallbackSource,
       fnName,
       sourceOptions: effectiveOptions,
@@ -697,7 +756,7 @@ function compileFunctionBinding(
   const optsExpr = compileCustomOptions(effectiveOptions, ctx)
   return {
     kind: 'custom',
-    rawExpr: `r.fn(${JSON.stringify(fnName)},${operandExpr}${optsExpr})`,
+    rawExpr: `${ctx.useRuntime('fn')}(r,${JSON.stringify(fnName)},${operandExpr}${optsExpr})`,
     fallbackName: fallbackSource,
     fnName,
     sourceOptions: effectiveOptions,
@@ -706,38 +765,41 @@ function compileFunctionBinding(
 
 function formatBindingToString(
   binding: LocalBinding,
-  siteFallbackName?: string,
-  ctx?: CompileContext,
+  siteFallbackName: string | undefined,
+  ctx: CompileContext,
 ): string {
   const fb = siteFallbackName ?? binding.fallbackName
   const fbLiteral = fb ? JSON.stringify(fb) : undefined
   if (binding.kind === 'number') {
-    if (ctx) ctx.activeNeedsRuntime = true
+    ctx.activeNeedsRuntime = true
+    const numFn = ctx.useRuntime('number')
     if (binding.intlOptsExpr) {
-      return `r.number(${binding.rawExpr},${binding.intlOptsExpr}${fbLiteral ? `,${fbLiteral}` : ''})`
+      return `${numFn}(r,${binding.rawExpr},${binding.intlOptsExpr}${fbLiteral ? `,${fbLiteral}` : ''})`
     }
     return fbLiteral
-      ? `r.number(${binding.rawExpr},undefined,${fbLiteral})`
-      : `r.number(${binding.rawExpr})`
+      ? `${numFn}(r,${binding.rawExpr},undefined,${fbLiteral})`
+      : `${numFn}(r,${binding.rawExpr})`
   }
   if (binding.kind === 'date') {
-    if (ctx) ctx.activeNeedsRuntime = true
+    ctx.activeNeedsRuntime = true
+    const dateFn = ctx.useRuntime('date')
     if (binding.intlOptsExpr) {
-      return `r.date(${binding.rawExpr},${binding.intlOptsExpr}${fbLiteral ? `,${fbLiteral}` : ''})`
+      return `${dateFn}(r,${binding.rawExpr},${binding.intlOptsExpr}${fbLiteral ? `,${fbLiteral}` : ''})`
     }
     return fbLiteral
-      ? `r.date(${binding.rawExpr},undefined,${fbLiteral})`
-      : `r.date(${binding.rawExpr})`
+      ? `${dateFn}(r,${binding.rawExpr},undefined,${fbLiteral})`
+      : `${dateFn}(r,${binding.rawExpr})`
   }
   if (binding.kind === 'string') return binding.rawExpr
   if (binding.kind === 'custom') {
-    if (ctx) ctx.activeNeedsRuntime = true
-    return `r.str(${binding.rawExpr})`
+    ctx.activeNeedsRuntime = true
+    return `${ctx.useRuntime('str')}(${binding.rawExpr})`
   }
-  if (fbLiteral) {
-    return `(${binding.rawExpr}??${fbLiteral})`
-  }
-  return binding.rawExpr
+  ctx.activeNeedsRuntime = true
+  const valFn = ctx.useRuntime('val')
+  return fbLiteral
+    ? `${valFn}(r,${binding.rawExpr},${fbLiteral})`
+    : `${valFn}(r,${binding.rawExpr})`
 }
 
 function compileExpressionToString(expr: Model.Expression, ctx: CompileContext): string {
@@ -745,8 +807,9 @@ function compileExpressionToString(expr: Model.Expression, ctx: CompileContext):
     if (expr.arg?.type === 'variable') {
       const binding = ctx.scope.get(expr.arg.name)
       if (binding) return formatBindingToString(useBinding(binding, ctx), undefined, ctx)
+      ctx.activeNeedsRuntime = true
       const fallback = JSON.stringify(`{$${expr.arg.name}}`)
-      return `(${buildVarAccess(expr.arg.name, ctx.hoist)}??${fallback})`
+      return `${ctx.useRuntime('val')}(r,${buildVarAccess(expr.arg.name, ctx.hoist)},${fallback})`
     }
     return expr.arg?.type === 'literal' ? JSON.stringify(expr.arg.value) : '""'
   }
@@ -782,12 +845,14 @@ function compileMarkupPart(markup: Model.Markup, ctx: CompileContext): string {
     `kind:${JSON.stringify(markup.kind)}`,
     `name:${JSON.stringify(markup.name)}`,
   ]
-  if (markup.options && Object.keys(markup.options).length > 0) {
-    const optEntries: [string, string][] = Object.entries(markup.options).map(([k, val]) => [
-      k,
-      resolveOptionValueExpr(val, ctx),
-    ])
-    fields.push(`options:${buildObjectLiteral(optEntries)}`)
+  if (markup.options) {
+    const optEntries: [string, string][] = []
+    for (const [k, val] of Object.entries(markup.options)) {
+      if (!k.startsWith('u:')) optEntries.push([k, resolveOptionValueExpr(val, ctx)])
+    }
+    if (optEntries.length > 0) {
+      fields.push(`options:${buildObjectLiteral(optEntries)}`)
+    }
   }
   return `{${fields.join(',')}}`
 }
@@ -816,7 +881,7 @@ function compilePatternToParts(pattern: Model.Pattern, ctx: CompileContext): str
       )
       if (binding.kind === 'custom') {
         ctx.activeNeedsRuntime = true
-        items.push(`...r.parts(${binding.rawExpr})`)
+        items.push(`...${ctx.useRuntime('parts')}(${binding.rawExpr})`)
       } else {
         items.push(`{type:"text",value:${formatBindingToString(binding, undefined, ctx)}}`)
       }
@@ -828,18 +893,15 @@ function compilePatternToParts(pattern: Model.Pattern, ctx: CompileContext): str
         useBinding(binding, ctx)
         if (binding.kind === 'custom') {
           ctx.activeNeedsRuntime = true
-          items.push(`...r.parts(${binding.rawExpr})`)
-        } else if (binding.kind === 'raw') {
-          items.push(
-            `{type:"text",value:String(${formatBindingToString(binding, undefined, ctx)})}`,
-          )
+          items.push(`...${ctx.useRuntime('parts')}(${binding.rawExpr})`)
         } else {
           items.push(`{type:"text",value:${formatBindingToString(binding, undefined, ctx)}}`)
         }
       } else {
+        ctx.activeNeedsRuntime = true
         const fallback = JSON.stringify(`{$${part.arg.name}}`)
         items.push(
-          `{type:"text",value:String(${buildVarAccess(part.arg.name, ctx.hoist)}??${fallback})}`,
+          `{type:"text",value:${ctx.useRuntime('val')}(r,${buildVarAccess(part.arg.name, ctx.hoist)},${fallback})}`,
         )
       }
     } else if (part.arg?.type === 'literal') {
@@ -989,6 +1051,16 @@ function compileVariants(
 
   const selector = selectors[index]
   const binding = ctx.scope.get(selector.name)
+  const isNonSelectable =
+    binding?.kind === 'date' ||
+    (binding?.fnName !== undefined && NON_SELECTABLE_FUNCTIONS.has(binding.fnName))
+  if (isNonSelectable) {
+    const fallbackOnly = variants.filter((variant) => variant.keys[index].type === '*')
+    return fallbackOnly.length
+      ? compileVariants(selectors, fallbackOnly, index + 1, ctx, compilePattern, decls, topSet)
+      : ''
+  }
+
   const isStringSelector = binding?.kind === 'string'
 
   const groups = new Map<string, Model.Variant[]>()
@@ -1033,22 +1105,23 @@ function compileVariants(
     }
     const declaration = options ? `const ${opt}=${options};` : ''
     return (
-      `${declaration}const ${num}=r.numberForSelection(${operand}${args});` +
+      `${declaration}const ${num}=${ctx.useRuntime('numberForSelection')}(${operand}${args});` +
       dispatchVariants(`String(${num})`, exact, `${num}!==null`) +
-      dispatchVariants(`r.selectPlural(${num}${args})`, plural) +
+      dispatchVariants(`${ctx.useRuntime('selectPlural')}(r,${num}${args})`, plural) +
       defaultBranch
     )
   }
 
   const keys = ctx.hoist(`new Set(${JSON.stringify([...groups.keys()])})`)
   const selected = `_s${index}`
+  const selectFn = ctx.useRuntime('select')
 
   if (index === selectors.length - 1 || groups.size === 1) {
-    return dispatchVariants(`r.select(${operand},${keys})`, branches) + defaultBranch
+    return dispatchVariants(`${selectFn}(r,${operand},${keys})`, branches) + defaultBranch
   }
 
   const remaining = `_k${index}`
-  return `{let ${remaining}=${keys};while(${remaining}.size){const ${selected}=r.select(${operand},${remaining});if(${selected}===null)break;${dispatchVariants(selected, branches)}if(${remaining}===${keys})${remaining}=new Set(${keys});${remaining}.delete(${selected});}}${defaultBranch}`
+  return `{let ${remaining}=${keys};while(${remaining}.size){const ${selected}=${selectFn}(r,${operand},${remaining});if(${selected}===null)break;${dispatchVariants(selected, branches)}if(${remaining}===${keys})${remaining}=new Set(${keys});${remaining}.delete(${selected});}}${defaultBranch}`
 }
 
 function hasCustomParts(pattern: Model.Pattern, scope: ReadonlyMap<string, LocalBinding>): boolean {
@@ -1059,14 +1132,18 @@ function hasCustomParts(pattern: Model.Pattern, scope: ReadonlyMap<string, Local
   })
 }
 
-export function compileMessage(ast: Model.Message, hoist: CompileContext['hoist']): string {
+export function compileMessage(
+  ast: Model.Message,
+  hoist: CompileContext['hoist'],
+  useRuntime: CompileContext['useRuntime'] = (name) => RUNTIME_IMPORT_SPECS[name][1],
+): string {
   if (ast.type === 'message' && ast.declarations.length === 0) {
     if (ast.pattern.length === 0) return '""'
     if (ast.pattern.length === 1 && typeof ast.pattern[0] === 'string') {
       return JSON.stringify(ast.pattern[0])
     }
     if (isSimplePatternMessage(ast)) {
-      return compileSimpleMessage(ast, hoist)
+      return compileSimpleMessage(ast, hoist, useRuntime)
     }
   }
 
@@ -1076,6 +1153,7 @@ export function compileMessage(ast: Model.Message, hoist: CompileContext['hoist'
     tempCounter: 0,
     needsRuntime: false,
     hoist,
+    useRuntime,
     activeUsed: new Set(),
     activeNeedsRuntime: false,
   }

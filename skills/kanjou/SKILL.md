@@ -12,11 +12,11 @@ metadata:
 1. **Precompilation-only**: `@kanjou/cli`, `@kanjou/generator`, and `@kanjou/plugin` require **Node >= 20** (ESM-only), and locales must be **precompiled** via `@kanjou/plugin` (`virtual:kanjou/<locale>`) or `@kanjou/cli` (`kanjou compile`) before passing them to `createTranslate` or `TranslateProvider`.
 2. **Three-tier compilation**: Author messages to stay on the lightest tier needed:
 
-   | Tier       | Trigger condition                                                                     | Compiled output               | Runtime cost                                |
-   | ---------- | ------------------------------------------------------------------------------------- | ----------------------------- | ------------------------------------------- |
-   | `plain`    | Empty or plain text with no variables, declarations, `.match`, `:function`, or markup | JS string literal (`"Hola"`)  | Zero function/AST overhead                  |
-   | `simple`   | Text + bare `{$var}` (no `:function`, `.input`/`.local`, `.match`, or markup)         | Inline arrow `(v) => \`...\`` | Zero AST/`MessageFormat`                    |
-   | `compiled` | Any `.input`/`.local`, `.match`, `:function`, or `{#markup}`                          | AOT-compiled JS renderer      | Zero `messageformat` runtime; cached `Intl` |
+   | Tier       | Trigger condition                                                                     | Compiled output                  | Runtime cost                                |
+   | ---------- | ------------------------------------------------------------------------------------- | -------------------------------- | ------------------------------------------- |
+   | `plain`    | Empty or plain text with no variables, declarations, `.match`, `:function`, or markup | JS string literal (`"Hola"`)     | Zero function/AST overhead                  |
+   | `simple`   | Text + bare `{$var}` (no `:function`, `.input`/`.local`, `.match`, or markup)         | Inline arrow `(v, r) => \`...\`` | Zero AST/`MessageFormat`                    |
+   | `compiled` | Any `.input`/`.local`, `.match`, `:function`, or `{#markup}`                          | AOT-compiled JS renderer         | Zero `messageformat` runtime; cached `Intl` |
 
 3. **TypeScript setup**: Enable `skipLibCheck: true` in `tsconfig.json` when using `@kanjou/plugin`. Reference `@kanjou/plugin/client` (for `@kanjou/react`) or `@kanjou/plugin/client/core` (for `@kanjou/core`), and include the generated `locales.kanjou.d.ts` in `tsconfig.json`.
 4. **Reserved locale names**: Keep locale and namespace filenames distinct from `locales` and `namespaces`.

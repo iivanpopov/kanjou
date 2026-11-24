@@ -45,8 +45,5 @@
   },
   "peerDependencies": {
     "react": "catalog:react"
-  },
-  "engines": {
-    "node": ">=20"
   }
 }

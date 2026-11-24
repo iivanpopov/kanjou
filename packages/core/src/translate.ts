@@ -16,7 +16,6 @@ import type {
   MessageFormatOptions,
   MessageId,
   MessagePart,
-  MessageRuntime,
   MessageValues,
   NumberLike,
   PluralRule,
@@ -24,19 +23,8 @@ import type {
 } from './types'
 
 import { getSharedTranslateCache } from './cache'
-import {
-  assertValidMessageFunctions,
-  createMessageRuntime,
-  formatDateTime,
-  formatDisplayName,
-  formatDuration,
-  formatList,
-  formatMessage,
-  formatMessageParts,
-  formatNumber,
-  formatPlural,
-  formatRelativeTime,
-} from './formatters'
+import { getIntlFormatter } from './formatters'
+import { formatMessage, formatMessageParts } from './runtime'
 
 export interface CreateTranslateOptions {
   locale: Locale
@@ -68,46 +56,44 @@ export interface Translate {
 export function createTranslate({
   locale,
   messages,
-  cache,
+  cache = getSharedTranslateCache(),
   options,
 }: CreateTranslateOptions): Translate {
-  assertValidMessageFunctions(options?.functions)
-
-  const resolvedCache = cache ?? getSharedTranslateCache()
-  let runtime: MessageRuntime | undefined
-  const getRuntime = (): MessageRuntime =>
-    (runtime ??= createMessageRuntime(resolvedCache, locale, options))
+  const context = { locale, cache, functions: options?.functions }
 
   const parts: TranslateParts = Object.assign(
     <Id extends MessageId>(id: Id, values?: MessageValues<Id>) =>
-      formatMessageParts(locale, messages, id, values, getRuntime),
+      formatMessageParts(locale, messages, id, values, context),
     {
       unsafe: (id?: string, values?: Record<string, any>) =>
-        formatMessageParts(locale, messages, id ?? '', values, getRuntime),
+        formatMessageParts(locale, messages, id ?? '', values, context),
     },
   )
 
   const translate: Translate = Object.assign(
     <Id extends MessageId>(id: Id, values?: MessageValues<Id>) =>
-      formatMessage(locale, messages, id, values, getRuntime),
+      formatMessage(locale, messages, id, values, context),
     {
       unsafe: (id?: string, values?: Record<string, any>) =>
-        formatMessage(locale, messages, id ?? '', values, getRuntime),
+        formatMessage(locale, messages, id ?? '', values, context),
       parts,
       number: (number: NumberLike, options?: FormatNumberOptions) =>
-        formatNumber(resolvedCache.number, locale, number, options),
+        getIntlFormatter(cache.number, locale, options, Intl.NumberFormat).format(number),
       date: (date: DateLike, options?: FormatDateTimeOptions) =>
-        formatDateTime(resolvedCache.dateTime, locale, date, options),
+        getIntlFormatter(cache.dateTime, locale, options, Intl.DateTimeFormat).format(date),
       plural: (number: number, options?: FormatPluralOptions) =>
-        formatPlural(resolvedCache.plural, locale, number, options),
+        getIntlFormatter(cache.plural, locale, options, Intl.PluralRules).select(number),
       list: (list: ListLike, options?: FormatListOptions) =>
-        formatList(resolvedCache.list, locale, list, options),
+        getIntlFormatter(cache.list, locale, options, Intl.ListFormat).format(list),
       relative: (value: number, unit: Unit, options?: FormatRelativeTimeOptions) =>
-        formatRelativeTime({ cache: resolvedCache.relative, locale, value, unit, options }),
+        getIntlFormatter(cache.relative, locale, options, Intl.RelativeTimeFormat).format(
+          value,
+          unit,
+        ),
       duration: (duration: Duration, options?: FormatDurationOptions) =>
-        formatDuration(resolvedCache.duration, locale, duration, options),
+        getIntlFormatter(cache.duration, locale, options, Intl.DurationFormat).format(duration),
       display: (code: string, options: FormatDisplayNameOptions) =>
-        formatDisplayName(resolvedCache.display, locale, code, options),
+        getIntlFormatter(cache.display, locale, options, Intl.DisplayNames).of(code),
       locale,
       messages,
     },

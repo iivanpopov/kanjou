@@ -28,8 +28,5 @@
     "tsdown": "catalog:tooling",
     "typescript": "catalog:tooling",
     "vitest": "^5.1.1"
-  },
-  "engines": {
-    "node": ">=20"
   }
 }

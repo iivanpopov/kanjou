@@ -8,7 +8,7 @@ import { execFile } from 'node:child_process'
 import fs from 'node:fs/promises'
 import os from 'node:os'
 import path from 'node:path'
-import { describe, it } from 'node:test'
+import { it } from 'node:test'
 import { promisify } from 'node:util'
 
 const execFileAsync = promisify(execFile)
@@ -245,468 +245,462 @@ async function setupTscProject(projectDir: string): Promise<void> {
   )
 }
 
-await describe('@kanjou/plugin', async () => {
-  await it('BUG-1: rejects virtual:kanjou/functions and virtual:kanjou/fn/* with KanjouPluginError and fails tsc check', async () => {
-    await withTempDir(async (dir) => {
-      const localesDir = path.join(dir, 'locales')
-      await fs.mkdir(localesDir, { recursive: true })
-      await fs.writeFile(path.join(localesDir, 'en.ts'), 'export default { hi: "Hi" }', 'utf-8')
+await it('Should reject virtual:kanjou/functions and virtual:kanjou/fn/* with KanjouPluginError and fail tsc check', async () => {
+  await withTempDir(async (dir) => {
+    const localesDir = path.join(dir, 'locales')
+    await fs.mkdir(localesDir, { recursive: true })
+    await fs.writeFile(path.join(localesDir, 'en.ts'), 'export default { hi: "Hi" }', 'utf-8')
 
-      const plugin = createPlugin({ localesDir, dts: false })
-      const ctx = createContexts()
+    const plugin = createPlugin({ localesDir, dts: false })
+    const ctx = createContexts()
 
-      const badIds = [
-        '\0virtual:kanjou/functions',
-        '\0virtual:kanjou/functions?t=1',
-        '\0virtual:kanjou/fn/number',
-        '\0virtual:kanjou/fn/date?t=2',
-      ]
-      await Promise.all(
-        badIds.map((badId) =>
-          assert.rejects(
-            async () => {
-              await callLoad(plugin, ctx.pluginContext, badId)
-            },
-            (err: unknown) => {
-              assert.ok(err instanceof KanjouPluginError)
-              assert.match(err.message, /removed in favour of AOT-compiled built-in functions/)
-              assert.ok(err.virtualId)
-              return true
-            },
-          ),
+    const badIds = [
+      '\0virtual:kanjou/functions',
+      '\0virtual:kanjou/functions?t=1',
+      '\0virtual:kanjou/fn/number',
+      '\0virtual:kanjou/fn/date?t=2',
+    ]
+    await Promise.all(
+      badIds.map((badId) =>
+        assert.rejects(
+          async () => {
+            await callLoad(plugin, ctx.pluginContext, badId)
+          },
+          (err: unknown) => {
+            assert.ok(err instanceof KanjouPluginError)
+            assert.match(err.message, /removed in favour of AOT-compiled built-in functions/)
+            assert.ok(err.virtualId)
+            return true
+          },
         ),
-      )
+      ),
+    )
 
-      await setupTscProject(dir)
-      await fs.mkdir(path.join(dir, 'src'), { recursive: true })
+    await setupTscProject(dir)
+    await fs.mkdir(path.join(dir, 'src'), { recursive: true })
+    await fs.writeFile(
+      path.join(dir, 'src', 'good.ts'),
+      `/// <reference types="@kanjou/plugin/client" />\nimport en from 'virtual:kanjou/en'\nexport const msg = en['hi']\n`,
+      'utf-8',
+    )
+    const goodResult = await runTscNoEmit(dir)
+    assert.equal(goodResult.ok, true, goodResult.output)
+
+    await fs.writeFile(
+      path.join(dir, 'src', 'bad.ts'),
+      `/// <reference types="@kanjou/plugin/client" />\nimport functions from 'virtual:kanjou/functions'\nconst v: Readonly<Record<string, unknown>> = functions\nexport default v\n`,
+      'utf-8',
+    )
+
+    const result = await runTscNoEmit(dir)
+    assert.equal(result.ok, false)
+    assert.match(result.output, /TS2322|not assignable to type/)
+  })
+})
+
+await it('Should resolve query-suffixed virtual ids and invalidate tracked Vite modules on watchChange and hotUpdate', async () => {
+  await withTempDir(async (dir) => {
+    const localesDir = path.join(dir, 'locales')
+    await fs.mkdir(localesDir, { recursive: true })
+    const enPath = path.join(localesDir, 'en.ts')
+    const configPath = path.join(dir, 'kanjou.config.json')
+    await fs.writeFile(enPath, 'export default { hello: "Hello" }', 'utf-8')
+    await fs.writeFile(configPath, JSON.stringify({ localesDir: './locales' }), 'utf-8')
+
+    const plugin = createPlugin()
+    await callViteConfigResolved(plugin, dir)
+
+    const { graph, modules, invalidatedIds } = createMockModuleGraph()
+    const queriedId = '\0virtual:kanjou/en?t=12345'
+    const baseId = '\0virtual:kanjou/en'
+    const localesId = '\0virtual:kanjou/locales'
+
+    const queriedMod = createPartialStub<ViteEnvModule>({ id: queriedId })
+    const baseMod = createPartialStub<ViteEnvModule>({ id: baseId })
+    const localesMod = createPartialStub<ViteEnvModule>({ id: localesId })
+    modules.set(queriedId, queriedMod)
+    modules.set(baseId, baseMod)
+    modules.set(localesId, localesMod)
+
+    const env = createPartialStub<ViteDevEnv>({ moduleGraph: graph })
+    await callViteConfigureServer(plugin, {
+      environments: { client: env, ssr: env },
+      watcher: createMockWatcher(),
+    })
+
+    const ctx = createContexts()
+    await callBuildStart(plugin, ctx.buildContext)
+
+    assert.equal(callResolveId(plugin, ctx.pluginContext, 'virtual:kanjou/en?t=12345'), queriedId)
+    const enCode = await callLoad(plugin, ctx.pluginContext, queriedId)
+    assert.equal(typeof enCode, 'string')
+    assert.match(enCode as string, /"Hello"/)
+
+    await callLoad(plugin, ctx.pluginContext, localesId)
+
+    await callWatchChange(plugin, ctx.buildContext, enPath, 'update')
+    assert.ok(invalidatedIds.includes(baseId))
+    assert.ok(invalidatedIds.includes(queriedId))
+
+    invalidatedIds.length = 0
+    await callWatchChange(plugin, ctx.buildContext, configPath, 'update')
+    assert.ok(invalidatedIds.includes(baseId))
+    assert.ok(invalidatedIds.includes(localesId))
+
+    invalidatedIds.length = 0
+    const hotUpdate = plugin.vite?.hotUpdate
+    assert.equal(typeof hotUpdate, 'function')
+    const existingMod = createPartialStub<ViteEnvModule>({ id: enPath })
+    const hmrResult = await (hotUpdate as ViteHotUpdateHook).call(
+      createPartialStub<ViteHotUpdateCtx>({ environment: env }),
+      createPartialStub<ViteHotUpdateArg>({ file: enPath, modules: [existingMod] }),
+    )
+    assert.ok(Array.isArray(hmrResult))
+    assert.ok(hmrResult.includes(existingMod))
+    assert.ok(hmrResult.includes(baseMod))
+    assert.ok(hmrResult.includes(queriedMod))
+    assert.ok(invalidatedIds.includes(baseId))
+
+    invalidatedIds.length = 0
+    const configHmr = await (hotUpdate as ViteHotUpdateHook).call(
+      createPartialStub<ViteHotUpdateCtx>({ environment: env }),
+      createPartialStub<ViteHotUpdateArg>({ file: configPath, modules: [] }),
+    )
+    assert.ok(Array.isArray(configHmr))
+    assert.ok(configHmr.includes(localesMod))
+    assert.ok(invalidatedIds.includes(localesId))
+  })
+})
+
+await it('Should invalidate legacy Vite moduleGraph when server.environments is absent', async () => {
+  await withTempDir(async (dir) => {
+    const localesDir = path.join(dir, 'locales')
+    await fs.mkdir(localesDir, { recursive: true })
+    const enPath = path.join(localesDir, 'en.ts')
+    await fs.writeFile(enPath, 'export default { hello: "Hello" }', 'utf-8')
+
+    const plugin = createPlugin({ localesDir: './locales', dts: false })
+    await callViteConfigResolved(plugin, dir)
+
+    const { graph, modules, invalidatedIds } = createMockLegacyGraph()
+    const baseId = '\0virtual:kanjou/en'
+    modules.set(baseId, createPartialStub<ViteLegacyModule>({ id: baseId }))
+
+    await callViteConfigureServer(plugin, {
+      moduleGraph: graph,
+      watcher: createMockWatcher(),
+    })
+
+    const ctx = createContexts()
+    await callBuildStart(plugin, ctx.buildContext)
+    await callLoad(plugin, ctx.pluginContext, baseId)
+    await callWatchChange(plugin, ctx.buildContext, enPath, 'update')
+
+    assert.deepEqual(invalidatedIds, [baseId])
+  })
+})
+
+await it('Should resolve config, localesDir, and dts.outDir relative to project root in Vite and Webpack', async () => {
+  await withTempDir(async (projectRoot) => {
+    await withTempDir(async (otherCwd) => {
+      const customLocales = path.join(projectRoot, 'i18n')
+      const customDts = path.join(projectRoot, 'types-out')
+      await fs.mkdir(customLocales, { recursive: true })
       await fs.writeFile(
-        path.join(dir, 'src', 'good.ts'),
-        `/// <reference types="@kanjou/plugin/client" />\nimport en from 'virtual:kanjou/en'\nexport const msg = en['hi']\n`,
+        path.join(customLocales, 'en.ts'),
+        'export default { title: "Title" }',
         'utf-8',
       )
-      const goodResult = await runTscNoEmit(dir)
-      assert.equal(goodResult.ok, true, goodResult.output)
-
       await fs.writeFile(
-        path.join(dir, 'src', 'bad.ts'),
-        `/// <reference types="@kanjou/plugin/client" />\nimport functions from 'virtual:kanjou/functions'\nconst v: Readonly<Record<string, unknown>> = functions\nexport default v\n`,
+        path.join(projectRoot, 'kanjou.config.json'),
+        JSON.stringify({
+          localesDir: './i18n',
+          dts: { outDir: './types-out' },
+        }),
         'utf-8',
       )
 
-      const result = await runTscNoEmit(dir)
-      assert.equal(result.ok, false)
-      assert.match(result.output, /TS2322|not assignable to type/)
-    })
-  })
+      const prevCwd = process.cwd()
+      process.chdir(otherCwd)
+      try {
+        const vitePlugin = createPlugin()
+        await callViteConfigResolved(vitePlugin, projectRoot)
+        const viteCtx = createContexts()
+        await callBuildStart(vitePlugin, viteCtx.buildContext)
 
-  await it('BUG-2: resolves query-suffixed virtual ids and invalidates tracked Vite modules on watchChange and hotUpdate', async () => {
-    await withTempDir(async (dir) => {
-      const localesDir = path.join(dir, 'locales')
-      await fs.mkdir(localesDir, { recursive: true })
-      const enPath = path.join(localesDir, 'en.ts')
-      const configPath = path.join(dir, 'kanjou.config.json')
-      await fs.writeFile(enPath, 'export default { hello: "Hello" }', 'utf-8')
-      await fs.writeFile(configPath, JSON.stringify({ localesDir: './locales' }), 'utf-8')
+        assert.ok(viteCtx.watchedFiles.has(path.join(projectRoot, 'kanjou.config.json')))
+        const viteDts = await fs.readFile(path.join(customDts, 'locales.kanjou.d.ts'), 'utf-8')
+        assert.match(viteDts, /title/)
 
-      const plugin = createPlugin()
-      await callViteConfigResolved(plugin, dir)
+        await fs.rm(customDts, { recursive: true, force: true })
 
-      const { graph, modules, invalidatedIds } = createMockModuleGraph()
-      const queriedId = '\0virtual:kanjou/en?t=12345'
-      const baseId = '\0virtual:kanjou/en'
-      const localesId = '\0virtual:kanjou/locales'
-
-      const queriedMod = createPartialStub<ViteEnvModule>({ id: queriedId })
-      const baseMod = createPartialStub<ViteEnvModule>({ id: baseId })
-      const localesMod = createPartialStub<ViteEnvModule>({ id: localesId })
-      modules.set(queriedId, queriedMod)
-      modules.set(baseId, baseMod)
-      modules.set(localesId, localesMod)
-
-      const env = createPartialStub<ViteDevEnv>({ moduleGraph: graph })
-      await callViteConfigureServer(plugin, {
-        environments: { client: env, ssr: env },
-        watcher: createMockWatcher(),
-      })
-
-      const ctx = createContexts()
-      await callBuildStart(plugin, ctx.buildContext)
-
-      assert.equal(callResolveId(plugin, ctx.pluginContext, 'virtual:kanjou/en?t=12345'), queriedId)
-      const enCode = await callLoad(plugin, ctx.pluginContext, queriedId)
-      assert.equal(typeof enCode, 'string')
-      assert.match(enCode as string, /"Hello"/)
-
-      await callLoad(plugin, ctx.pluginContext, localesId)
-
-      await callWatchChange(plugin, ctx.buildContext, enPath, 'update')
-      assert.ok(invalidatedIds.includes(baseId))
-      assert.ok(invalidatedIds.includes(queriedId))
-
-      invalidatedIds.length = 0
-      await callWatchChange(plugin, ctx.buildContext, configPath, 'update')
-      assert.ok(invalidatedIds.includes(baseId))
-      assert.ok(invalidatedIds.includes(localesId))
-
-      invalidatedIds.length = 0
-      const hotUpdate = plugin.vite?.hotUpdate
-      assert.equal(typeof hotUpdate, 'function')
-      const existingMod = createPartialStub<ViteEnvModule>({ id: enPath })
-      const hmrResult = await (hotUpdate as ViteHotUpdateHook).call(
-        createPartialStub<ViteHotUpdateCtx>({ environment: env }),
-        createPartialStub<ViteHotUpdateArg>({ file: enPath, modules: [existingMod] }),
-      )
-      assert.ok(Array.isArray(hmrResult))
-      assert.ok(hmrResult.includes(existingMod))
-      assert.ok(hmrResult.includes(baseMod))
-      assert.ok(hmrResult.includes(queriedMod))
-      assert.ok(invalidatedIds.includes(baseId))
-
-      invalidatedIds.length = 0
-      const configHmr = await (hotUpdate as ViteHotUpdateHook).call(
-        createPartialStub<ViteHotUpdateCtx>({ environment: env }),
-        createPartialStub<ViteHotUpdateArg>({ file: configPath, modules: [] }),
-      )
-      assert.ok(Array.isArray(configHmr))
-      assert.ok(configHmr.includes(localesMod))
-      assert.ok(invalidatedIds.includes(localesId))
-    })
-  })
-
-  await it('BUG-2b: invalidates legacy Vite moduleGraph when server.environments is absent', async () => {
-    await withTempDir(async (dir) => {
-      const localesDir = path.join(dir, 'locales')
-      await fs.mkdir(localesDir, { recursive: true })
-      const enPath = path.join(localesDir, 'en.ts')
-      await fs.writeFile(enPath, 'export default { hello: "Hello" }', 'utf-8')
-
-      const plugin = createPlugin({ localesDir: './locales', dts: false })
-      await callViteConfigResolved(plugin, dir)
-
-      const { graph, modules, invalidatedIds } = createMockLegacyGraph()
-      const baseId = '\0virtual:kanjou/en'
-      modules.set(baseId, createPartialStub<ViteLegacyModule>({ id: baseId }))
-
-      await callViteConfigureServer(plugin, {
-        moduleGraph: graph,
-        watcher: createMockWatcher(),
-      })
-
-      const ctx = createContexts()
-      await callBuildStart(plugin, ctx.buildContext)
-      await callLoad(plugin, ctx.pluginContext, baseId)
-      await callWatchChange(plugin, ctx.buildContext, enPath, 'update')
-
-      assert.deepEqual(invalidatedIds, [baseId])
-    })
-  })
-
-  await it('BUG-3: vite.configResolved and webpack resolve config, localesDir, and dts.outDir relative to project root', async () => {
-    await withTempDir(async (projectRoot) => {
-      await withTempDir(async (otherCwd) => {
-        const customLocales = path.join(projectRoot, 'i18n')
-        const customDts = path.join(projectRoot, 'types-out')
-        await fs.mkdir(customLocales, { recursive: true })
-        await fs.writeFile(
-          path.join(customLocales, 'en.ts'),
-          'export default { title: "Title" }',
-          'utf-8',
-        )
-        await fs.writeFile(
-          path.join(projectRoot, 'kanjou.config.json'),
-          JSON.stringify({
-            localesDir: './i18n',
-            dts: { outDir: './types-out' },
+        const wpPlugin = createPlugin()
+        assert.ok(wpPlugin.webpack)
+        wpPlugin.webpack(
+          createPartialStub<WebpackCompilerArg>({
+            options: createPartialStub<WebpackCompilerArg['options']>({ context: projectRoot }),
           }),
-          'utf-8',
         )
+        const wpCtx = createContexts()
+        await callBuildStart(wpPlugin, wpCtx.buildContext)
 
-        const prevCwd = process.cwd()
-        process.chdir(otherCwd)
-        try {
-          const vitePlugin = createPlugin()
-          await callViteConfigResolved(vitePlugin, projectRoot)
-          const viteCtx = createContexts()
-          await callBuildStart(vitePlugin, viteCtx.buildContext)
-
-          assert.ok(viteCtx.watchedFiles.has(path.join(projectRoot, 'kanjou.config.json')))
-          const viteDts = await fs.readFile(path.join(customDts, 'locales.kanjou.d.ts'), 'utf-8')
-          assert.match(viteDts, /title/)
-
-          await fs.rm(customDts, { recursive: true, force: true })
-
-          const wpPlugin = createPlugin()
-          assert.ok(wpPlugin.webpack)
-          wpPlugin.webpack(
-            createPartialStub<WebpackCompilerArg>({
-              options: createPartialStub<WebpackCompilerArg['options']>({ context: projectRoot }),
-            }),
-          )
-          const wpCtx = createContexts()
-          await callBuildStart(wpPlugin, wpCtx.buildContext)
-
-          const wpDts = await fs.readFile(path.join(customDts, 'locales.kanjou.d.ts'), 'utf-8')
-          assert.match(wpDts, /title/)
-        } finally {
-          process.chdir(prevCwd)
-        }
-      })
+        const wpDts = await fs.readFile(path.join(customDts, 'locales.kanjou.d.ts'), 'utf-8')
+        assert.match(wpDts, /title/)
+      } finally {
+        process.chdir(prevCwd)
+      }
     })
   })
+})
 
-  await it('BUG-4: dts.outDir inside localesDir does not create phantom locales across repeated buildStart runs', async (t) => {
-    await withTempDir(async (dir) => {
-      const localesDir = path.join(dir, 'locales')
-      await fs.mkdir(localesDir, { recursive: true })
-      await fs.writeFile(path.join(localesDir, 'en.ts'), 'export default { hi: "Hi" }', 'utf-8')
+await it('Should exclude dts.outDir inside localesDir so repeated buildStart runs do not create phantom locales', async (t) => {
+  await withTempDir(async (dir) => {
+    const localesDir = path.join(dir, 'locales')
+    await fs.mkdir(localesDir, { recursive: true })
+    await fs.writeFile(path.join(localesDir, 'en.ts'), 'export default { hi: "Hi" }', 'utf-8')
 
-      const plugin = createPlugin({ localesDir, dts: { outDir: localesDir } })
-      const ctx = createContexts()
+    const plugin = createPlugin({ localesDir, dts: { outDir: localesDir } })
+    const ctx = createContexts()
 
-      await callBuildStart(plugin, ctx.buildContext)
-      await callBuildStart(plugin, ctx.buildContext)
+    await callBuildStart(plugin, ctx.buildContext)
+    await callBuildStart(plugin, ctx.buildContext)
 
-      const localesCode = (await callLoad(
-        plugin,
-        ctx.pluginContext,
-        '\0virtual:kanjou/locales',
-      )) as string
-      assert.doesNotMatch(localesCode, /locales\.kanjou/)
-      assert.match(localesCode, /"en"/)
+    const localesCode = (await callLoad(
+      plugin,
+      ctx.pluginContext,
+      '\0virtual:kanjou/locales',
+    )) as string
+    assert.doesNotMatch(localesCode, /locales\.kanjou/)
+    assert.match(localesCode, /"en"/)
 
-      const dts = await fs.readFile(path.join(localesDir, 'locales.kanjou.d.ts'), 'utf-8')
-      assert.doesNotMatch(dts, /locales\.kanjou\.d/)
+    const dts = await fs.readFile(path.join(localesDir, 'locales.kanjou.d.ts'), 'utf-8')
+    assert.doesNotMatch(dts, /locales\.kanjou\.d/)
 
-      const emitSpy = t.mock.method(Generator.prototype, 'emitDts', () => Promise.resolve([]))
-      await callWatchChange(plugin, ctx.buildContext, path.join(localesDir, 'locales.kanjou.d.ts'))
-      await callWatchChange(plugin, ctx.buildContext, path.join(localesDir, 'extra.d.mts'))
-      await callWatchChange(plugin, ctx.buildContext, path.join(localesDir, 'extra.d.cts'))
-      assert.equal(emitSpy.mock.callCount(), 0)
-    })
+    const emitSpy = t.mock.method(Generator.prototype, 'emitDts', () => Promise.resolve([]))
+    await callWatchChange(plugin, ctx.buildContext, path.join(localesDir, 'locales.kanjou.d.ts'))
+    await callWatchChange(plugin, ctx.buildContext, path.join(localesDir, 'extra.d.mts'))
+    await callWatchChange(plugin, ctx.buildContext, path.join(localesDir, 'extra.d.cts'))
+    assert.equal(emitSpy.mock.callCount(), 0)
   })
+})
 
-  await it('BUG-5: symlinked localesDir triggers emitDts when a file inside the real target directory changes', async () => {
-    await withTempDir(async (dir) => {
-      const realLocalesDir = path.join(dir, 'real-locales')
-      const linkLocalesDir = path.join(dir, 'locales-link')
-      const dtsDir = path.join(dir, 'generated')
-      await fs.mkdir(realLocalesDir, { recursive: true })
+await it('Should trigger emitDts for a symlinked localesDir when a file inside the real target directory changes', async () => {
+  await withTempDir(async (dir) => {
+    const realLocalesDir = path.join(dir, 'real-locales')
+    const linkLocalesDir = path.join(dir, 'locales-link')
+    const dtsDir = path.join(dir, 'generated')
+    await fs.mkdir(realLocalesDir, { recursive: true })
+    await fs.writeFile(
+      path.join(realLocalesDir, 'en.ts'),
+      'export default { first: "First" }',
+      'utf-8',
+    )
+    await fs.symlink(realLocalesDir, linkLocalesDir, 'dir')
+
+    const plugin = createPlugin({ localesDir: linkLocalesDir, dts: { outDir: dtsDir } })
+    await callViteConfigResolved(plugin, dir)
+    const ctx = createContexts()
+    await callBuildStart(plugin, ctx.buildContext)
+
+    await fs.writeFile(
+      path.join(realLocalesDir, 'en.ts'),
+      'export default { first: "First", second: "Second" }',
+      'utf-8',
+    )
+    await callWatchChange(plugin, ctx.buildContext, path.join(realLocalesDir, 'en.ts'), 'update')
+
+    const dts = await fs.readFile(path.join(dtsDir, 'locales.kanjou.d.ts'), 'utf-8')
+    assert.match(dts, /second/)
+  })
+})
+
+await it('Should watch an out-of-root localesDir and invalidate the locales virtual module when a new locale is added', async () => {
+  await withTempDir(async (projectRoot) => {
+    await withTempDir(async (externalParent) => {
+      const outsideLocales = path.join(externalParent, 'shared-locales')
+      const dtsDir = path.join(projectRoot, 'generated')
+      await fs.mkdir(outsideLocales, { recursive: true })
       await fs.writeFile(
-        path.join(realLocalesDir, 'en.ts'),
-        'export default { first: "First" }',
-        'utf-8',
-      )
-      await fs.symlink(realLocalesDir, linkLocalesDir, 'dir')
-
-      const plugin = createPlugin({ localesDir: linkLocalesDir, dts: { outDir: dtsDir } })
-      await callViteConfigResolved(plugin, dir)
-      const ctx = createContexts()
-      await callBuildStart(plugin, ctx.buildContext)
-
-      await fs.writeFile(
-        path.join(realLocalesDir, 'en.ts'),
-        'export default { first: "First", second: "Second" }',
-        'utf-8',
-      )
-      await callWatchChange(plugin, ctx.buildContext, path.join(realLocalesDir, 'en.ts'), 'update')
-
-      const dts = await fs.readFile(path.join(dtsDir, 'locales.kanjou.d.ts'), 'utf-8')
-      assert.match(dts, /second/)
-    })
-  })
-
-  await it('BUG-6: out-of-root localesDir is watched in buildStart and configureServer, and new locale invalidates locales virtual module', async () => {
-    await withTempDir(async (projectRoot) => {
-      await withTempDir(async (externalParent) => {
-        const outsideLocales = path.join(externalParent, 'shared-locales')
-        const dtsDir = path.join(projectRoot, 'generated')
-        await fs.mkdir(outsideLocales, { recursive: true })
-        await fs.writeFile(
-          path.join(outsideLocales, 'en.ts'),
-          'export default { hello: "Hello" }',
-          'utf-8',
-        )
-
-        const plugin = createPlugin({ localesDir: outsideLocales, dts: { outDir: dtsDir } })
-        await callViteConfigResolved(plugin, projectRoot)
-
-        const watcherAdded: string[] = []
-        const { graph, modules, invalidatedIds } = createMockModuleGraph()
-        const localesVid = '\0virtual:kanjou/locales'
-        modules.set(localesVid, createPartialStub<ViteEnvModule>({ id: localesVid }))
-        const env = createPartialStub<ViteDevEnv>({ moduleGraph: graph })
-
-        await callViteConfigureServer(plugin, {
-          environments: { client: env, ssr: env },
-          watcher: createMockWatcher(watcherAdded),
-        })
-
-        const realOutsideLocales = await fs.realpath(outsideLocales)
-        assert.ok(watcherAdded.includes(realOutsideLocales))
-
-        const ctx = createContexts()
-        await callBuildStart(plugin, ctx.buildContext)
-        assert.ok(ctx.watchedFiles.has(realOutsideLocales))
-
-        await callLoad(plugin, ctx.pluginContext, localesVid)
-
-        const frPath = path.join(outsideLocales, 'fr.ts')
-        await fs.writeFile(frPath, 'export default { hello: "Bonjour" }', 'utf-8')
-        await callWatchChange(plugin, ctx.buildContext, frPath, 'create')
-
-        assert.ok(invalidatedIds.includes(localesVid))
-        const dts = await fs.readFile(path.join(dtsDir, 'locales.kanjou.d.ts'), 'utf-8')
-        assert.match(dts, /"fr"/)
-      })
-    })
-  })
-
-  await it('BUG-7: client.d.ts and client-core.d.ts enforce FlatLocale and LocaleNamespaces for mixed locales', async () => {
-    await withTempDir(async (dir) => {
-      const localesDir = path.join(dir, 'locales')
-      const dtsDir = path.join(dir, 'generated')
-      await fs.mkdir(path.join(localesDir, 'en'), { recursive: true })
-      await fs.mkdir(path.join(localesDir, 'uk'), { recursive: true })
-      await fs.writeFile(
-        path.join(localesDir, 'en.ts'),
+        path.join(outsideLocales, 'en.ts'),
         'export default { hello: "Hello" }',
         'utf-8',
       )
-      await fs.writeFile(
-        path.join(localesDir, 'ru.ts'),
-        'export default { hello: "Привет" }',
-        'utf-8',
-      )
-      await fs.writeFile(
-        path.join(localesDir, 'en', 'common.ts'),
-        'export default { save: "Save" }',
-        'utf-8',
-      )
-      await fs.writeFile(
-        path.join(localesDir, 'uk', 'common.ts'),
-        'export default { save: "Зберегти" }',
-        'utf-8',
-      )
 
-      const plugin = createPlugin({ localesDir, dts: { outDir: dtsDir } })
+      const plugin = createPlugin({ localesDir: outsideLocales, dts: { outDir: dtsDir } })
+      await callViteConfigResolved(plugin, projectRoot)
+
+      const watcherAdded: string[] = []
+      const { graph, modules, invalidatedIds } = createMockModuleGraph()
+      const localesVid = '\0virtual:kanjou/locales'
+      modules.set(localesVid, createPartialStub<ViteEnvModule>({ id: localesVid }))
+      const env = createPartialStub<ViteDevEnv>({ moduleGraph: graph })
+
+      await callViteConfigureServer(plugin, {
+        environments: { client: env, ssr: env },
+        watcher: createMockWatcher(watcherAdded),
+      })
+
+      const realOutsideLocales = await fs.realpath(outsideLocales)
+      assert.ok(watcherAdded.includes(realOutsideLocales))
+
       const ctx = createContexts()
       await callBuildStart(plugin, ctx.buildContext)
+      assert.ok(ctx.watchedFiles.has(realOutsideLocales))
 
-      await setupTscProject(dir)
-      await fs.mkdir(path.join(dir, 'src'), { recursive: true })
+      await callLoad(plugin, ctx.pluginContext, localesVid)
 
-      await fs.writeFile(
-        path.join(dir, 'src', 'valid.ts'),
-        `import locales from 'virtual:kanjou/locales'
+      const frPath = path.join(outsideLocales, 'fr.ts')
+      await fs.writeFile(frPath, 'export default { hello: "Bonjour" }', 'utf-8')
+      await callWatchChange(plugin, ctx.buildContext, frPath, 'create')
+
+      assert.ok(invalidatedIds.includes(localesVid))
+      const dts = await fs.readFile(path.join(dtsDir, 'locales.kanjou.d.ts'), 'utf-8')
+      assert.match(dts, /"fr"/)
+    })
+  })
+})
+
+await it('Should enforce FlatLocale and LocaleNamespaces in client.d.ts and client-core.d.ts for mixed locales', async () => {
+  await withTempDir(async (dir) => {
+    const localesDir = path.join(dir, 'locales')
+    const dtsDir = path.join(dir, 'generated')
+    await fs.mkdir(path.join(localesDir, 'en'), { recursive: true })
+    await fs.mkdir(path.join(localesDir, 'uk'), { recursive: true })
+    await fs.writeFile(path.join(localesDir, 'en.ts'), 'export default { hello: "Hello" }', 'utf-8')
+    await fs.writeFile(
+      path.join(localesDir, 'ru.ts'),
+      'export default { hello: "Привет" }',
+      'utf-8',
+    )
+    await fs.writeFile(
+      path.join(localesDir, 'en', 'common.ts'),
+      'export default { save: "Save" }',
+      'utf-8',
+    )
+    await fs.writeFile(
+      path.join(localesDir, 'uk', 'common.ts'),
+      'export default { save: "Зберегти" }',
+      'utf-8',
+    )
+
+    const plugin = createPlugin({ localesDir, dts: { outDir: dtsDir } })
+    const ctx = createContexts()
+    await callBuildStart(plugin, ctx.buildContext)
+
+    await setupTscProject(dir)
+    await fs.mkdir(path.join(dir, 'src'), { recursive: true })
+
+    await fs.writeFile(
+      path.join(dir, 'src', 'valid.ts'),
+      `import locales from 'virtual:kanjou/locales'
 import namespaces from 'virtual:kanjou/namespaces'
 export const p1 = locales['en']()
 export const p2 = locales['ru']()
 export const p3 = namespaces['en']['common']()
 export const p4 = namespaces['uk']['common']()
 `,
-        'utf-8',
-      )
-      const validResult = await runTscNoEmit(dir)
-      assert.equal(validResult.ok, true, validResult.output)
+      'utf-8',
+    )
+    const validResult = await runTscNoEmit(dir)
+    assert.equal(validResult.ok, true, validResult.output)
 
-      await fs.writeFile(
-        path.join(dir, 'src', 'invalid-flat.ts'),
-        `import locales from 'virtual:kanjou/locales'\nexport const bad = locales['uk']()\n`,
-        'utf-8',
-      )
-      const invalidFlatResult = await runTscNoEmit(dir)
-      assert.equal(invalidFlatResult.ok, false)
+    await fs.writeFile(
+      path.join(dir, 'src', 'invalid-flat.ts'),
+      `import locales from 'virtual:kanjou/locales'\nexport const bad = locales['uk']()\n`,
+      'utf-8',
+    )
+    const invalidFlatResult = await runTscNoEmit(dir)
+    assert.equal(invalidFlatResult.ok, false)
 
-      await fs.rm(path.join(dir, 'src', 'invalid-flat.ts'))
-      await fs.writeFile(
-        path.join(dir, 'src', 'invalid-ns.ts'),
-        `import namespaces from 'virtual:kanjou/namespaces'\nexport const bad = namespaces['ru']['common']()\n`,
-        'utf-8',
-      )
-      const invalidNsResult = await runTscNoEmit(dir)
-      assert.equal(invalidNsResult.ok, false)
+    await fs.rm(path.join(dir, 'src', 'invalid-flat.ts'))
+    await fs.writeFile(
+      path.join(dir, 'src', 'invalid-ns.ts'),
+      `import namespaces from 'virtual:kanjou/namespaces'\nexport const bad = namespaces['ru']['common']()\n`,
+      'utf-8',
+    )
+    const invalidNsResult = await runTscNoEmit(dir)
+    assert.equal(invalidNsResult.ok, false)
 
-      await fs.rm(path.join(dir, 'src', 'invalid-ns.ts'))
-      const corePlugin = createPlugin({
-        localesDir,
-        dts: { outDir: dtsDir, module: '@kanjou/core' },
-      })
-      await callBuildStart(corePlugin, ctx.buildContext)
-      const coreValidResult = await runTscNoEmit(dir)
-      assert.equal(coreValidResult.ok, true, coreValidResult.output)
+    await fs.rm(path.join(dir, 'src', 'invalid-ns.ts'))
+    const corePlugin = createPlugin({
+      localesDir,
+      dts: { outDir: dtsDir, module: '@kanjou/core' },
     })
+    await callBuildStart(corePlugin, ctx.buildContext)
+    const coreValidResult = await runTscNoEmit(dir)
+    assert.equal(coreValidResult.ok, true, coreValidResult.output)
+  })
+})
+
+await it('Should handle Windows-style separator mismatches between file paths and localesDir', async (t) => {
+  const emitRoots: string[] = []
+  t.mock.method(path, 'resolve', (...args: string[]) => path.win32.resolve(...args))
+  t.mock.method(path, 'relative', (from: string, to: string) => path.win32.relative(from, to))
+  t.mock.method(path, 'isAbsolute', (p: string) => path.win32.isAbsolute(p))
+  t.mock.method(path, 'parse', (p: string) => path.win32.parse(p))
+  t.mock.method(path, 'join', (...args: string[]) => path.win32.join(...args))
+  t.mock.method(Generator.prototype, 'emitDts', function stubEmitDts(this: Generator) {
+    emitRoots.push(this.config.localesDir)
+    return Promise.resolve([])
   })
 
-  await it('BUG-8: handles Windows-style separator mismatches (C:/proj/locales/en.ts vs C:\\proj\\locales)', async (t) => {
-    const emitRoots: string[] = []
-    t.mock.method(path, 'resolve', (...args: string[]) => path.win32.resolve(...args))
-    t.mock.method(path, 'relative', (from: string, to: string) => path.win32.relative(from, to))
-    t.mock.method(path, 'isAbsolute', (p: string) => path.win32.isAbsolute(p))
-    t.mock.method(path, 'parse', (p: string) => path.win32.parse(p))
-    t.mock.method(path, 'join', (...args: string[]) => path.win32.join(...args))
-    t.mock.method(Generator.prototype, 'emitDts', function stubEmitDts(this: Generator) {
-      emitRoots.push(this.config.localesDir)
-      return Promise.resolve([])
-    })
+  const plugin = createPlugin({
+    localesDir: './locales',
+    dts: { outDir: './generated' },
+  })
+  await callViteConfigResolved(plugin, 'C:\\proj')
+
+  const ctx = createContexts()
+  await callWatchChange(plugin, ctx.buildContext, 'C:/proj/locales/en.ts', 'update')
+  await callWatchChange(plugin, ctx.buildContext, 'C:/proj/locales/en/common.ts', 'update')
+  await callWatchChange(plugin, ctx.buildContext, 'C:/proj/other/en.ts', 'update')
+
+  assert.deepEqual(emitRoots, ['C:\\proj\\locales', 'C:\\proj\\locales'])
+})
+
+await it('Should skip emitDts for unrelated files and non-base locale edits while regenerating on base locale and structural events', async (t) => {
+  await withTempDir(async (dir) => {
+    const localesDir = path.join(dir, 'locales')
+    const dtsDir = path.join(dir, 'generated')
+    await fs.mkdir(localesDir, { recursive: true })
+    const enPath = path.join(localesDir, 'en.ts')
+    const ukPath = path.join(localesDir, 'uk.ts')
+    const notesPath = path.join(localesDir, 'notes.txt')
+    const frPath = path.join(localesDir, 'fr.ts')
+
+    await fs.writeFile(enPath, 'export default { hello: "Hello" }', 'utf-8')
+    await fs.writeFile(ukPath, 'export default { hello: "Привіт" }', 'utf-8')
+    await fs.writeFile(notesPath, 'some notes', 'utf-8')
 
     const plugin = createPlugin({
-      localesDir: './locales',
-      dts: { outDir: './generated' },
+      baseLocale: 'en',
+      localesDir,
+      dts: { outDir: dtsDir },
     })
-    await callViteConfigResolved(plugin, 'C:\\proj')
-
+    await callViteConfigResolved(plugin, dir)
     const ctx = createContexts()
-    await callWatchChange(plugin, ctx.buildContext, 'C:/proj/locales/en.ts', 'update')
-    await callWatchChange(plugin, ctx.buildContext, 'C:/proj/locales/en/common.ts', 'update')
-    await callWatchChange(plugin, ctx.buildContext, 'C:/proj/other/en.ts', 'update')
+    await callBuildStart(plugin, ctx.buildContext)
 
-    assert.deepEqual(emitRoots, ['C:\\proj\\locales', 'C:\\proj\\locales'])
-  })
+    const emitSpy = t.mock.method(Generator.prototype, 'emitDts', () => Promise.resolve([]))
 
-  await it('BUG-9: watchChange skips emitDts for unrelated files and non-base locale edits, regenerating on base locale and structural events', async (t) => {
-    await withTempDir(async (dir) => {
-      const localesDir = path.join(dir, 'locales')
-      const dtsDir = path.join(dir, 'generated')
-      await fs.mkdir(localesDir, { recursive: true })
-      const enPath = path.join(localesDir, 'en.ts')
-      const ukPath = path.join(localesDir, 'uk.ts')
-      const notesPath = path.join(localesDir, 'notes.txt')
-      const frPath = path.join(localesDir, 'fr.ts')
+    await callWatchChange(plugin, ctx.buildContext, notesPath, 'create')
+    await callWatchChange(plugin, ctx.buildContext, notesPath, 'update')
+    await callWatchChange(plugin, ctx.buildContext, notesPath, 'delete')
+    assert.equal(emitSpy.mock.callCount(), 0)
 
-      await fs.writeFile(enPath, 'export default { hello: "Hello" }', 'utf-8')
-      await fs.writeFile(ukPath, 'export default { hello: "Привіт" }', 'utf-8')
-      await fs.writeFile(notesPath, 'some notes', 'utf-8')
+    await callWatchChange(plugin, ctx.buildContext, ukPath, 'update')
+    assert.equal(emitSpy.mock.callCount(), 0)
 
-      const plugin = createPlugin({
-        baseLocale: 'en',
-        localesDir,
-        dts: { outDir: dtsDir },
-      })
-      await callViteConfigResolved(plugin, dir)
-      const ctx = createContexts()
-      await callBuildStart(plugin, ctx.buildContext)
+    await fs.writeFile(enPath, 'export default { hello: "Hello", bye: "Bye" }', 'utf-8')
+    await callWatchChange(plugin, ctx.buildContext, enPath, 'update')
+    assert.equal(emitSpy.mock.callCount(), 1)
 
-      const emitSpy = t.mock.method(Generator.prototype, 'emitDts', () => Promise.resolve([]))
+    await fs.writeFile(frPath, 'export default { hello: "Bonjour" }', 'utf-8')
+    await callWatchChange(plugin, ctx.buildContext, frPath, 'create')
+    assert.equal(emitSpy.mock.callCount(), 2)
 
-      await callWatchChange(plugin, ctx.buildContext, notesPath, 'create')
-      await callWatchChange(plugin, ctx.buildContext, notesPath, 'update')
-      await callWatchChange(plugin, ctx.buildContext, notesPath, 'delete')
-      assert.equal(emitSpy.mock.callCount(), 0)
-
-      await callWatchChange(plugin, ctx.buildContext, ukPath, 'update')
-      assert.equal(emitSpy.mock.callCount(), 0)
-
-      await fs.writeFile(enPath, 'export default { hello: "Hello", bye: "Bye" }', 'utf-8')
-      await callWatchChange(plugin, ctx.buildContext, enPath, 'update')
-      assert.equal(emitSpy.mock.callCount(), 1)
-
-      await fs.writeFile(frPath, 'export default { hello: "Bonjour" }', 'utf-8')
-      await callWatchChange(plugin, ctx.buildContext, frPath, 'create')
-      assert.equal(emitSpy.mock.callCount(), 2)
-
-      await fs.rm(frPath)
-      await callWatchChange(plugin, ctx.buildContext, frPath, 'delete')
-      assert.equal(emitSpy.mock.callCount(), 3)
-    })
+    await fs.rm(frPath)
+    await callWatchChange(plugin, ctx.buildContext, frPath, 'delete')
+    assert.equal(emitSpy.mock.callCount(), 3)
   })
 })

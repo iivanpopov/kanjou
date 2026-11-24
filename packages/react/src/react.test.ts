@@ -3,7 +3,7 @@
 import type { Message, MessageFunctions, MessageValue } from '@kanjou/core'
 import type { ReactNode } from 'react'
 
-import { createTranslate, createTranslateCache } from '@kanjou/core'
+import { createTranslate, createTranslateCache, rtFn, rtParts } from '@kanjou/core'
 import assert from 'node:assert/strict'
 import { describe, it } from 'node:test'
 import { createElement, use } from 'react'
@@ -30,12 +30,12 @@ function providerElement(
 
 function fnMessage(name: string): Message {
   return {
-    parts: (_values, runtime) => (runtime ? runtime.parts(runtime.fn(name, undefined)) : []),
+    parts: (_values, runtime) => (runtime ? rtParts(rtFn(runtime, name, undefined)) : []),
   }
 }
 
-await describe('@kanjou/react', async () => {
-  await it('exports TranslateContext and lets useTranslate() consume a custom context value', () => {
+await describe('TranslateContext and useTranslate', async () => {
+  await it('Should export TranslateContext and consume a custom context value in useTranslate()', () => {
     function ContextReader() {
       const fromContext = use(TranslateContext)
       const fromHook = useTranslate()
@@ -66,7 +66,7 @@ await describe('@kanjou/react', async () => {
     assert.equal(customHtml, '<span>Hello from custom context</span>')
   })
 
-  await it('throws KanjouReactError when useTranslate() is called outside TranslateProvider', () => {
+  await it('Should throw KanjouReactError when useTranslate() is called outside TranslateProvider', () => {
     function Outside() {
       const t = useTranslate()
       return createElement('span', null, t('hello'))
@@ -75,7 +75,7 @@ await describe('@kanjou/react', async () => {
     assert.throws(() => renderToStaticMarkup(createElement(Outside)), KanjouReactError)
   })
 
-  await it('throws KanjouReactError when root TranslateProvider omits locale', () => {
+  await it('Should throw KanjouReactError when root TranslateProvider omits locale', () => {
     assert.throws(
       () =>
         renderToStaticMarkup(
@@ -85,7 +85,7 @@ await describe('@kanjou/react', async () => {
     )
   })
 
-  await it('inherits locale and cache while shallow-merging messages, functions, and components', () => {
+  await it('Should inherit locale and cache while shallow-merging messages, functions, and components', () => {
     let numberCacheGets = 0
     let numberCacheSets = 0
     const baseCache = createTranslateCache()
@@ -192,7 +192,7 @@ await describe('@kanjou/react', async () => {
     assert.ok(numberCacheSets >= 1)
   })
 
-  await it('renders markup, nested markup, custom function parts, and empty-parts MessageValue in t.rich()', () => {
+  await it('Should render markup, nested markup, custom function parts, and empty-parts MessageValue in t.rich()', () => {
     const functions: MessageFunctions = {
       badge: (_ctx, _opts, operand) => {
         const text =
@@ -250,7 +250,7 @@ await describe('@kanjou/react', async () => {
             withFn: {
               parts: (v, r) => [
                 { type: 'text', value: 'Item: ' },
-                ...(r ? r.parts(r.fn('badge', v?.label)) : []),
+                ...(r ? rtParts(rtFn(r, 'badge', v?.label)) : []),
               ],
             },
             emptyVal: fnMessage('emptyPartsWithValue'),
@@ -269,7 +269,15 @@ await describe('@kanjou/react', async () => {
     )
   })
 
-  await it('defineTranslate from ./server renders strings and t.rich() and throws on unknown locale', () => {
+  await it('Should omit options from TranslateProviderProps at compile time', () => {
+    type AssertNoOptions = 'options' extends keyof TranslateProviderProps ? false : true
+    const assertNoOptions: AssertNoOptions = true
+    assert.equal(assertNoOptions, true)
+  })
+})
+
+await describe('defineTranslate', async () => {
+  await it('Should render strings and t.rich() and throw on unknown locale', () => {
     const getTranslate = defineTranslate({
       resources: {
         en: {
@@ -299,11 +307,5 @@ await describe('@kanjou/react', async () => {
     )
 
     assert.throws(() => getTranslate('fr'), KanjouReactError)
-  })
-
-  await it('omits options from TranslateProviderProps at compile time', () => {
-    type AssertNoOptions = 'options' extends keyof TranslateProviderProps ? false : true
-    const assertNoOptions: AssertNoOptions = true
-    assert.equal(assertNoOptions, true)
   })
 })

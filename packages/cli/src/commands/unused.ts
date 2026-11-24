@@ -22,12 +22,9 @@ import {
   isNamespaceImport,
   isNonNullExpression,
   isNoSubstitutionTemplateLiteral,
-  isObjectLiteralExpression,
   isParenthesizedExpression,
   isPropertyAccessExpression,
-  isPropertyAssignment,
   isSatisfiesExpression,
-  isShorthandPropertyAssignment,
   isStringLiteral,
   isTemplateExpression,
   isVariableDeclaration,
@@ -351,34 +348,7 @@ function collectExactKeysFromType(
   }
 }
 
-function extractObjectIdProperty(arg: Node): Node | undefined {
-  const unwrapped = unwrapExpression(arg)
-  if (!isObjectLiteralExpression(unwrapped)) return undefined
-
-  for (const prop of unwrapped.properties) {
-    if (
-      isPropertyAssignment(prop) &&
-      (isIdentifier(prop.name) || isStringLiteral(prop.name)) &&
-      prop.name.text === 'id'
-    ) {
-      return prop.initializer
-    }
-    if (isShorthandPropertyAssignment(prop) && isIdentifier(prop.name) && prop.name.text === 'id') {
-      return prop.name
-    }
-  }
-
-  return undefined
-}
-
 function extractFormatterKeyNodes(call: CallExpression, checker: Checker): Node[] {
-  if (call.arguments.length === 1) {
-    const first = call.arguments[0]
-    if (!first) return []
-    const idNode = extractObjectIdProperty(first)
-    return idNode ? [idNode] : []
-  }
-
   if (call.arguments.length < 3) return []
 
   const sig = checker.getResolvedSignature(call)
@@ -392,15 +362,8 @@ function extractFormatterKeyNodes(call: CallExpression, checker: Checker): Node[
     }
   }
 
-  if (call.arguments.length === 3) {
-    const arg = call.arguments[2]
-    return arg ? [arg] : []
-  }
-
-  const keys: Node[] = []
-  if (call.arguments[2]) keys.push(call.arguments[2])
-  if (call.arguments[3]) keys.push(call.arguments[3])
-  return keys
+  const arg = call.arguments[2]
+  return arg ? [arg] : []
 }
 
 export interface FindUnusedOptions {

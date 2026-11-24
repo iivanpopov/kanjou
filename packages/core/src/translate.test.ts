@@ -6,7 +6,7 @@ import type {
   Functions,
   InferPartsType,
   Message,
-  MessageFallbackPart,
+  MessageContext,
   MessageFunction,
   MessageMarkupPart,
   MessagePart,
@@ -15,14 +15,21 @@ import type {
 } from './types'
 
 import { createTranslateCache } from './cache'
-import { KanjouError, KanjouFormatError } from './errors'
+import { KanjouFormatError } from './errors'
+import { getIntlFormatter } from './formatters'
+import * as coreRuntime from './runtime'
 import {
-  createMessageRuntime,
-  formatDuration,
   formatMessage,
   formatMessageParts,
-  formatNumber,
-} from './formatters'
+  rtCurrencyOpts,
+  rtDate,
+  rtDateOpts,
+  rtInteger,
+  rtNumber,
+  rtOffset,
+  rtSelect,
+  rtSelectPlural,
+} from './runtime'
 import { createTranslate } from './translate'
 
 const mf2KitchenSinkMessages: Record<string, string> = {
@@ -51,7 +58,7 @@ const mf2KitchenSinkMessages: Record<string, string> = {
     'Sig: {$count :number minimumSignificantDigits=2 maximumSignificantDigits=4}',
   'fn.number.dynamic': 'Dyn: {$count :number maximumFractionDigits=$digits}',
   'fn.integer.basic': 'Int: {$n :integer}',
-  'fn.offset.basic': 'Offset: {$n :offset add=2 subtract=1}',
+  'fn.offset.basic': 'Offset: {$n :offset add=1}',
   'fn.offset.offsetProp': 'OffsetProp: {$n :offset offset=5}',
   'fn.offset.dynamic': 'OffsetDyn: {$n :offset add=$delta}',
 
@@ -153,11 +160,23 @@ many {{You have {$count} {#coin/} robokoins}}
 
 function compileBundle(messages: Record<string, string>): Record<string, Message> {
   const compiledCode = compileMessages(messages)
+  const importMatch = compiledCode.match(/^import \{([^}]+)\} from '@kanjou\/core';\n/)
+  const body = (importMatch ? compiledCode.slice(importMatch[0].length) : compiledCode).replace(
+    /^export default /m,
+    'return ',
+  )
+  if (!importMatch) {
+    // oxlint-disable-next-line typescript/no-implied-eval
+    return new Function(body)() as Record<string, Message>
+  }
+  const specifiers = importMatch[1].split(',').map((spec) => {
+    const [exported, alias] = spec.trim().split(/\s+as\s+/)
+    return { exported, alias: alias ?? exported }
+  })
   // oxlint-disable-next-line typescript/no-implied-eval
-  return new Function(compiledCode.replace(/^export default /m, 'return '))() as Record<
-    string,
-    Message
-  >
+  return new Function(...specifiers.map((s) => s.alias), body)(
+    ...specifiers.map((s) => (coreRuntime as Record<string, unknown>)[s.exported]),
+  ) as Record<string, Message>
 }
 
 const runtimeMessages = compileBundle(mf2KitchenSinkMessages)
@@ -615,13 +634,16 @@ yes {{Prefix {$x :custom}}}
   })
 })
 
-it('Should render interpolation and static markup without requesting a runtime', () => {
-  const unavailableRuntime = () => {
-    throw new Error('No runtime is available')
+it('Should render interpolation and static markup without accessing cache', () => {
+  const unavailableContext: MessageContext = {
+    locale: 'en',
+    get cache(): never {
+      throw new Error('No cache is available')
+    },
   }
 
   expect(
-    formatMessage('en', runtimeMessages, 'simple.basic', { name: 'Ada' }, unavailableRuntime),
+    formatMessage('en', runtimeMessages, 'simple.basic', { name: 'Ada' }, unavailableContext),
   ).toBe('Hi, Ada!')
   expect(
     formatMessageParts(
@@ -629,7 +651,7 @@ it('Should render interpolation and static markup without requesting a runtime',
       runtimeMessages,
       'plain.vWordWithMarkup',
       undefined,
-      unavailableRuntime,
+      unavailableContext,
     ),
   ).toEqual([
     { type: 'text', value: 'Version ' },
@@ -706,24 +728,8 @@ it('Should throw KanjouFormatError when an unknown runtime function is called', 
   expect(() => tEn.parts('custom.unknown', { x: 1 })).toThrow(KanjouFormatError)
 })
 
-describe('wave 1 core fixes', () => {
-  it('Should reject overriding built-in functions in createTranslate and createMessageRuntime', () => {
-    const fakeFn = (() => 'x') as unknown as MessageFunction
-    expect(() =>
-      createTranslate({
-        locale: 'en',
-        messages: {},
-        options: { functions: { number: fakeFn } as any },
-      }),
-    ).toThrow(KanjouError)
-    expect(() =>
-      createMessageRuntime(createTranslateCache(), 'en', {
-        functions: { date: fakeFn } as any,
-      }),
-    ).toThrow(KanjouError)
-  })
-
-  it('Should render custom MessageValue with only toParts() and fallback object via r.str', () => {
+describe('runtime safety and fallbacks', () => {
+  it('Should render custom MessageValue with only toParts()', () => {
     const messages = compileBundle({
       onlyParts: '{$x :onlyParts}',
     })
@@ -740,9 +746,6 @@ describe('wave 1 core fixes', () => {
       options: { functions: { onlyParts } },
     })
     expect(t('onlyParts', { x: 1 })).toBe('hello world')
-
-    const r = createMessageRuntime(createTranslateCache(), 'en')
-    expect(r.str({ type: 'fallback', source: '$x' })).toBe('{$x}')
   })
 
   it('Should fall back to part.value when a part has an empty parts array', () => {
@@ -764,30 +767,32 @@ describe('wave 1 core fixes', () => {
 
   it('Should not poison bare locale cache entries with malformed compiled-options tuples', () => {
     const cache = createTranslateCache()
-    const r = createMessageRuntime(cache, 'en')
+    const ctx: MessageContext = { cache, locale: 'en' }
     const malformed = [{ maximumFractionDigits: 2 }] as any
 
-    expect(r.number(1.2345, malformed)).toBe('1.23')
-    expect(formatNumber(cache.number, 'en', 1.2345)).toBe('1.235')
+    expect(rtNumber(ctx, 1.2345, malformed)).toBe('1.23')
+    expect(getIntlFormatter(cache.number, 'en', undefined, Intl.NumberFormat).format(1.2345)).toBe(
+      '1.235',
+    )
 
     const t = createTranslate({ locale: 'en', messages: {}, cache })
     expect(t.number(1.2345)).toBe('1.235')
 
     const malformedDate = [{ year: 'numeric' }] as any
-    expect(r.date(sampleDate, malformedDate)).toBe('2026')
+    expect(rtDate(ctx, sampleDate, malformedDate)).toBe('2026')
     expect(t.date(sampleDate)).toBe(new Intl.DateTimeFormat('en').format(sampleDate))
 
-    expect(r.selectPlural(2, [{ type: 'ordinal' }] as any)).toBe('two')
-    expect(r.selectPlural(2)).toBe('other')
+    expect(rtSelectPlural(ctx, 2, [{ type: 'ordinal' }] as any)).toBe('two')
+    expect(rtSelectPlural(ctx, 2)).toBe('other')
   })
 
-  it('Should pass runtime to hand-written renderers with default or rest parameters', () => {
+  it('Should pass runtime context to hand-written renderers with default or rest parameters', () => {
     const messages: Record<string, Message> = {
       defaultParams: (values = {}, runtime) =>
-        `${String(values.prefix ?? '')}${runtime!.number(2)}`,
-      restParams: (...args: any[]) => (args[1] as { number: (v: unknown) => string }).number(3),
+        `${String(values.prefix ?? '')}${rtNumber(runtime!, 2)}`,
+      restParams: (...args: any[]) => rtNumber(args[1] as MessageContext, 3),
       partsDefault: {
-        parts: (_values = {}, runtime) => [{ type: 'text', value: runtime!.number(4) }],
+        parts: (_values = {}, runtime) => [{ type: 'text', value: rtNumber(runtime!, 4) }],
       },
     }
     const t = createTranslate({ locale: 'en', messages })
@@ -814,37 +819,17 @@ describe('wave 1 core fixes', () => {
     expect(t.parts.unsafe('boolMsg')).toEqual([])
   })
 
-  it('Should throw KanjouError in t.duration and formatDuration when Intl.DurationFormat is unavailable', () => {
-    const descriptor = Object.getOwnPropertyDescriptor(Intl, 'DurationFormat')
-    try {
-      Object.defineProperty(Intl, 'DurationFormat', {
-        value: undefined,
-        configurable: true,
-        writable: true,
-      })
-      const cache = createTranslateCache()
-      const t = createTranslate({ locale: 'en', messages: {}, cache })
-
-      expect(() => formatDuration(cache.duration, 'en', { hours: 1 })).toThrow(KanjouError)
-      expect(() => t.duration({ hours: 1 })).toThrow(KanjouError)
-    } finally {
-      if (descriptor) {
-        Object.defineProperty(Intl, 'DurationFormat', descriptor)
-      }
-    }
-  })
-
-  it('Should normalize Unicode strings in r.select for NFD vs NFC matching', () => {
-    const r = createMessageRuntime(createTranslateCache(), 'en')
+  it('Should normalize Unicode strings in rtSelect for NFD vs NFC matching', () => {
+    const ctx: MessageContext = { cache: createTranslateCache(), locale: 'en' }
     const keys = new Set(['caf\u00e9'])
 
-    expect(r.select('cafe\u0301', keys)).toBe('caf\u00e9')
-    expect(r.select('caf\u00e9', keys)).toBe('caf\u00e9')
-    expect(r.select('other', keys)).toBeNull()
+    expect(rtSelect(ctx, 'cafe\u0301', keys)).toBe('caf\u00e9')
+    expect(rtSelect(ctx, 'caf\u00e9', keys)).toBe('caf\u00e9')
+    expect(rtSelect(ctx, 'other', keys)).toBeNull()
   })
 
-  it('Should validate numeric and date operands in r.number, r.date, r.integer, and r.offset', () => {
-    const r = createMessageRuntime(createTranslateCache(), 'en')
+  it('Should validate numeric and date operands in rtNumber, rtDate, rtInteger, and rtOffset', () => {
+    const ctx: MessageContext = { cache: createTranslateCache(), locale: 'en' }
     const invalidNumbers = [
       undefined,
       null,
@@ -862,42 +847,40 @@ describe('wave 1 core fixes', () => {
     ]
 
     for (const invalid of invalidNumbers) {
-      expect(r.number(invalid)).toBe('{:number}')
-      expect(r.number(invalid, undefined, '{$x}')).toBe('{$x}')
-      expect(r.integer(invalid)).toBeNull()
-      expect(r.offset(invalid, 1)).toBeNull()
+      expect(rtNumber(ctx, invalid)).toBe('{:number}')
+      expect(rtNumber(ctx, invalid, undefined, '{$x}')).toBe('{$x}')
+      expect(rtInteger(invalid)).toBeNull()
+      expect(rtOffset(invalid, 1)).toBeNull()
     }
 
-    expect(r.number('42.5')).toBe('42.5')
-    expect(r.number('1e3')).toBe('1,000')
-    expect(r.number('-0')).toBe('-0')
-    expect(r.offset(10, 1.5)).toBeNull()
-    expect(r.offset(10, 'abc')).toBeNull()
-    expect(r.offset(10, 2, true)).toBe(8)
+    expect(rtNumber(ctx, '42.5')).toBe('42.5')
+    expect(rtNumber(ctx, '1e3')).toBe('1,000')
+    expect(rtNumber(ctx, '-0')).toBe('-0')
+    expect(rtOffset(10, 1.5)).toBeNull()
+    expect(rtOffset(10, 'abc')).toBeNull()
+    expect(rtOffset(10, 2, true)).toBe(8)
 
-    expect(r.date(undefined)).toBe('{:date}')
-    expect(r.date(null, undefined, '{$d}')).toBe('{$d}')
-    expect(r.date(new Date(Number.NaN))).toBe('{:date}')
-    expect(r.date('not-a-date')).toBe('{:date}')
-    expect(r.date('')).toBe('{:date}')
-    expect(r.date(sampleDate, { timeZone: 'UTC' })).toBe('3/15/2026')
+    expect(rtDate(ctx, undefined)).toBe('{:date}')
+    expect(rtDate(ctx, null, undefined, '{$d}')).toBe('{$d}')
+    expect(rtDate(ctx, new Date(Number.NaN))).toBe('{:date}')
+    expect(rtDate(ctx, 'not-a-date')).toBe('{:date}')
+    expect(rtDate(ctx, '')).toBe('{:date}')
+    expect(rtDate(ctx, sampleDate, { timeZone: 'UTC' })).toBe('3/15/2026')
   })
 
-  it('Should compute dynamic currencyOpts and dateOpts cleanly', () => {
-    const r = createMessageRuntime(createTranslateCache(), 'en')
-
-    expect(r.currencyOpts({ style: 'currency', currency: 'USD' }, 0)).toEqual({
+  it('Should compute dynamic rtCurrencyOpts and rtDateOpts cleanly', () => {
+    expect(rtCurrencyOpts({ style: 'currency', currency: 'USD' }, 0)).toEqual({
       style: 'currency',
       currency: 'USD',
       minimumFractionDigits: 0,
       maximumFractionDigits: 0,
     })
-    expect(r.currencyOpts({ style: 'currency', currency: 'JPY' }, 'auto')).toEqual({
+    expect(rtCurrencyOpts({ style: 'currency', currency: 'JPY' }, 'auto')).toEqual({
       style: 'currency',
       currency: 'JPY',
     })
     expect(
-      r.dateOpts(
+      rtDateOpts(
         { timeZone: 'UTC' },
         { kind: 'date', fields: 'month-day-weekday', length: 'long' },
       ),
@@ -908,7 +891,7 @@ describe('wave 1 core fixes', () => {
       weekday: 'long',
     })
     expect(
-      r.dateOpts(
+      rtDateOpts(
         { timeZone: 'UTC' },
         { kind: 'time', precision: 'second', timeZoneStyle: 'short', hour12: 'false' },
       ),
@@ -938,14 +921,12 @@ describe('wave 1 core fixes', () => {
     expectTypeOf<NumberFnParts>().toBeNever()
     expectTypeOf<MappedNumberParts>().toBeNever()
     expectTypeOf<InferPartsType<'any'>>().toBeNever()
-    expectTypeOf<MessagePart<never>>().toEqualTypeOf<
-      MessageTextPart | MessageMarkupPart | MessageFallbackPart
-    >()
+    expectTypeOf<MessagePart<never>>().toEqualTypeOf<MessageTextPart | MessageMarkupPart>()
     expectTypeOf<MessageValue<'x', 'y'>>().not.toBeNever()
   })
 })
 
-describe('wave 2 generator & compiler fixes', () => {
+describe('compiler edge cases and MF2 compliance', () => {
   it('Should emit fallback placeholders for missing, null, and invalid built-in operands', () => {
     const messages = compileBundle({
       num: '{$n :number}',
@@ -1277,5 +1258,87 @@ caf\u00e9 {{Matched: {$word}}}
       { type: 'markup', kind: 'close', name: 'i' },
       { type: 'text', value: ' After' },
     ])
+  })
+
+  it('Should format unannotated number and bigint values using :number', () => {
+    const messages = compileBundle({
+      bareNum: 'Count: {$n}',
+      bareParts: '{#b}{$n}{/b}',
+    })
+    const t = createTranslate({ locale: 'en', messages })
+
+    expect(t.unsafe('bareNum', { n: 1234 })).toBe('Count: 1,234')
+    expect(t.unsafe('bareNum', { n: 1234567n })).toBe('Count: 1,234,567')
+    expect(t.unsafe('bareNum', {})).toBe('Count: {$n}')
+    expect(t.parts.unsafe('bareParts', { n: 1234 })).toEqual([
+      { type: 'markup', kind: 'open', name: 'b' },
+      { type: 'text', value: '1,234' },
+      { type: 'markup', kind: 'close', name: 'b' },
+    ])
+  })
+
+  it('Should coerce plain objects with String() in :string', () => {
+    const messages = compileBundle({ strObj: '{$x :string}' })
+    const t = createTranslate({ locale: 'en', messages })
+
+    expect(t.unsafe('strObj', { x: { a: 1 } })).toBe('[object Object]')
+  })
+
+  it('Should strip u:* attributes from markup and custom function options', () => {
+    const captureOpts: MessageFunction = (_ctx, opts, val) => JSON.stringify({ opts, val })
+    const messages = compileBundle({
+      uMarkup: '{#a u:id=docs href=|/docs| u:dir=ltr}Docs{/a}',
+      uCustom: '{$x :captureOpts u:id=c1 u:dir=rtl tag=ok}',
+      uOnlyCustom: '{$x :captureOpts u:id=c1}',
+    })
+    const t = createTranslate({
+      locale: 'en',
+      messages,
+      options: { functions: { captureOpts } },
+    })
+
+    expect(t.parts.unsafe('uMarkup', {})).toEqual([
+      { type: 'markup', kind: 'open', name: 'a', options: { href: '/docs' } },
+      { type: 'text', value: 'Docs' },
+      { type: 'markup', kind: 'close', name: 'a' },
+    ])
+    expect(t.unsafe('uCustom', { x: 'v' })).toBe('{"opts":{"tag":"ok"},"val":"v"}')
+    expect(t.unsafe('uOnlyCustom', { x: 'v' })).toBe('{"opts":{},"val":"v"}')
+  })
+
+  it('Should fall back in :offset when both add and subtract are provided or delta is negative', () => {
+    const messages = compileBundle({
+      offsetBoth: '{$n :offset add=2 subtract=1}',
+      offsetNeg: '{$n :offset add=-1}',
+      offsetDynNeg: '{$n :offset add=$d}',
+    })
+    const t = createTranslate({ locale: 'en', messages })
+
+    expect(t.unsafe('offsetBoth', { n: 10 })).toBe('{$n}')
+    expect(t.unsafe('offsetNeg', { n: 10 })).toBe('{$n}')
+    expect(t.unsafe('offsetDynNeg', { n: 10, d: -2 })).toBe('{$n}')
+  })
+
+  it('Should select the fallback variant when matching on non-selectable built-ins', () => {
+    const messages = compileBundle({
+      curMatch: '.input {$c :currency currency=USD}\n.match $c\n1 {{exact}}\n* {{fallback}}',
+      dateMatch: '.input {$d :date timeZone=UTC}\n.match $d\n0 {{epoch}}\n* {{fallback}}',
+    })
+    const t = createTranslate({ locale: 'en', messages })
+
+    expect(t.unsafe('curMatch', { c: 1 })).toBe('fallback')
+    expect(t.unsafe('dateMatch', { d: 0 })).toBe('fallback')
+  })
+
+  it('Should emit only the needed @kanjou/core runtime imports per compiled namespace', () => {
+    const staticCode = compileMessages({ title: 'Hello', subtitle: 'World' })
+    expect(staticCode.startsWith('export default ')).toBe(true)
+    expect(staticCode).not.toContain('import ')
+
+    const numberCode = compileMessages({ count: '{$n :number}' })
+    expect(numberCode).toContain("import {rtNumber as _rn} from '@kanjou/core';\n")
+    expect(numberCode).not.toContain('rtDate')
+    expect(numberCode).not.toContain('rtCurrencyOpts')
+    expect(numberCode).not.toContain('rtSelect')
   })
 })

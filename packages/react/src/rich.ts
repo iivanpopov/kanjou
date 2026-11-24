@@ -20,7 +20,6 @@ function toText(part: MessagePart): string {
     return String(part.value)
   }
 
-  if (part.type === 'fallback' && 'source' in part) return `{${part.source}}`
   return ''
 }
 
