@@ -20,7 +20,9 @@ function withErrorHandler<T extends unknown[]>(action: (...args: T) => Promise<v
 
 const cli = cac('kanjou')
 
-cli.command('compile', 'Pre-compile locale messages into AST.').action(withErrorHandler(compile))
+cli
+  .command('compile', 'AOT-compile locale messages into JavaScript modules.')
+  .action(withErrorHandler(compile))
 cli
   .command('generate', 'Generate locale .d.ts type declarations.')
   .action(withErrorHandler(generate))
