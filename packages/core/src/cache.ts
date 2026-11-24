@@ -15,7 +15,40 @@ export interface TranslateCache {
   readonly message: Cache<object>
 }
 
-export function createTranslateCache(): TranslateCache {
+export interface CreateTranslateCacheOptions {
+  maxSize?: number | undefined
+}
+
+const DEFAULT_CACHE_MAX_SIZE = 500
+
+function createBoundedCache(maxSize: number): Cache {
+  const map = new Map<string, any>()
+  return {
+    get(key: string) {
+      const value = map.get(key)
+      if (value !== undefined) {
+        map.delete(key)
+        map.set(key, value)
+      }
+      return value
+    },
+    set(key: string, value: any) {
+      if (maxSize <= 0) return
+      if (map.has(key)) {
+        map.delete(key)
+      } else if (map.size >= maxSize) {
+        const oldest = map.keys().next()
+        if (!oldest.done) {
+          map.delete(oldest.value)
+        }
+      }
+      map.set(key, value)
+    },
+  }
+}
+
+export function createTranslateCache(options?: CreateTranslateCacheOptions): TranslateCache {
+  const maxSize = options?.maxSize ?? DEFAULT_CACHE_MAX_SIZE
   let translate: Cache | undefined
   let dateTime: Cache | undefined
   let number: Cache | undefined
@@ -28,28 +61,28 @@ export function createTranslateCache(): TranslateCache {
 
   return {
     get translate(): Cache {
-      return (translate ??= new Map())
+      return (translate ??= createBoundedCache(maxSize))
     },
     get dateTime(): Cache {
-      return (dateTime ??= new Map())
+      return (dateTime ??= createBoundedCache(maxSize))
     },
     get number(): Cache {
-      return (number ??= new Map())
+      return (number ??= createBoundedCache(maxSize))
     },
     get plural(): Cache {
-      return (plural ??= new Map())
+      return (plural ??= createBoundedCache(maxSize))
     },
     get list(): Cache {
-      return (list ??= new Map())
+      return (list ??= createBoundedCache(maxSize))
     },
     get display(): Cache {
-      return (display ??= new Map())
+      return (display ??= createBoundedCache(maxSize))
     },
     get relative(): Cache {
-      return (relative ??= new Map())
+      return (relative ??= createBoundedCache(maxSize))
     },
     get duration(): Cache {
-      return (duration ??= new Map())
+      return (duration ??= createBoundedCache(maxSize))
     },
     get message(): Cache<object> {
       return (message ??= new WeakMap())

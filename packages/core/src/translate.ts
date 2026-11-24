@@ -9,17 +9,17 @@ import type {
   FormatNumberOptions,
   FormatPluralOptions,
   FormatRelativeTimeOptions,
+  InferPartsType,
   ListLike,
+  Locale,
+  Message,
+  MessageFormatOptions,
   MessageId,
+  MessagePart,
   MessageValues,
   NumberLike,
-  Unit,
-  MessageFormatOptions,
-  Message,
-  Locale,
-  MessagePart,
-  InferPartsType,
   PluralRule,
+  Unit,
 } from './types'
 
 import { getSharedTranslateCache } from './cache'
@@ -38,17 +38,17 @@ import {
 export interface CreateTranslateOptions {
   locale: Locale
   messages: Readonly<Record<string, Message>>
-  cache?: TranslateCache
-  options?: MessageFormatOptions
+  cache?: TranslateCache | undefined
+  options?: MessageFormatOptions | undefined
 }
 
 export interface TranslateParts {
-  (id: MessageId, values?: MessageValues): MessagePart<InferPartsType<MessageId>>[]
+  <Id extends MessageId>(id: Id, values?: MessageValues<Id>): MessagePart<InferPartsType<Id>>[]
   unsafe: (id?: string, values?: Record<string, any>) => MessagePart<any>[]
 }
 
 export interface Translate {
-  (id: MessageId, values?: MessageValues): string
+  <Id extends MessageId>(id: Id, values?: MessageValues<Id>): string
   unsafe: (id?: string, values?: Record<string, any>) => string
   parts: TranslateParts
   number: (number: NumberLike, options?: FormatNumberOptions) => string
@@ -71,20 +71,34 @@ export function createTranslate({
   const resolvedCache = cache ?? getSharedTranslateCache()
 
   const parts: TranslateParts = Object.assign(
-    (id: MessageId, values?: MessageValues) =>
-      formatMessageParts(resolvedCache.message, locale, messages, id, values, options),
+    <Id extends MessageId>(id: Id, values?: MessageValues<Id>) =>
+      formatMessageParts({ cache: resolvedCache.message, locale, messages, id, values, options }),
     {
       unsafe: (id?: string, values?: Record<string, any>) =>
-        formatMessageParts(resolvedCache.message, locale, messages, id ?? '', values, options),
+        formatMessageParts({
+          cache: resolvedCache.message,
+          locale,
+          messages,
+          id: id ?? '',
+          values,
+          options,
+        }),
     },
   )
 
   const translate: Translate = Object.assign(
-    (id: MessageId, values?: MessageValues) =>
-      formatMessage(resolvedCache.message, locale, messages, id, values, options),
+    <Id extends MessageId>(id: Id, values?: MessageValues<Id>) =>
+      formatMessage({ cache: resolvedCache.message, locale, messages, id, values, options }),
     {
       unsafe: (id?: string, values?: Record<string, any>) =>
-        formatMessage(resolvedCache.message, locale, messages, id ?? '', values, options),
+        formatMessage({
+          cache: resolvedCache.message,
+          locale,
+          messages,
+          id: id ?? '',
+          values,
+          options,
+        }),
       parts,
       number: (number: NumberLike, options?: FormatNumberOptions) =>
         formatNumber(resolvedCache.number, locale, number, options),
@@ -95,7 +109,7 @@ export function createTranslate({
       list: (list: ListLike, options?: FormatListOptions) =>
         formatList(resolvedCache.list, locale, list, options),
       relative: (value: number, unit: Unit, options?: FormatRelativeTimeOptions) =>
-        formatRelativeTime(resolvedCache.relative, locale, value, unit, options),
+        formatRelativeTime({ cache: resolvedCache.relative, locale, value, unit, options }),
       duration: (duration: Duration, options?: FormatDurationOptions) =>
         formatDuration(resolvedCache.duration, locale, duration, options),
       display: (code: string, options: FormatDisplayNameOptions) =>

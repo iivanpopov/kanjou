@@ -1,4 +1,4 @@
-import type { MessageFormat, Model, MessageFormatOptions as MfOptions } from 'messageformat'
+import type { Model } from 'messageformat'
 import type { MessageFunctionContext, MessageValue } from 'messageformat/functions'
 
 export type { MessageFormat, MessageMarkupPart, MessagePart } from 'messageformat'
@@ -37,18 +37,12 @@ export type MessageFunction<
 export type MessageFunctions = Partial<Functions> &
   Record<string, MessageFunction<any, any, any, any> | undefined>
 
-export type MessageFormatOptions<
-  MessageType extends string = string,
-  PartsType extends string = MessageType,
-> = Omit<MfOptions<MessageType, PartsType>, 'functions'> & {
-  functions?: MessageFunctions
+export interface MessageFormatOptions {
+  bidiIsolation?: 'default' | 'none' | undefined
+  dir?: 'ltr' | 'rtl' | 'auto' | undefined
+  localeMatcher?: 'best fit' | 'lookup' | undefined
+  functions?: MessageFunctions | undefined
 }
-
-export type MessageFormatFactory = (
-  locale: string,
-  message: Message,
-  options?: MessageFormatOptions,
-) => MessageFormat
 
 export interface DefaultFunctions {
   string: MessageFunction<Record<string, unknown>, unknown, 'string'>
@@ -74,6 +68,20 @@ export interface DefaultFunctions {
     'number'
   >
 
+  offset: MessageFunction<
+    Partial<
+      Intl.NumberFormatOptions & {
+        offset?: number
+        add?: number
+        subtract?: number
+      }
+    >,
+    NumberLike,
+    'number'
+  >
+}
+
+export interface DraftFunctions {
   currency: MessageFunction<
     Partial<Intl.NumberFormatOptions> & {
       currency?: string
@@ -96,18 +104,6 @@ export interface DefaultFunctions {
       trailingZeroDisplay: string
       useGrouping: Intl.NumberFormatOptions['useGrouping']
     }>,
-    NumberLike,
-    'number'
-  >
-
-  offset: MessageFunction<
-    Partial<
-      Intl.NumberFormatOptions & {
-        offset?: number
-        add?: number
-        subtract?: number
-      }
-    >,
     NumberLike,
     'number'
   >
@@ -150,20 +146,55 @@ export type MessageValues<Id extends string = MessageId> = Id extends keyof Mess
         __fn: infer FunctionName extends keyof Functions
       }
         ? InferFunctionInput<FunctionName>
-        : Messages[Id][Value] extends string
+        : Messages[Id][Value] extends string | number | bigint
           ? Messages[Id][Value]
-          : Messages[Id][Value] extends number
-            ? Messages[Id][Value]
-            : Messages[Id][Value] extends bigint
-              ? Messages[Id][Value]
-              : DefaultMessageValue
+          : DefaultMessageValue
     }
   : Record<string, any>
 
-export type DateLike = number | Date | Intl.FormattableTemporalObject
+export interface IntlDurationLike {
+  years?: number | undefined
+  months?: number | undefined
+  weeks?: number | undefined
+  days?: number | undefined
+  hours?: number | undefined
+  minutes?: number | undefined
+  seconds?: number | undefined
+  milliseconds?: number | undefined
+  microseconds?: number | undefined
+  nanoseconds?: number | undefined
+}
+
+export interface IntlDurationFormatOptionsLike {
+  localeMatcher?: 'best fit' | 'lookup' | undefined
+  style?: 'long' | 'short' | 'narrow' | 'digital' | undefined
+  years?: 'long' | 'short' | 'narrow' | undefined
+  yearsDisplay?: 'always' | 'auto' | undefined
+  months?: 'long' | 'short' | 'narrow' | undefined
+  monthsDisplay?: 'always' | 'auto' | undefined
+  weeks?: 'long' | 'short' | 'narrow' | undefined
+  weeksDisplay?: 'always' | 'auto' | undefined
+  days?: 'long' | 'short' | 'narrow' | undefined
+  daysDisplay?: 'always' | 'auto' | undefined
+  hours?: 'long' | 'short' | 'narrow' | 'numeric' | '2-digit' | undefined
+  hoursDisplay?: 'always' | 'auto' | undefined
+  minutes?: 'long' | 'short' | 'narrow' | 'numeric' | '2-digit' | undefined
+  minutesDisplay?: 'always' | 'auto' | undefined
+  seconds?: 'long' | 'short' | 'narrow' | 'numeric' | '2-digit' | undefined
+  secondsDisplay?: 'always' | 'auto' | undefined
+  milliseconds?: 'long' | 'short' | 'narrow' | 'numeric' | undefined
+  millisecondsDisplay?: 'always' | 'auto' | undefined
+  microseconds?: 'long' | 'short' | 'narrow' | 'numeric' | undefined
+  microsecondsDisplay?: 'always' | 'auto' | undefined
+  nanoseconds?: 'long' | 'short' | 'narrow' | 'numeric' | undefined
+  nanosecondsDisplay?: 'always' | 'auto' | undefined
+  fractionalDigits?: 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | undefined
+}
+
+export type DateLike = NonNullable<Parameters<Intl.DateTimeFormat['format']>[0]>
 export type FormatDateTimeOptions = Intl.DateTimeFormatOptions
 
-export type NumberLike = number | bigint | Intl.StringNumericLiteral
+export type NumberLike = Parameters<Intl.NumberFormat['format']>[0]
 export type FormatNumberOptions = Intl.NumberFormatOptions
 
 export type PluralRule = Intl.LDMLPluralRule
@@ -177,5 +208,14 @@ export type FormatDisplayNameOptions = Intl.DisplayNamesOptions
 export type Unit = Intl.RelativeTimeFormatUnit
 export type FormatRelativeTimeOptions = Intl.RelativeTimeFormatOptions
 
-export type Duration = Parameters<Intl.DurationFormat['format']>[0]
-export type FormatDurationOptions = Intl.DurationFormatOptions
+export type Duration = typeof Intl extends {
+  DurationFormat: abstract new (...args: any[]) => { format(duration: infer D): string }
+}
+  ? D
+  : IntlDurationLike
+
+export type FormatDurationOptions = typeof Intl extends {
+  DurationFormat: abstract new (locales?: any, options?: infer O) => any
+}
+  ? NonNullable<O>
+  : IntlDurationFormatOptionsLike
