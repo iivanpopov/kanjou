@@ -1,13 +1,11 @@
 import type { Locale } from '@kanjou/react'
 
-import { TranslateProvider } from '@kanjou/react'
 import { cookies } from 'next/headers'
 
-import { createTranslate, resources } from '@/lib/intl'
+import { createTranslate } from '@/lib/intl'
 
 import App from './app'
-
-const components = { strong: 'strong' } as const
+import IntlProvider from './intl-provider'
 
 export default async function Page() {
   const cookieStore = await cookies()
@@ -16,7 +14,7 @@ export default async function Page() {
   const t = createTranslate(locale)
 
   return (
-    <TranslateProvider locale={locale} messages={resources[locale]} components={components}>
+    <IntlProvider locale={locale}>
       <header>
         <p>
           <strong>Server Component: </strong>
@@ -25,6 +23,6 @@ export default async function Page() {
       </header>
       <hr />
       <App />
-    </TranslateProvider>
+    </IntlProvider>
   )
 }

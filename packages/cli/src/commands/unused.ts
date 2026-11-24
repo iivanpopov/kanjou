@@ -22,19 +22,16 @@ import {
   isNamespaceImport,
   isNonNullExpression,
   isNoSubstitutionTemplateLiteral,
-  isObjectLiteralExpression,
   isParenthesizedExpression,
   isPropertyAccessExpression,
-  isPropertyAssignment,
   isSatisfiesExpression,
-  isShorthandPropertyAssignment,
   isStringLiteral,
   isTemplateExpression,
   isVariableDeclaration,
 } from 'typescript/unstable/ast'
 import { API, SymbolFlags } from 'typescript/unstable/sync'
 
-import { KanjouCliError } from '../errors'
+import { KanjouCliError } from '../errors.ts'
 
 const KANJOU_MODULES = new Set(['@kanjou/react', '@kanjou/react/server', '@kanjou/core'])
 const TRANSLATOR_FACTORIES = new Set(['useTranslate', 'createTranslate'])
@@ -351,31 +348,22 @@ function collectExactKeysFromType(
   }
 }
 
-function extractFormatterKeyNode(call: CallExpression): Node | undefined {
-  if (call.arguments.length >= 4) {
-    return call.arguments[3]
-  }
-  if (call.arguments.length === 1) {
-    const firstArg = call.arguments[0]
-    if (!firstArg) return undefined
-    const unwrapped = unwrapExpression(firstArg)
-    if (!isObjectLiteralExpression(unwrapped)) return undefined
+function extractFormatterKeyNodes(call: CallExpression, checker: Checker): Node[] {
+  if (call.arguments.length < 3) return []
 
-    for (const prop of unwrapped.properties) {
-      if (isPropertyAssignment(prop)) {
-        if ((isIdentifier(prop.name) || isStringLiteral(prop.name)) && prop.name.text === 'id') {
-          return prop.initializer
-        }
-      } else if (
-        isShorthandPropertyAssignment(prop) &&
-        isIdentifier(prop.name) &&
-        prop.name.text === 'id'
-      ) {
-        return prop.name
+  const sig = checker.getResolvedSignature(call)
+  if (sig) {
+    const params = sig.getParameters()
+    for (let i = 0; i < params.length; i++) {
+      if (params[i]?.name === 'id') {
+        const arg = call.arguments[i]
+        return arg ? [arg] : []
       }
     }
   }
-  return undefined
+
+  const arg = call.arguments[2]
+  return arg ? [arg] : []
 }
 
 export interface FindUnusedOptions {
@@ -433,7 +421,7 @@ export function findUnusedKeys(options: FindUnusedOptions): string[] {
     for (const { program, checker } of loadedProjects) {
       const files: SourceFile[] = []
       for (const fileName of program.getSourceFileNames()) {
-        if (fileName.includes('/node_modules/')) continue
+        if (fileName.replace(/\\/g, '/').includes('/node_modules/')) continue
         const file = program.getSourceFile(fileName)
         if (file && !file.isDeclarationFile) {
           files.push(file)
@@ -551,12 +539,13 @@ export function findUnusedKeys(options: FindUnusedOptions): string[] {
       }
 
       const directKeys: Node[] = []
+      const directFormatterCalls: CallExpression[] = []
       const candidateTranslatorExprs: Node[] = []
       const candidateTranslatorKeys: Node[] = []
       const candidateInlineCallees: Node[] = []
       const candidateInlineKeys: Node[] = []
       const candidateFormatterCallees: Node[] = []
-      const candidateFormatterKeys: Node[] = []
+      const candidateFormatterCalls: CallExpression[] = []
 
       for (const file of files) {
         const currentAliases = fileAliases.get(file)
@@ -601,25 +590,22 @@ export function findUnusedKeys(options: FindUnusedOptions): string[] {
                 candidateInlineCallees.push(innerCallee)
                 candidateInlineKeys.push(firstArg)
               }
-            } else if (!hadTranslatorMethod) {
-              const formatterKey = extractFormatterKeyNode(node)
-              if (formatterKey) {
-                if (
-                  isNamedOrNamespaceCall(
-                    unwrappedExpr,
-                    aliases.formatters,
-                    aliases.namespaces,
-                    FORMATTER_FUNCTIONS,
-                  )
-                ) {
-                  directKeys.push(formatterKey)
-                } else if (
-                  isIdentifier(unwrappedExpr) ||
-                  isPropertyAccessExpression(unwrappedExpr)
-                ) {
-                  candidateFormatterCallees.push(unwrappedExpr)
-                  candidateFormatterKeys.push(formatterKey)
-                }
+            } else if (
+              !hadTranslatorMethod &&
+              (node.arguments.length === 1 || node.arguments.length >= 3)
+            ) {
+              if (
+                isNamedOrNamespaceCall(
+                  unwrappedExpr,
+                  aliases.formatters,
+                  aliases.namespaces,
+                  FORMATTER_FUNCTIONS,
+                )
+              ) {
+                directFormatterCalls.push(node)
+              } else if (isIdentifier(unwrappedExpr) || isPropertyAccessExpression(unwrappedExpr)) {
+                candidateFormatterCallees.push(unwrappedExpr)
+                candidateFormatterCalls.push(node)
               }
             }
           }
@@ -641,6 +627,12 @@ export function findUnusedKeys(options: FindUnusedOptions): string[] {
 
       for (const key of directKeys) {
         recordUsedKey(key)
+      }
+
+      for (const call of directFormatterCalls) {
+        for (const key of extractFormatterKeyNodes(call, checker)) {
+          recordUsedKey(key)
+        }
       }
 
       if (candidateTranslatorExprs.length > 0 && translators.size > 0) {
@@ -679,14 +671,16 @@ export function findUnusedKeys(options: FindUnusedOptions): string[] {
         const formatterSymbols = checker.getSymbolAtLocation(candidateFormatterCallees)
         for (let i = 0; i < candidateFormatterCallees.length; i++) {
           const symbol = formatterSymbols[i]
-          const key = candidateFormatterKeys[i]
-          if (!symbol || !key) continue
+          const call = candidateFormatterCalls[i]
+          if (!symbol || !call) continue
 
           const resolved = unwrapAliasedSymbol(symbol, checker)
           if (checker.isUnknownSymbol(resolved)) continue
 
           if (isKanjouDeclaration(resolved) && FORMATTER_FUNCTIONS.has(resolved.name)) {
-            recordUsedKey(key)
+            for (const key of extractFormatterKeyNodes(call, checker)) {
+              recordUsedKey(key)
+            }
           }
         }
       }

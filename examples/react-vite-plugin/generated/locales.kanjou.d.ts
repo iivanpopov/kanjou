@@ -5,6 +5,9 @@ import type { DefaultMessageValue } from '@kanjou/react'
 declare module '@kanjou/react' {
   export interface Register {
     locale: 'en' | 'uk'
+    flatLocales: 'en' | 'uk'
+
+    localeNamespaces: {}
     messages: {
       'title.main': {}
       'text.welcome': { name: DefaultMessageValue }

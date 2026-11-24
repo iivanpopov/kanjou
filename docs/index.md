@@ -30,7 +30,7 @@ features:
     details: Format dates, times, numbers, currencies, durations, lists, and relative times via the native Intl API.
   - icon: 🛠️
     title: CLI
-    details: Pre-compile messages to AST bundles, generate .d.ts declarations, and find missing, unused, or divergent keys across locales.
+    details: AOT-compile messages to JavaScript modules, generate .d.ts declarations, and find missing, unused, or divergent keys across locales.
   - icon: 🌍
     title: SSR Ready
     details: Works with Next.js and TanStack Start out of the box. Server and client rendering with no extra configuration.

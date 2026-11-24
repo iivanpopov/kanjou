@@ -1,10 +1,4 @@
-import type {
-  Locale,
-  Message,
-  MessageFormatOptions,
-  MessageFunctions,
-  TranslateCache,
-} from '@kanjou/core'
+import type { Locale, Message, MessageFunctions, TranslateCache } from '@kanjou/core'
 import type { Context, ReactNode } from 'react'
 
 import { createTranslate } from '@kanjou/core'
@@ -24,7 +18,6 @@ export const TranslateContext: Context<ReactTranslate | null> =
 interface TranslateProviderState {
   locale: Locale
   messages: Readonly<Record<string, Message>>
-  options?: Omit<MessageFormatOptions, 'functions'> | undefined
   functions?: MessageFunctions | undefined
   components?: Components | undefined
   cache?: TranslateCache | undefined
@@ -36,7 +29,6 @@ const TranslateProviderContext: Context<TranslateProviderState | null> =
 export interface TranslateProviderProps {
   locale?: Locale | undefined
   messages: Readonly<Record<string, Message>>
-  options?: Omit<MessageFormatOptions, 'functions'> | undefined
   functions?: MessageFunctions | undefined
   components?: Components | undefined
   cache?: TranslateCache | undefined
@@ -52,7 +44,6 @@ function mergeRecord<T extends object>(parent?: T, child?: T): T | undefined {
 export function TranslateProvider({
   children,
   functions,
-  options,
   locale,
   messages,
   components,
@@ -68,7 +59,6 @@ export function TranslateProvider({
   }
 
   const parentMessages = parent?.messages
-  const parentOptions = parent?.options
   const parentFunctions = parent?.functions
   const parentComponents = parent?.components
 
@@ -76,7 +66,6 @@ export function TranslateProvider({
     () => (parentMessages ? { ...parentMessages, ...messages } : messages),
     [parentMessages, messages],
   )
-  const mergedOptions = useMemo(() => mergeRecord(parentOptions, options), [parentOptions, options])
   const mergedFunctions = useMemo(
     () => mergeRecord(parentFunctions, functions),
     [parentFunctions, functions],
@@ -92,43 +81,26 @@ export function TranslateProvider({
     () => ({
       locale: resolvedLocale,
       messages: mergedMessages,
-      options: mergedOptions,
       functions: mergedFunctions,
       components: mergedComponents,
       cache: resolvedCache,
     }),
-    [
-      resolvedLocale,
-      mergedMessages,
-      mergedOptions,
-      mergedFunctions,
-      mergedComponents,
-      resolvedCache,
-    ],
+    [resolvedLocale, mergedMessages, mergedFunctions, mergedComponents, resolvedCache],
   )
 
-  const translate = useMemo(() => {
-    const translateOptions =
-      mergedOptions || mergedFunctions
-        ? { ...mergedOptions, functions: mergedFunctions }
-        : undefined
-    return enrich(
-      createTranslate({
-        locale: resolvedLocale,
-        messages: mergedMessages,
-        cache: resolvedCache,
-        options: translateOptions,
-      }),
-      mergedComponents,
-    )
-  }, [
-    resolvedLocale,
-    mergedMessages,
-    resolvedCache,
-    mergedOptions,
-    mergedFunctions,
-    mergedComponents,
-  ])
+  const translate = useMemo(
+    () =>
+      enrich(
+        createTranslate({
+          locale: resolvedLocale,
+          messages: mergedMessages,
+          cache: resolvedCache,
+          options: mergedFunctions ? { functions: mergedFunctions } : undefined,
+        }),
+        mergedComponents,
+      ),
+    [resolvedLocale, mergedMessages, resolvedCache, mergedFunctions, mergedComponents],
+  )
 
   return (
     <TranslateProviderContext value={providerState}>

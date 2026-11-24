@@ -11,6 +11,7 @@
     "generate": "kanjou generate"
   },
   "dependencies": {
+    "@kanjou/core": "workspace:*",
     "@kanjou/react": "workspace:*",
     "next": "16.3.5",
     "react": "catalog:react",

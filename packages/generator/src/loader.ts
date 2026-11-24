@@ -38,11 +38,7 @@ export function parse(file: string): ParsedFile {
 const jiti = createJiti(import.meta.url, { moduleCache: false, tryNative: false })
 
 export const LOCALE_EXTENSIONS: ReadonlySet<string> = new Set(['.ts', '.js', '.mts', '.mjs'])
-export const RESERVED_LOCALE_NAMES: ReadonlySet<string> = new Set([
-  'locales',
-  'namespaces',
-  'functions',
-])
+export const RESERVED_LOCALE_NAMES: ReadonlySet<string> = new Set(['locales', 'namespaces'])
 
 export function compareStrings(a: string, b: string): number {
   if (a < b) return -1
@@ -119,14 +115,22 @@ export async function load(file: ParsedFile | string): Promise<Record<string, st
   return result as Record<string, string>
 }
 
+function isDeclarationFile(fileName: string): boolean {
+  return fileName.endsWith('.d.ts') || fileName.endsWith('.d.mts') || fileName.endsWith('.d.cts')
+}
+
 export async function readLocaleFiles(localesDir: string): Promise<ParsedFile[]> {
   try {
     const entries = await fs.readdir(localesDir, { withFileTypes: true })
-    const files = entries
-      .filter((entry) => entry.isFile())
-      .map((entry) => parse(path.join(localesDir, entry.name)))
-      .filter((file) => LOCALE_EXTENSIONS.has(file.ext))
-      .sort((a, b) => compareStrings(a.name, b.name))
+    const files: ParsedFile[] = []
+    for (const entry of entries) {
+      if (!entry.isFile() || isDeclarationFile(entry.name)) continue
+      const file = parse(path.join(localesDir, entry.name))
+      if (LOCALE_EXTENSIONS.has(file.ext)) {
+        files.push(file)
+      }
+    }
+    files.sort((a, b) => compareStrings(a.name, b.name))
 
     const seen = new Map<string, ParsedFile>()
     for (const file of files) {

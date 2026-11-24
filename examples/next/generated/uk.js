@@ -1,165 +1,42 @@
+import {
+  rtNumber as _rn,
+  rtNumberForSelection as _rnfs,
+  rtSelectPlural as _rsp,
+  rtVal as _rv,
+} from '@kanjou/core'
+
 export default {
-  'title.main': {
-    type: 'message',
-    declarations: [],
-    pattern: ['Приклад Kanjou Next.js'],
-  },
+  'title.main': 'Приклад Kanjou Next.js',
   'text.welcome': {
-    type: 'message',
-    declarations: [],
-    pattern: [
-      'Привіт, ',
-      {
-        type: 'markup',
-        kind: 'open',
-        name: 'strong',
-      },
-      {
-        type: 'expression',
-        arg: {
-          type: 'variable',
-          name: 'name',
-        },
-      },
-      {
-        type: 'markup',
-        kind: 'close',
-        name: 'strong',
-      },
-      '!',
+    parts: (v, r) => [
+      { type: 'text', value: 'Привіт, ' },
+      { type: 'markup', kind: 'open', name: 'strong' },
+      { type: 'text', value: _rv(r, v?.name, '{$name}') },
+      { type: 'markup', kind: 'close', name: 'strong' },
+      { type: 'text', value: '!' },
     ],
   },
-  'text.apples': {
-    type: 'select',
-    declarations: [
-      {
-        type: 'input',
-        name: 'count',
-        value: {
-          type: 'expression',
-          arg: {
-            type: 'variable',
-            name: 'count',
-          },
-          functionRef: {
-            type: 'function',
-            name: 'number',
-          },
-        },
-      },
-    ],
-    selectors: [
-      {
-        type: 'variable',
-        name: 'count',
-      },
-    ],
-    variants: [
-      {
-        keys: [
-          {
-            type: 'literal',
-            value: 'one',
-          },
-        ],
-        value: [
-          'У вас є ',
-          {
-            type: 'expression',
-            arg: {
-              type: 'variable',
-              name: 'count',
-            },
-          },
-          ' яблуко.',
-        ],
-      },
-      {
-        keys: [
-          {
-            type: 'literal',
-            value: 'few',
-          },
-        ],
-        value: [
-          'У вас є ',
-          {
-            type: 'expression',
-            arg: {
-              type: 'variable',
-              name: 'count',
-            },
-          },
-          ' яблука.',
-        ],
-      },
-      {
-        keys: [
-          {
-            type: 'literal',
-            value: 'many',
-          },
-        ],
-        value: [
-          'У вас є ',
-          {
-            type: 'expression',
-            arg: {
-              type: 'variable',
-              name: 'count',
-            },
-          },
-          ' яблук.',
-        ],
-      },
-      {
-        keys: [
-          {
-            type: '*',
-          },
-        ],
-        value: [
-          'У вас є ',
-          {
-            type: 'expression',
-            arg: {
-              type: 'variable',
-              name: 'count',
-            },
-          },
-          ' яблук.',
-        ],
-      },
-    ],
+  'text.apples': (v, r) => {
+    const _d0 = v?.count
+    const _n0 = _rnfs(_d0)
+    {
+      const _key = _rsp(r, _n0)
+      if (_key === 'one') {
+        return `У вас є ${_rn(r, _d0, undefined, '{$count}')} яблуко.`
+      }
+      if (_key === 'few') {
+        return `У вас є ${_rn(r, _d0, undefined, '{$count}')} яблука.`
+      }
+      if (_key === 'many') {
+        return `У вас є ${_rn(r, _d0, undefined, '{$count}')} яблук.`
+      }
+    }
+    return `У вас є ${_rn(r, _d0, undefined, '{$count}')} яблук.`
   },
-  'title.counter': {
-    type: 'message',
-    declarations: [],
-    pattern: ['Кількість кліків'],
-  },
-  'button.reset': {
-    type: 'message',
-    declarations: [],
-    pattern: ['Скинути'],
-  },
-  'input.select-locale': {
-    type: 'message',
-    declarations: [],
-    pattern: ['Виберіть мову'],
-  },
-  'title.statistics': {
-    type: 'message',
-    declarations: [],
-    pattern: ['Статистика'],
-  },
-  'label.price': {
-    type: 'message',
-    declarations: [],
-    pattern: ['Ціна'],
-  },
-  'label.date': {
-    type: 'message',
-    declarations: [],
-    pattern: ['Поточна дата'],
-  },
+  'title.counter': 'Кількість кліків',
+  'button.reset': 'Скинути',
+  'input.select-locale': 'Виберіть мову',
+  'title.statistics': 'Статистика',
+  'label.price': 'Ціна',
+  'label.date': 'Поточна дата',
 }

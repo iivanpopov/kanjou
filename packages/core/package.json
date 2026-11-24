@@ -11,6 +11,7 @@
     "LICENSE"
   ],
   "type": "module",
+  "sideEffects": false,
   "exports": {
     ".": {
       "types": "./dist/index.d.mts",
@@ -19,16 +20,13 @@
   },
   "scripts": {
     "build": "tsdown",
+    "test": "vitest run",
     "prepublishOnly": "pnpm build"
   },
-  "dependencies": {
-    "messageformat": "catalog:"
-  },
   "devDependencies": {
+    "@kanjou/generator": "workspace:*",
     "tsdown": "catalog:tooling",
-    "typescript": "catalog:tooling"
-  },
-  "engines": {
-    "node": ">=20"
+    "typescript": "catalog:tooling",
+    "vitest": "^5.1.1"
   }
 }

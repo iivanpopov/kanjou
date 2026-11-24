@@ -1,12 +1,95 @@
-import type { Model } from 'messageformat'
-import type { MessageFunctionContext, MessageValue } from 'messageformat/functions'
+import type { TranslateCache } from './cache'
 
-export type { MessageFormat, MessageMarkupPart, MessagePart } from 'messageformat'
+export interface MessageTextPart {
+  type: 'text'
+  value: string
+}
+
+export interface MessageMarkupPart {
+  type: 'markup'
+  kind: 'open' | 'standalone' | 'close'
+  name: string
+  options?: Record<string, unknown> | undefined
+}
+
+export interface MessageFormattedPart<P extends string = string> {
+  type: P
+  locale?: string | undefined
+  dir?: 'ltr' | 'rtl' | 'auto' | undefined
+  value?: unknown
+  parts?: readonly { type: string; value: string }[] | undefined
+}
+
+export type MessagePart<P extends string = string> =
+  | MessageTextPart
+  | MessageMarkupPart
+  | ([P] extends [never] ? never : MessageFormattedPart<P>)
+
+export interface MessageFunctionContext {
+  readonly locale: Locale
+  readonly number: (value: unknown, options?: FormatNumberOptions) => string
+  readonly date: (value: unknown, options?: FormatDateTimeOptions) => string
+  readonly plural: (value: unknown, options?: FormatPluralOptions) => PluralRule
+  readonly select: (
+    value: unknown,
+    keys: ReadonlySet<string>,
+    options?: SelectOptions,
+  ) => string | null
+  readonly literalOptionKeys: ReadonlySet<string>
+}
+
+export interface MessageValue<T extends string = string, P extends string = T> {
+  readonly type?: T | undefined
+  readonly value?: unknown
+  selectKey?: ((keys: Set<string>) => string | null) | undefined
+  toParts?: (() => MessagePart<P>[]) | undefined
+  toString?: (() => string) | undefined
+  valueOf?: (() => unknown) | undefined
+}
+
+export type CompiledIntlOptions<Options> = readonly [options: Options, cacheKey: string]
+
+export type SelectOptions = FormatPluralOptions & {
+  select?: 'exact' | undefined
+  style?: string | undefined
+}
+
+export interface DynamicDateTimeOptionsInput {
+  readonly kind: 'date' | 'time' | 'datetime'
+  readonly hasDirectStyle?: boolean | undefined
+  readonly hasDirectDateField?: boolean | undefined
+  readonly hasDirectTimeField?: boolean | undefined
+  readonly hasDirectTimeZoneName?: boolean | undefined
+  readonly fields?: unknown
+  readonly length?: unknown
+  readonly precision?: unknown
+  readonly timeZoneStyle?: unknown
+  readonly hour12?: unknown
+}
+
+export interface MessageContext {
+  readonly locale: Locale
+  readonly cache: TranslateCache
+  readonly functions?: MessageFunctions | undefined
+}
+
+export type MessageFunctionResult<T extends string = string, P extends string = T> =
+  | string
+  | MessageValue<T, P>
 
 export interface Register {}
 
-export type CompiledMessage = (values?: Record<string, any>) => string
-export type Message = string | CompiledMessage | Model.Message
+export type CompiledMessage = (values?: Record<string, any>, runtime?: MessageContext) => string
+export interface CompiledPartsMessage {
+  readonly parts: (values?: Record<string, any>, runtime?: MessageContext) => MessagePart[]
+}
+export interface CompiledRichMessage {
+  readonly render: {
+    (values: Record<string, any> | undefined, runtime: MessageContext, asParts: false): string
+    (values: Record<string, any> | undefined, runtime: MessageContext, asParts: true): MessagePart[]
+  }
+}
+export type Message = string | CompiledMessage | CompiledPartsMessage | CompiledRichMessage
 export type DefaultMessageValue = string | number
 export type DefaultMessages = Record<string, Record<string, DefaultMessageValue>>
 
@@ -16,10 +99,8 @@ export type MapPartsType<Id extends MessageId> = {
   }
     ? Functions[FunctionName] extends MessageFunction<any, any, any, infer PartsType>
       ? PartsType
-      : 'string'
-    : Messages[Id][Value] extends number | bigint
-      ? 'number'
-      : 'string'
+      : never
+    : never
 }
 export type InferPartsType<Id extends MessageId> = MapPartsType<Id>[keyof MapPartsType<Id>]
 
@@ -30,22 +111,23 @@ export type MessageFunction<
   PartsType extends string = MessageType,
 > = (
   context: MessageFunctionContext,
-  options: Options,
+  options: Readonly<Options>,
   input?: Input,
-) => MessageValue<MessageType, PartsType>
+) => MessageFunctionResult<MessageType, PartsType>
 
-export type MessageFunctions = Partial<Functions> &
+export type BuiltinFunctionName = keyof BuiltinFunctions
+
+export type MessageFunctions = {
+  [K in BuiltinFunctionName]?: never
+} & Partial<Omit<Functions, BuiltinFunctionName>> &
   Record<string, MessageFunction<any, any, any, any> | undefined>
 
 export interface MessageFormatOptions {
-  bidiIsolation?: 'default' | 'none' | undefined
-  dir?: 'ltr' | 'rtl' | 'auto' | undefined
-  localeMatcher?: 'best fit' | 'lookup' | undefined
   functions?: MessageFunctions | undefined
 }
 
 export interface DefaultFunctions {
-  string: MessageFunction<Record<string, unknown>, unknown, 'string'>
+  string: MessageFunction<Record<string, unknown>, unknown, 'string', never>
 
   number: MessageFunction<
     Partial<
@@ -53,7 +135,8 @@ export interface DefaultFunctions {
         Intl.PluralRulesOptions & { select?: 'exact' | 'cardinal' | 'ordinal' }
     >,
     NumberLike,
-    'number'
+    'number',
+    never
   >
 
   integer: MessageFunction<
@@ -65,7 +148,8 @@ export interface DefaultFunctions {
       useGrouping: Intl.NumberFormatOptions['useGrouping']
     }>,
     NumberLike,
-    'number'
+    'number',
+    never
   >
 
   offset: MessageFunction<
@@ -77,7 +161,8 @@ export interface DefaultFunctions {
       }
     >,
     NumberLike,
-    'number'
+    'number',
+    never
   >
 }
 
@@ -89,7 +174,8 @@ export interface DraftFunctions {
       currencySign?: 'standard' | 'accounting'
     },
     NumberLike,
-    'number'
+    'number',
+    never
   >
 
   percent: MessageFunction<
@@ -105,14 +191,20 @@ export interface DraftFunctions {
       useGrouping: Intl.NumberFormatOptions['useGrouping']
     }>,
     NumberLike,
-    'number'
+    'number',
+    never
   >
 
-  date: MessageFunction<Partial<Intl.DateTimeFormatOptions>, DateLike | string, 'datetime'>
+  date: MessageFunction<Partial<Intl.DateTimeFormatOptions>, DateLike | string, 'datetime', never>
 
-  datetime: MessageFunction<Partial<Intl.DateTimeFormatOptions>, DateLike | string, 'datetime'>
+  datetime: MessageFunction<
+    Partial<Intl.DateTimeFormatOptions>,
+    DateLike | string,
+    'datetime',
+    never
+  >
 
-  time: MessageFunction<Partial<Intl.DateTimeFormatOptions>, DateLike | string, 'datetime'>
+  time: MessageFunction<Partial<Intl.DateTimeFormatOptions>, DateLike | string, 'datetime', never>
 
   unit: MessageFunction<
     Partial<Intl.NumberFormatOptions> & {
@@ -120,20 +212,31 @@ export interface DraftFunctions {
       unitDisplay?: 'short' | 'long' | 'narrow'
     },
     NumberLike,
-    'number'
+    'number',
+    never
   >
 }
 
+export type BuiltinFunctions = DefaultFunctions & DraftFunctions
+
 export type Locale = Register extends { locale: infer RegisteredLocale } ? RegisteredLocale : string
+export type FlatLocale = Register extends { flatLocales: infer RegisteredFlatLocale }
+  ? RegisteredFlatLocale
+  : Locale
 export type Namespace = Register extends { namespace: infer RegisteredNamespace }
   ? RegisteredNamespace
   : string
+export type LocaleNamespaces = Register extends {
+  localeNamespaces: infer RegisteredLocaleNamespaces extends Record<string, string>
+}
+  ? RegisteredLocaleNamespaces
+  : Record<Locale, Namespace>
 export type Messages = Register extends { messages: infer RegisteredMessages }
   ? RegisteredMessages
   : DefaultMessages
 export type Functions = Register extends { functions: infer RegisteredFunctions }
-  ? RegisteredFunctions & DefaultFunctions
-  : DefaultFunctions
+  ? RegisteredFunctions & BuiltinFunctions
+  : BuiltinFunctions
 
 export type MessageId = keyof Messages
 

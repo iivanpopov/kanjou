@@ -4,7 +4,6 @@ export interface Cache<Key = string, Value = any> {
 }
 
 export interface TranslateCache {
-  readonly translate: Cache
   readonly dateTime: Cache
   readonly number: Cache
   readonly plural: Cache
@@ -12,7 +11,6 @@ export interface TranslateCache {
   readonly display: Cache
   readonly relative: Cache
   readonly duration: Cache
-  readonly message: Cache<object>
 }
 
 export interface CreateTranslateCacheOptions {
@@ -49,7 +47,6 @@ function createBoundedCache(maxSize: number): Cache {
 
 export function createTranslateCache(options?: CreateTranslateCacheOptions): TranslateCache {
   const maxSize = options?.maxSize ?? DEFAULT_CACHE_MAX_SIZE
-  let translate: Cache | undefined
   let dateTime: Cache | undefined
   let number: Cache | undefined
   let plural: Cache | undefined
@@ -57,12 +54,8 @@ export function createTranslateCache(options?: CreateTranslateCacheOptions): Tra
   let display: Cache | undefined
   let relative: Cache | undefined
   let duration: Cache | undefined
-  let message: Cache<object> | undefined
 
   return {
-    get translate(): Cache {
-      return (translate ??= createBoundedCache(maxSize))
-    },
     get dateTime(): Cache {
       return (dateTime ??= createBoundedCache(maxSize))
     },
@@ -84,14 +77,11 @@ export function createTranslateCache(options?: CreateTranslateCacheOptions): Tra
     get duration(): Cache {
       return (duration ??= createBoundedCache(maxSize))
     },
-    get message(): Cache<object> {
-      return (message ??= new WeakMap())
-    },
   }
 }
 
-const sharedTranslateCache: TranslateCache = createTranslateCache()
+let sharedTranslateCache: TranslateCache | undefined
 
 export function getSharedTranslateCache(): TranslateCache {
-  return sharedTranslateCache
+  return (sharedTranslateCache ??= createTranslateCache())
 }

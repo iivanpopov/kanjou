@@ -8,7 +8,7 @@ All commands read `kanjou.config.json` from the current working directory:
 | ----------------------------------------------------------------- | --------------------------------------------------------------------------------------------- |
 | `kanjou compile`                                                  | Precompile all locales/namespaces into JS modules in `compile.outDir` (default `./generated`) |
 | `kanjou generate`                                                 | Generate `locales.kanjou.d.ts` in `dts.outDir` (default `./generated`)                        |
-| `kanjou compare`                                                  | Cross-compare locales against `baseLocale` and report missing keys per locale                 |
+| `kanjou compare`                                                  | Cross-compare all locales against each other and report missing keys per locale               |
 | `kanjou unused [--tsconfig <path>] [--ignore-full-catalog-union]` | Scan TypeScript sources for unused base-locale message keys                                   |
 
 ### `kanjou unused` notes
@@ -20,7 +20,6 @@ All commands read `kanjou.config.json` from the current working directory:
 ## Troubleshooting
 
 - **Raw MF2 string rendered in UI**: Messages were imported directly from `src/locales/*.ts` instead of `virtual:kanjou/*` or `compile.outDir`. Always import precompiled modules.
-- **`Runtime MF2 string parsing is disabled`**: `parseMessage` was called at runtime while `@kanjou/plugin` is active. Precompile messages with `@kanjou/plugin` or `kanjou compile`.
 - **Type errors in `node_modules` with `@kanjou/plugin`**: Enable `"skipLibCheck": true` in `tsconfig.json`.
 - **No autocomplete for `t('...')` keys**: Ensure `kanjou generate` (or `@kanjou/plugin` build/dev) emitted `locales.kanjou.d.ts` and that `tsconfig.json` includes it along with `/// <reference types="@kanjou/plugin/client" />` (or `@kanjou/plugin/client/core`).
-- **Reserved locale name error**: Rename any locale file or directory named `locales`, `namespaces`, or `functions`.
+- **Reserved locale name error**: Rename any locale file or directory named `locales` or `namespaces`.

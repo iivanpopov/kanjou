@@ -3,26 +3,25 @@ declare module 'virtual:kanjou/*' {
   export default messages
 }
 
+declare module 'virtual:kanjou/functions' {
+  const removed: 'virtual:kanjou/functions was removed in favour of AOT-compiled built-in functions.'
+  export default removed
+}
+
 declare module 'virtual:kanjou/locales' {
   const locales: Record<
-    import('@kanjou/react').Locale,
+    import('@kanjou/react').FlatLocale,
     () => Promise<Readonly<Record<string, import('@kanjou/react').Message>>>
   >
   export default locales
 }
 
 declare module 'virtual:kanjou/namespaces' {
-  const namespaces: Record<
-    import('@kanjou/react').Locale,
-    Record<
-      import('@kanjou/react').Namespace,
+  const namespaces: {
+    readonly [L in keyof import('@kanjou/react').LocaleNamespaces]: Record<
+      import('@kanjou/react').LocaleNamespaces[L],
       () => Promise<Readonly<Record<string, import('@kanjou/react').Message>>>
     >
-  >
+  }
   export default namespaces
-}
-
-declare module 'virtual:kanjou/functions' {
-  const functions: Partial<import('@kanjou/react').Functions>
-  export default functions
 }
