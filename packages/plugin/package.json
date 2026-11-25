@@ -1,64 +1,22 @@
 {
   "name": "@kanjou/plugin",
   "version": "0.7.0",
-  "private": false,
   "license": "ISC",
   "author": "Ivan Popov <iivanpopov@proton.me>",
   "repository": "git+https://github.com/iivanpopov/kanjou.git",
   "files": [
-    "dist",
-    "client.d.ts",
-    "client-core.d.ts",
-    "README.md",
-    "LICENSE"
+    "dist"
   ],
   "type": "module",
   "exports": {
-    "./client": {
-      "types": "./client.d.ts"
-    },
-    "./client/core": {
-      "types": "./client-core.d.ts"
-    },
-    ".": {
-      "types": "./dist/index.d.mts",
-      "import": "./dist/index.mjs"
-    },
-    "./vite": {
-      "types": "./dist/vite.d.mts",
-      "import": "./dist/vite.mjs"
-    },
-    "./webpack": {
-      "types": "./dist/webpack.d.mts",
-      "import": "./dist/webpack.mjs"
-    }
+    "types": "./dist/index.d.mts",
+    "import": "./dist/index.mjs"
   },
   "scripts": {
     "build": "tsdown",
     "prepublishOnly": "pnpm build"
   },
-  "dependencies": {
-    "@kanjou/generator": "workspace:*",
-    "unplugin": "^1.14.1"
-  },
   "devDependencies": {
-    "@types/node": "catalog:",
-    "tsdown": "catalog:tooling",
-    "typescript": "catalog:tooling"
-  },
-  "peerDependencies": {
-    "@kanjou/core": "workspace:*",
-    "@kanjou/react": "workspace:*"
-  },
-  "peerDependenciesMeta": {
-    "@kanjou/core": {
-      "optional": true
-    },
-    "@kanjou/react": {
-      "optional": true
-    }
-  },
-  "engines": {
-    "node": ">=20"
+    "tsdown": "catalog:"
   }
 }

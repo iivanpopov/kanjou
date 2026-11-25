@@ -1,40 +1,22 @@
 {
   "name": "@kanjou/cli",
   "version": "0.7.0",
-  "private": false,
   "license": "ISC",
   "author": "Ivan Popov <iivanpopov@proton.me>",
   "repository": "git+https://github.com/iivanpopov/kanjou.git",
-  "bin": {
-    "kanjou": "./dist/cli.mjs"
-  },
   "files": [
-    "dist",
-    "README.md",
-    "LICENSE"
+    "dist"
   ],
   "type": "module",
   "exports": {
-    ".": {
-      "types": "./dist/index.d.mts",
-      "import": "./dist/index.mjs"
-    }
+    "types": "./dist/index.d.mts",
+    "import": "./dist/index.mjs"
   },
   "scripts": {
     "build": "tsdown",
     "prepublishOnly": "pnpm build"
   },
-  "dependencies": {
-    "@kanjou/generator": "workspace:*",
-    "cac": "^7.0.0",
-    "consola": "^3.4.2",
-    "jsonc-parser": "^3.3.1",
-    "typescript": "catalog:tooling"
-  },
   "devDependencies": {
-    "tsdown": "catalog:tooling"
-  },
-  "engines": {
-    "node": ">=20"
+    "tsdown": "catalog:"
   }
 }
